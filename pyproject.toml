@@ -1,0 +1,117 @@
+[project]
+name = "sovereign-shield"
+version = "0.1.0"
+description = "Deterministic, offline Swiss/EU (FADP/GDPR) PII gateway: tokenize personal data before a cloud LLM sees it, restore it on the way back."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "acoseac" }]
+keywords = [
+    "privacy",
+    "pii",
+    "fadp",
+    "gdpr",
+    "data-sovereignty",
+    "tokenization",
+    "anonymization",
+    "swiss",
+    "llm",
+    "compliance",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+
+# The detection + round-trip core is stdlib-only, on purpose — no heavy, volatile
+# AI framework just to sanitize data locally.
+dependencies = []
+
+[project.optional-dependencies]
+# The transparent LangChain proxy (sovereign_shield.gateway) + a Gemini example.
+gateway = [
+    "langchain-core>=0.3",
+    "langchain-google-genai>=2.0",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/acoseac/sovereign-shield"
+Repository = "https://github.com/acoseac/sovereign-shield"
+Issues = "https://github.com/acoseac/sovereign-shield/issues"
+"Live demo" = "https://kevin.ars.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Monorepo guard: ship ONLY the Python package in the wheel — never the web/ demo.
+[tool.hatch.build.targets.wheel]
+packages = ["src/sovereign_shield"]
+
+# --- ruff ---
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",     # pycodestyle / pyflakes
+    "I",               # isort
+    "B",               # bugbear
+    "UP",              # pyupgrade
+    "SIM",             # simplify
+    "RUF",             # ruff-specific
+    "S",               # bandit (security)
+    "N",               # pep8-naming
+    "C4",              # comprehensions
+    "PIE",             # misc
+]
+ignore = [
+    "E501",  # line length handled by the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# S101: assert is the point of a test. S105/S106: fixtures pass literal
+# "token"/placeholder values that bandit mistakes for hardcoded secrets.
+"tests/**/*.py" = ["S101", "S105", "S106"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# --- mypy ---
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_any_generics = true
+no_implicit_optional = true
+files = ["src/sovereign_shield"]
+
+[[tool.mypy.overrides]]
+# LangChain is an optional extra and ships no stubs we rely on.
+module = [
+    "langchain_core.*",
+    "langchain_google_genai.*",
+]
+ignore_missing_imports = true
+disable_error_code = ["call-arg", "unused-ignore"]
+
+# --- pytest ---
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]

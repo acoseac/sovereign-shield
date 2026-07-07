@@ -1,0 +1,16 @@
+Sovereign Shield
+Copyright 2026 acoseac
+
+This product includes software developed by acoseac and contributors
+under the Apache License, Version 2.0.
+
+Sovereign Shield is an engineering utility for programmatic privacy
+mitigation (deterministic Swiss/EU PII detection and reversible
+tokenization). It is NOT an automated guarantee of regulatory compliance
+under the Swiss Federal Act on Data Protection (FADP) or the EU GDPR, and
+it is not legal advice. Structural, context-independent detection cannot
+catch every leak vector. Use it alongside audit logs, a DPIA where
+required, and human review. See the README for the full disclaimer.
+
+The deterministic detection core is extracted from the K.E.V.I.N.
+adversarial-testing research project.

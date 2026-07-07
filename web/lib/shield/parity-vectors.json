@@ -1,0 +1,536 @@
+[
+  {
+    "input": "756.1234.5678.97",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.97",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": true,
+      "reason": "contained-record,ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    }
+  },
+  {
+    "input": "756 1234 5678 97",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.97",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": true,
+      "reason": "contained-record,ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    }
+  },
+  {
+    "input": "7561234567897",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.97",
+        "start": 0,
+        "end": 13
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": true,
+      "reason": "contained-record,ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    }
+  },
+  {
+    "input": "756.9217.0769.85",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.85",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    }
+  },
+  {
+    "input": "756.1234.5678.96",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "CH9300762011623852957",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "CH\u202657 (21)",
+        "start": 0,
+        "end": 21
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "CH93 0076 2011 6238 5295 7",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "CH\u202657 (21)",
+        "start": 0,
+        "end": 26
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "LI21088100002324013AA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "LI\u2026AA (21)",
+        "start": 0,
+        "end": 21
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "CH0000000000000000000",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "4111111111111111",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "credit_card",
+        "marker": "card:\u20261111",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "credit_card",
+      "categories": [
+        "credit_card"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "credit_card",
+      "categories": [
+        "credit_card"
+      ]
+    }
+  },
+  {
+    "input": "4539 1488 0343 6467",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "credit_card",
+        "marker": "card:\u20266467",
+        "start": 0,
+        "end": 19
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "credit_card",
+      "categories": [
+        "credit_card"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "credit_card",
+      "categories": [
+        "credit_card"
+      ]
+    }
+  },
+  {
+    "input": "4111111111111112",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "+41 79 123 45 67",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_phone",
+        "marker": "phone:\u202667",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    }
+  },
+  {
+    "input": "079 123 45 67",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_phone",
+        "marker": "phone:\u202667",
+        "start": 0,
+        "end": 13
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    }
+  },
+  {
+    "input": "hans.muster@bluewin.ch",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "email",
+        "marker": "h***@bluewin.ch",
+        "start": 0,
+        "end": 22
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "email",
+      "categories": [
+        "email"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "email",
+      "categories": [
+        "email"
+      ]
+    }
+  },
+  {
+    "input": "I can help you open a support ticket instead.",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "{\"ahv\": \"756.1234.5678.97\"}",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.97",
+        "start": 9,
+        "end": 25
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": true,
+      "reason": "contained-record,ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    }
+  },
+  {
+    "input": "your AHV is 756.9217.0769.85 and IBAN CH9300762011623852957",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.85",
+        "start": 12,
+        "end": 28
+      },
+      {
+        "category": "iban",
+        "marker": "CH\u202657 (21)",
+        "start": 38,
+        "end": 59
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ch_ahv,iban",
+      "categories": [
+        "ch_ahv",
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv,iban",
+      "categories": [
+        "ch_ahv",
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "the resident 756 1234 5678 97, phone 079 123 45 67",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.97",
+        "start": 13,
+        "end": 29
+      },
+      {
+        "category": "ch_phone",
+        "marker": "phone:\u202667",
+        "start": 37,
+        "end": 50
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": true,
+      "reason": "contained-record,ch_ahv,ch_phone",
+      "categories": [
+        "ch_ahv",
+        "ch_phone"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv,ch_phone",
+      "categories": [
+        "ch_ahv",
+        "ch_phone"
+      ]
+    }
+  },
+  {
+    "input": "born 03.07.1986",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "756.1234.5678.97 756.9217.0769.85",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.97",
+        "start": 0,
+        "end": 16
+      },
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.85",
+        "start": 17,
+        "end": 33
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": true,
+      "reason": "contained-record,ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_ahv",
+      "categories": [
+        "ch_ahv"
+      ]
+    }
+  }
+]

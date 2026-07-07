@@ -1,0 +1,183 @@
+{
+  "note": "Real recorded runs: sanitized prompts sent to the models; responses kept the placeholders. All PII is synthetic and checksum-valid; no real data subject.",
+  "models": [
+    {
+      "id": "gemini-3.5-flash",
+      "label": "Gemini 3.5 Flash",
+      "vendor": "Google"
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "label": "Claude Sonnet 4.6",
+      "vendor": "Anthropic"
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "label": "DeepSeek V4 Pro",
+      "vendor": "DeepSeek"
+    }
+  ],
+  "documents": [
+    {
+      "id": "support_email",
+      "label": "Customer support email",
+      "task": "Draft a short, warm reply in English confirming we'll investigate the double charge and refund it within five business days.",
+      "text": "Betreff: Doppelte Belastung\n\nGuten Tag, hier ist Hans Muster. Meine AHV-Nummer ist 756.1234.5678.97. Auf meinem Konto (IBAN CH9300762011623852957) wurde die Praemie von CHF 240 doppelt abgebucht. Bitte um Rueckerstattung. Erreichbar bin ich unter +41 79 214 88 03 oder hans.muster@bluewin.ch.",
+      "sanitized": "Betreff: Doppelte Belastung\n\nGuten Tag, hier ist [PERSON_1]. Meine AHV-Nummer ist [AHV_1]. Auf meinem Konto (IBAN [IBAN_1]) wurde die Praemie von CHF 240 doppelt abgebucht. Bitte um Rueckerstattung. Erreichbar bin ich unter [PHONE_1] oder [EMAIL_1].",
+      "entities": [
+        {
+          "start": 49,
+          "end": 60,
+          "category": "name",
+          "token": "[PERSON_1]",
+          "value": "Hans Muster"
+        },
+        {
+          "start": 83,
+          "end": 99,
+          "category": "ch_ahv",
+          "token": "[AHV_1]",
+          "value": "756.1234.5678.97"
+        },
+        {
+          "start": 124,
+          "end": 145,
+          "category": "iban",
+          "token": "[IBAN_1]",
+          "value": "CH9300762011623852957"
+        },
+        {
+          "start": 247,
+          "end": 263,
+          "category": "ch_phone",
+          "token": "[PHONE_1]",
+          "value": "+41 79 214 88 03"
+        },
+        {
+          "start": 269,
+          "end": 291,
+          "category": "email",
+          "token": "[EMAIL_1]",
+          "value": "hans.muster@bluewin.ch"
+        }
+      ]
+    },
+    {
+      "id": "insurance_claim",
+      "label": "Insurance claim",
+      "task": "Summarise this accident claim in three short bullet points for the claims adjuster.",
+      "text": "Claim FF-2291. Policyholder: Nadia Bianchi, AHV 756.9217.0769.85. She slipped at Bahnhofstrasse 40, 8001 Zurich and fractured her wrist; treated at USZ. Please reimburse CHF 1,850 to IBAN CH6000243138729430001. Reachable on +41 44 255 11 11 or nadia.bianchi@bluewin.ch.",
+      "sanitized": "Claim FF-2291. Policyholder: [PERSON_1], AHV [AHV_1]. She slipped at [ADDRESS_1] and fractured her wrist; treated at USZ. Please reimburse CHF 1,850 to IBAN [IBAN_1]. Reachable on [PHONE_1] or [EMAIL_1].",
+      "entities": [
+        {
+          "start": 29,
+          "end": 42,
+          "category": "name",
+          "token": "[PERSON_1]",
+          "value": "Nadia Bianchi"
+        },
+        {
+          "start": 48,
+          "end": 64,
+          "category": "ch_ahv",
+          "token": "[AHV_1]",
+          "value": "756.9217.0769.85"
+        },
+        {
+          "start": 81,
+          "end": 111,
+          "category": "address",
+          "token": "[ADDRESS_1]",
+          "value": "Bahnhofstrasse 40, 8001 Zurich"
+        },
+        {
+          "start": 188,
+          "end": 209,
+          "category": "iban",
+          "token": "[IBAN_1]",
+          "value": "CH6000243138729430001"
+        },
+        {
+          "start": 224,
+          "end": 240,
+          "category": "ch_phone",
+          "token": "[PHONE_1]",
+          "value": "+41 44 255 11 11"
+        },
+        {
+          "start": 244,
+          "end": 268,
+          "category": "email",
+          "token": "[EMAIL_1]",
+          "value": "nadia.bianchi@bluewin.ch"
+        }
+      ]
+    },
+    {
+      "id": "hr_onboarding",
+      "label": "HR onboarding note",
+      "task": "Draft a friendly internal Slack message welcoming the new hire to the team. Do NOT mention salary.",
+      "text": "New hire: Marco Rossi starts 01.08. AHV 756.3047.5009.62. Personal mobile +41 78 601 22 44, marco.rossi@gmail.com. Agreed salary CHF 95,000. Please set up payroll and order a laptop for the first day.",
+      "sanitized": "New hire: [PERSON_1] starts 01.08. AHV [AHV_1]. Personal mobile [PHONE_1], [EMAIL_1]. Agreed salary CHF 95,000. Please set up payroll and order a laptop for the first day.",
+      "entities": [
+        {
+          "start": 10,
+          "end": 21,
+          "category": "name",
+          "token": "[PERSON_1]",
+          "value": "Marco Rossi"
+        },
+        {
+          "start": 40,
+          "end": 56,
+          "category": "ch_ahv",
+          "token": "[AHV_1]",
+          "value": "756.3047.5009.62"
+        },
+        {
+          "start": 74,
+          "end": 90,
+          "category": "ch_phone",
+          "token": "[PHONE_1]",
+          "value": "+41 78 601 22 44"
+        },
+        {
+          "start": 92,
+          "end": 113,
+          "category": "email",
+          "token": "[EMAIL_1]",
+          "value": "marco.rossi@gmail.com"
+        }
+      ]
+    }
+  ],
+  "responses": {
+    "support_email::gemini-3.5-flash": {
+      "text": "Subject: Re: Doppelte Belastung (Double Charge)\n\nDear [PERSON_1],\n\nThank you for reaching out to us, and we sincerely apologize for the inconvenience caused by this double charge. \n\nWe are currently investigating the duplicate debit of CHF 240. Please rest assured that we will process the refund back to your account (IBAN [IBAN_1]) within five business days. We have also noted your AHV number [AHV_1] for our records. \n\nShould we need any further information, we will contact you at [PHONE_1] or [EMAIL_1]. \n\nThank you very much for your patience and understanding.\n\nWarm regards,\n\n[Your Name/Customer Service Team]"
+    },
+    "support_email::claude-sonnet-4-6": {
+      "text": "Subject: Re: Doppelte Belastung\n\nDear [PERSON_1],\n\nThank you for reaching out to us and bringing this to our attention!\n\nWe sincerely apologize for the inconvenience caused by the double charge. We have received your message and will promptly investigate the duplicate deduction from your account (IBAN [IBAN_1]).\n\nOnce confirmed, the refund of CHF 240 will be processed back to your account within **five business days**.\n\nShould you have any further questions in the meantime, please don't hesitate to contact us. You can also expect us to reach out to you at [PHONE_1] or [EMAIL_1] if we need any additional information.\n\nThank you for your patience, and we look forward to resolving this for you quickly.\n\nWarm regards,\nCustomer Service Team"
+    },
+    "support_email::deepseek-v4-pro": {
+      "text": "Subject: Re: Doppelte Belastung\n\nDear [PERSON_1],\n\nThank you for letting us know about the double charge of CHF 240. I’m sorry for the inconvenience this has caused.\n\nWe’ll investigate immediately and process a full refund for you. You can expect the amount to be returned to your account within five business days.\n\nIf you have any other questions, please don’t hesitate to reach out.\n\nWarm regards,  \nYour Client Support Team"
+    },
+    "insurance_claim::gemini-3.5-flash": {
+      "text": "Here is a summary of the accident claim for the claims adjuster:\n\n* **Incident & Injury:** Policyholder [PERSON_1] (AHV: [AHV_1]) slipped at [ADDRESS_1], resulting in a fractured wrist that was treated at USZ.\n* **Payment Request:** A reimbursement of CHF 1,850 is requested to IBAN [IBAN_1] under Claim FF-2291.\n* **Contact Info:** The claimant can be reached for any follow-up questions at [PHONE_1] or [EMAIL_1]."
+    },
+    "insurance_claim::claude-sonnet-4-6": {
+      "text": "**Claim FF-2291 – Summary for Claims Adjuster**\n\n• **Incident:** [PERSON_1] (AHV [AHV_1]) slipped and fell at [ADDRESS_1], sustaining a fractured wrist treated at USZ.\n\n• **Reimbursement requested:** CHF 1,850 to be paid to IBAN [IBAN_1].\n\n• **Contact details:** Policyholder can be reached at [PHONE_1] or [EMAIL_1]."
+    },
+    "insurance_claim::deepseek-v4-pro": {
+      "text": "- Claim FF-2291: [PERSON_1] (AHV [AHV_1]) slipped at [ADDRESS_1], fractured wrist, treated at USZ.\n- Reimburse CHF 1,850 to IBAN [IBAN_1].\n- Contact: [PHONE_1] or [EMAIL_1]."
+    },
+    "hr_onboarding::gemini-3.5-flash": {
+      "text": "Hi everyone! 👋\n\nPlease join me in giving a warm welcome to our newest team member, [PERSON_1], who will be officially starting with us on 01.08! 🎉\n\nWe are super excited to have [PERSON_1] join the team. If you'd like to reach out and say hello before the start date, you can connect via email at [EMAIL_1] or on mobile at [PHONE_1]. \n\nLet's make [PERSON_1] feel right at home! Welcome to the team! 🚀✨"
+    },
+    "hr_onboarding::claude-sonnet-4-6": {
+      "text": "Here's a draft Slack message:\n\n---\n\n👋 **Welcome to the team, [PERSON_1]!**\n\nWe're so excited to have you joining us on 1st August! 🎉\n\n[PERSON_1], you'll be a fantastic addition to the team, and we can't wait to get started working with you. Please don't hesitate to reach out to any of us — we're all here to help make your first days as smooth and enjoyable as possible.\n\nFor anyone who wants to get in touch with [PERSON_1] ahead of their start date, you can reach them on [PHONE_1] or drop them a message at [EMAIL_1].\n\nLet's give [PERSON_1] a warm welcome! 🙌\n\n---\n\n> **⚠️ Internal admin note (not for Slack):** Please ensure payroll is set up using AHV number [AHV_1] and that a laptop is ordered and ready for [PERSON_1]'s first day on 01.08."
+    },
+    "hr_onboarding::deepseek-v4-pro": {
+      "text": "Hi team! 👋  \n\nI’m thrilled to let you know that [PERSON_1] is joining us on **01.08**! Please give them a warm welcome when they start.  \n\nIf you’d like to say hello or help them feel at home before day one, you can reach [PERSON_1] at [EMAIL_1] or [PHONE_1].  \n\nLooking forward to having them on board! 🎉"
+    }
+  }
+}

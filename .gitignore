@@ -1,0 +1,45 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+.Python
+.venv/
+venv/
+.python-version
+
+# --- python tooling caches ---
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# --- node / next.js (web/ demo) ---
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- editor / OS / agent ---
+.vscode/
+.idea/
+.claude/
+.DS_Store
+*.swp
+*.swo
+*~
