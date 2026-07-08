@@ -1,6 +1,6 @@
 [project]
 name = "sovereign-shield"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Deterministic, offline Swiss/EU (FADP/GDPR) PII gateway: tokenize personal data before a cloud LLM sees it, restore it on the way back."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -54,9 +54,23 @@ Issues = "https://github.com/acoseac/sovereign-shield/issues"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# Single source of truth for the version: __version__ in the package __init__.
+[tool.hatch.version]
+path = "src/sovereign_shield/__init__.py"
+
 # Monorepo guard: ship ONLY the Python package in the wheel — never the web/ demo.
 [tool.hatch.build.targets.wheel]
 packages = ["src/sovereign_shield"]
+
+# The sdist mirrors that focus: the Python project, not the Next.js demo or repo
+# scaffolding. (.gitignore-style patterns; a leading slash anchors to repo root.)
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/web",
+    "/.github",
+    ".gitignore",
+    ".env.example",
+]
 
 # --- ruff ---
 [tool.ruff]
