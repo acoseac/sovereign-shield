@@ -1,4 +1,4 @@
-# The Sovereign AI Gateway (kevin.ars.md)
+# The Sovereign AI Gateway (shield.ars.md)
 
 A live demo of [Sovereign Shield](../README.md): let a team use any public LLM
 (Gemini, Claude, DeepSeek) while **no personal data ever leaves Switzerland**.
@@ -43,7 +43,7 @@ the real `sovereign_shield` detectors + annotated names/addresses), **asserts no
 PII survives** sanitization, sends the sanitized prompts to each model, and writes
 `web/data/gateway.json`. Edit the documents / models there, re-run, commit, redeploy.
 
-## Deploy (Vercel → kevin.ars.md)
+## Deploy (Vercel → shield.ars.md)
 
 Root directory `web/`, with the Upstash Redis integration (the app reads either
 `UPSTASH_REDIS_REST_*` or `KV_REST_API_*`). Pushing to `main` auto-deploys.
