@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generate the recorded corpus for the kevin.ars.md data-sovereignty gateway demo.
+"""Generate the recorded corpus for the shield.ars.md data-sovereignty gateway demo.
 
 The demo shows the tokenize -> call -> detokenize round-trip: a business document
 with Swiss PII is sanitized (each identifier replaced by a stable placeholder)

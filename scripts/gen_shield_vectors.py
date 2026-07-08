@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Generate (or check) the shield parity vectors for the TypeScript port.
 
-The web demo (kevin.ars.md) ships a TypeScript port of `sovereign_shield.pii` +
+The web demo (shield.ars.md) ships a TypeScript port of `sovereign_shield.pii` +
 `sovereign_shield.shield` so the shield can run in the browser. This script emits
 the ground-truth verdicts from the *Python* shield; `web/scripts/parity.ts`
 asserts the TS port reproduces them exactly, so the two can never silently drift.

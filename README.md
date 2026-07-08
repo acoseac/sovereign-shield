@@ -17,7 +17,7 @@ latency, and it **cannot be talked out of a match**.
 > deterministic layer. Use it alongside a DPIA where required, audit logs, and
 > human review — as the outer, deliberately-dumb layer of a defence-in-depth stack.
 
-[**See it live → kevin.ars.md**](https://kevin.ars.md) · deterministic, in-browser, no API key.
+[**See it live → shield.ars.md**](https://shield.ars.md) · deterministic, in-browser, no API key.
 
 ## Install
 
