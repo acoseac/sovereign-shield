@@ -48,7 +48,7 @@ dev = [
 Homepage = "https://github.com/acoseac/sovereign-shield"
 Repository = "https://github.com/acoseac/sovereign-shield"
 Issues = "https://github.com/acoseac/sovereign-shield/issues"
-"Live demo" = "https://kevin.ars.md"
+"Live demo" = "https://shield.ars.md"
 
 [build-system]
 requires = ["hatchling"]
