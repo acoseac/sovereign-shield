@@ -7,13 +7,12 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: read
-
 jobs:
   build:
     name: Build & check distributions
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # least privilege, scoped to this job (not workflow-wide)
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -45,4 +44,5 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      # Pinned to a full commit SHA (supply-chain hardening for the publish step).
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
