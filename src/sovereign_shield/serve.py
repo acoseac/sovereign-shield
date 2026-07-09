@@ -26,20 +26,24 @@ Run it::
 Then set your client's base URL to this service (e.g. ``OPENAI_BASE_URL``); its
 API key flows through to the upstream unchanged.
 
-Scope (v1): non-streaming ``/v1/chat/completions``. Streaming (SSE) is rejected
-with a clear error for now — rehydrating across streamed chunks is a planned
-fast-follow. Only structured identifiers are tokenized (see the package docs).
+Streaming (SSE, ``"stream": true``) is supported: placeholders are rehydrated
+across chunk boundaries by holding back only a trailing fragment that could still
+grow into a token, so a token split over two chunks (``[AH`` + ``V_1]``) is still
+restored correctly. Only structured identifiers are tokenized (see the package docs).
 """
 
 from __future__ import annotations
 
+import json
 import os
+import re
+from collections.abc import AsyncIterator
 from typing import Any
 
 try:
     import httpx
     from fastapi import FastAPI, HTTPException, Request
-    from fastapi.responses import JSONResponse, Response
+    from fastapi.responses import JSONResponse, Response, StreamingResponse
 except ImportError as exc:  # pragma: no cover - only hit without the [proxy] extra
     raise ImportError(
         "sovereign_shield.serve needs FastAPI, httpx and uvicorn. "
@@ -54,6 +58,9 @@ TIMEOUT = float(os.environ.get("SOVEREIGN_TIMEOUT", "120"))
 # Message separator for shared-context tokenization. A NUL can't occur inside a
 # structured identifier, so join→sanitize→split is exact and can't merge spans.
 _SEP = "\x00"
+# A trailing fragment that could still grow into a placeholder like [AHV_1] — held
+# back while streaming so a token split across chunks is never emitted half-done.
+_TOKEN_PARTIAL_RE = re.compile(r"\[[A-Z]*_?\d*$")
 
 app = FastAPI(title="Sovereign Shield proxy", version="1")
 
@@ -106,39 +113,73 @@ def rehydrate_response(
     return data
 
 
-@app.get("/healthz")
-def healthz() -> dict[str, Any]:
-    return {"status": "ok", "upstream": UPSTREAM}
+class _StreamRehydrator:
+    """Per-channel rehydrator for streamed text.
+
+    ``feed`` appends a piece to a channel's buffer, emits everything that can't be
+    part of a not-yet-complete token, and holds the rest back until the next piece.
+    A channel is a stream of text (assistant content, or one tool-call's arguments).
+    """
+
+    def __init__(self, shield: SovereignShield, ctx: SessionContext) -> None:
+        self._shield = shield
+        self._ctx = ctx
+        self._buf: dict[str, str] = {}
+
+    def feed(self, channel: str, text: str) -> str:
+        buf = self._buf.get(channel, "") + text
+        m = _TOKEN_PARTIAL_RE.search(buf)
+        # Hold back a plausible trailing token fragment (bounded so a long "[AAAA…"
+        # that never closes can't buffer forever).
+        cut = m.start() if (m is not None and len(buf) - m.start() <= 40) else len(buf)
+        self._buf[channel] = buf[cut:]
+        return self._shield.rehydrate(buf[:cut], self._ctx).text if cut else ""
+
+    def flush(self, channel: str) -> str:
+        rest = self._buf.pop(channel, "")
+        return self._shield.rehydrate(rest, self._ctx).text if rest else ""
+
+    def flush_content(self) -> dict[int, str]:
+        """Flush any held content channels; returns {choice_index: leftover_text}."""
+        out: dict[int, str] = {}
+        for channel in [c for c in self._buf if c.startswith("c")]:
+            text = self.flush(channel)
+            if text:
+                out[int(channel[1:])] = text
+        return out
 
 
-@app.post(
-    "/v1/chat/completions",
-    responses={
-        400: {"description": "Streaming was requested; not supported yet."},
-        502: {"description": "The shield refused to forward (a raw value would survive)."},
-    },
-)
-async def chat_completions(request: Request) -> Response:
-    body: dict[str, Any] = await request.json()
-    if body.get("stream"):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Streaming is not supported by the Sovereign Shield proxy yet — "
-                'set "stream": false. Streaming rehydration is a planned fast-follow.'
-            ),
-        )
-    shield = SovereignShield(include_dob=INCLUDE_DOB)
-    try:
-        safe_messages, ctx = sanitize_messages(shield, body.get("messages", []))
-    except DataLeakError as exc:  # fail closed — never forward if a value would survive
-        raise HTTPException(status_code=502, detail=f"shield refused to forward: {exc}") from exc
-    body["messages"] = safe_messages
+def _rehydrate_delta(delta: dict[str, Any], reh: _StreamRehydrator, i: int) -> None:
+    if isinstance(delta.get("content"), str):
+        delta["content"] = reh.feed(f"c{i}", delta["content"])
+    for tc in delta.get("tool_calls") or []:
+        fn = tc.get("function") if isinstance(tc, dict) else None
+        if isinstance(fn, dict) and isinstance(fn.get("arguments"), str):
+            fn["arguments"] = reh.feed(f"t{i}.{tc.get('index', 0)}", fn["arguments"])
 
+
+def _rehydrate_chunk(chunk: dict[str, Any], reh: _StreamRehydrator) -> None:
+    """Rehydrate the deltas in one streamed ``chat.completion.chunk`` in place."""
+    for choice in chunk.get("choices", []):
+        if not isinstance(choice, dict):
+            continue
+        i = choice.get("index", 0)
+        delta = choice.get("delta")
+        if isinstance(delta, dict):
+            _rehydrate_delta(delta, reh, i)
+        if choice.get("finish_reason") is not None:
+            tail = reh.flush(f"c{i}")
+            if tail:
+                target = choice.setdefault("delta", {})
+                if isinstance(target, dict):
+                    target["content"] = (target.get("content") or "") + tail
+
+
+async def _nonstream_chat(
+    body: dict[str, Any], headers: dict[str, str], shield: SovereignShield, ctx: SessionContext
+) -> Response:
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        upstream = await client.post(
-            f"{UPSTREAM}/chat/completions", json=body, headers=_forward_headers(request)
-        )
+        upstream = await client.post(f"{UPSTREAM}/chat/completions", json=body, headers=headers)
     if upstream.status_code >= 400:
         return Response(
             content=upstream.content,
@@ -149,6 +190,70 @@ async def chat_completions(request: Request) -> Response:
     resp = JSONResponse(data)
     resp.headers["x-sovereign-shield"] = f"kept-on-shore={ctx.total}"
     return resp
+
+
+def _stream_chat(
+    body: dict[str, Any], headers: dict[str, str], shield: SovereignShield, ctx: SessionContext
+) -> StreamingResponse:
+    async def gen() -> AsyncIterator[bytes]:
+        reh = _StreamRehydrator(shield, ctx)
+        async with (
+            httpx.AsyncClient(timeout=TIMEOUT) as client,
+            client.stream(
+                "POST", f"{UPSTREAM}/chat/completions", json=body, headers=headers
+            ) as upstream,
+        ):
+            if upstream.status_code >= 400:
+                yield b"data: " + await upstream.aread() + b"\n\ndata: [DONE]\n\n"
+                return
+            async for line in upstream.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                payload = line[5:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload)
+                except json.JSONDecodeError:
+                    yield f"data: {payload}\n\n".encode()
+                    continue
+                _rehydrate_chunk(chunk, reh)
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode()
+        leftover = reh.flush_content()
+        if leftover:
+            final = {
+                "choices": [{"index": i, "delta": {"content": t}} for i, t in leftover.items()]
+            }
+            yield f"data: {json.dumps(final, ensure_ascii=False)}\n\n".encode()
+        yield b"data: [DONE]\n\n"
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"x-sovereign-shield": f"kept-on-shore={ctx.total}"},
+    )
+
+
+@app.get("/healthz")
+def healthz() -> dict[str, Any]:
+    return {"status": "ok", "upstream": UPSTREAM}
+
+
+@app.post(
+    "/v1/chat/completions",
+    responses={502: {"description": "The shield refused to forward (a raw value would survive)."}},
+)
+async def chat_completions(request: Request) -> Response:
+    body: dict[str, Any] = await request.json()
+    shield = SovereignShield(include_dob=INCLUDE_DOB)
+    try:
+        body["messages"], ctx = sanitize_messages(shield, body.get("messages", []))
+    except DataLeakError as exc:  # fail closed — never forward if a value would survive
+        raise HTTPException(status_code=502, detail=f"shield refused to forward: {exc}") from exc
+    headers = _forward_headers(request)
+    if body.get("stream"):
+        return _stream_chat(body, headers, shield, ctx)
+    return await _nonstream_chat(body, headers, shield, ctx)
 
 
 def main() -> None:

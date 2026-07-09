@@ -42,14 +42,21 @@ structured identifier, so the join/split is exact and can't merge spans across
 messages. The whole pass is fail-closed: if any raw value would survive, the core
 raises `DataLeakError` and the proxy returns an error rather than forwarding.
 
-## Scope (v1) and non-goals
+## Scope and non-goals
 
-- **In:** non-streaming `/v1/chat/completions`; a `/healthz` check; an
-  `x-sovereign-shield: kept-on-shore=<n>` audit header; upstream errors passed
-  through verbatim.
-- **Deferred (fast-follow):** **streaming (SSE)** — rehydrating across streamed
-  chunks needs care, so `stream: true` is rejected with a clear 400 for now.
-  Other endpoints (`/v1/embeddings`, `/v1/models`, …) are not proxied yet.
+- **In:** `/v1/chat/completions`, streaming and non-streaming; a `/healthz`
+  check; an `x-sovereign-shield: kept-on-shore=<n>` audit header; upstream errors
+  passed through verbatim.
+- **Streaming (SSE), added as a fast-follow:** with `"stream": true` the proxy
+  rehydrates deltas as they arrive. Because a placeholder can be split across two
+  chunks (`[AH` + `V_1]`), each output channel (assistant content, and each
+  tool-call's `arguments`) keeps a small hold-back buffer: text is emitted only
+  once it can no longer be the start of an unfinished token (`\[[A-Z]*_?\d*$`),
+  and the fragment is bounded so a stray `[` can't buffer forever. On
+  `finish_reason` (and at stream end) the buffer is flushed. Upstream error
+  status is surfaced as a `data:` event followed by `[DONE]`.
+- **Deferred:** other endpoints (`/v1/embeddings`, `/v1/models`, …) are not
+  proxied yet.
 - **Explicit non-goal:** a multi-tenant enterprise gateway with persistence,
   key vaults, and RBAC. The value — and the moat — is that this stays a small,
   stateless, unbluffable perimeter for structured identifiers. Free-text PII

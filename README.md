@@ -103,8 +103,9 @@ docker build -t sovereign-shield-proxy . && docker run -p 8000:8000 sovereign-sh
 ```
 
 Stateless (the token↔value map lives only for the request) and keyless (your
-`Authorization` header is forwarded upstream). v1 covers **non-streaming**
-`/v1/chat/completions`; streaming (SSE) is rejected with a clear error for now.
+`Authorization` header is forwarded upstream). **Streaming (`"stream": true`) is
+supported** — placeholders are rehydrated across SSE chunk boundaries, so a token
+split over two chunks (`[AH` + `V_1]`) is still restored correctly.
 
 ## What it detects
 
