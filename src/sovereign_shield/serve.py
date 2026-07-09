@@ -192,7 +192,7 @@ async def _nonstream_chat(
     return resp
 
 
-async def _stream_chat(
+def _stream_chat(
     body: dict[str, Any], headers: dict[str, str], shield: SovereignShield, ctx: SessionContext
 ) -> StreamingResponse:
     async def gen() -> AsyncIterator[bytes]:
@@ -252,7 +252,7 @@ async def chat_completions(request: Request) -> Response:
         raise HTTPException(status_code=502, detail=f"shield refused to forward: {exc}") from exc
     headers = _forward_headers(request)
     if body.get("stream"):
-        return await _stream_chat(body, headers, shield, ctx)
+        return _stream_chat(body, headers, shield, ctx)
     return await _nonstream_chat(body, headers, shield, ctx)
 
 
