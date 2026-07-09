@@ -75,6 +75,37 @@ print(reply.content)                                   # real values restored
 print(reply.additional_kwargs["sovereign_shield"])     # {'kept_on_shore': 2, 'leftover': []}
 ```
 
+## Run it as a drop-in proxy
+
+No code changes: run a stateless, OpenAI-compatible reverse proxy and point any
+OpenAI-compatible client at it. It sanitizes the prompt, forwards it to the real
+provider, and rehydrates the reply — your API key flows straight through and
+nothing is stored.
+
+```bash
+pip install "sovereign-shield-ch[proxy]"
+sovereign-shield-proxy   # serves on :8000, forwards to https://api.openai.com/v1
+```
+
+Point your client's base URL at it (the key still goes to the real provider):
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8000/v1")
+```
+
+Front a different provider, or run it as a container sidecar:
+
+```bash
+SOVEREIGN_UPSTREAM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai sovereign-shield-proxy
+docker build -t sovereign-shield-proxy . && docker run -p 8000:8000 sovereign-shield-proxy
+```
+
+Stateless (the token↔value map lives only for the request) and keyless (your
+`Authorization` header is forwarded upstream). v1 covers **non-streaming**
+`/v1/chat/completions`; streaming (SSE) is rejected with a clear error for now.
+
 ## What it detects
 
 Deterministic *shape regex + checksum* — the checksum rejects look-alikes so the
