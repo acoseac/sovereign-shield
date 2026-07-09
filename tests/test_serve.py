@@ -62,6 +62,55 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(serve.app)
 
 
+# What the stubbed streaming upstream will emit, and with what status.
+STREAM: dict = {"lines": [], "status": 200}
+
+
+class _FakeStreamResp:
+    def __init__(self, lines: list[str], status: int) -> None:
+        self._lines = lines
+        self.status_code = status
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args) -> bool:
+        return False
+
+    async def aiter_lines(self):
+        for line in self._lines:
+            yield line
+
+    async def aread(self) -> bytes:
+        await asyncio.sleep(0)
+        return b'{"error": {"message": "upstream error"}}'
+
+
+class _FakeStreamClient:
+    def __init__(self, *args, **kwargs) -> None:
+        # Accept and ignore httpx.AsyncClient's constructor args.
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args) -> bool:
+        return False
+
+    def stream(self, method, url, json=None, headers=None):
+        CAPTURED.clear()
+        CAPTURED.update({"method": method, "url": url, "json": json})
+        return _FakeStreamResp(STREAM["lines"], STREAM["status"])
+
+
+@pytest.fixture
+def stream_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    monkeypatch.setattr(serve.httpx, "AsyncClient", _FakeStreamClient)
+    CAPTURED.clear()
+    STREAM.update({"lines": [], "status": 200})
+    return TestClient(serve.app)
+
+
 def test_healthz(client: TestClient) -> None:
     r = client.get("/healthz")
     assert r.status_code == 200
@@ -121,13 +170,68 @@ def test_no_pii_passes_through(client: TestClient) -> None:
     assert r.headers["x-sovereign-shield"] == "kept-on-shore=0"
 
 
-def test_streaming_is_rejected(client: TestClient) -> None:
-    r = client.post(
+def test_streaming_rehydrates_across_chunks(stream_client: TestClient) -> None:
+    # The reply's first placeholder is split across two SSE chunks ([AH | V_1]).
+    STREAM["lines"] = [
+        'data: {"choices":[{"index":0,"delta":{"role":"assistant","content":"Noted "}}]}',
+        "",
+        'data: {"choices":[{"index":0,"delta":{"content":"[AH"}}]}',
+        "",
+        'data: {"choices":[{"index":0,"delta":{"content":"V_1] and "}}]}',
+        "",
+        'data: {"choices":[{"index":0,"delta":{"content":"[IBAN_1]."}}]}',
+        "",
+        'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+        "",
+        "data: [DONE]",
+        "",
+    ]
+    r = stream_client.post(
         "/v1/chat/completions",
-        json={"messages": [{"role": "user", "content": "hi"}], "stream": True},
+        json={
+            "stream": True,
+            "messages": [{"role": "user", "content": f"Refund AHV {AHV} to IBAN {IBAN}."}],
+        },
     )
-    assert r.status_code == 400
-    assert "streaming" in r.json()["detail"].lower()
+    assert r.status_code == 200
+    assert "text/event-stream" in r.headers["content-type"]
+    body = r.text
+    # Nothing raw left the proxy (the forwarded prompt was sanitized):
+    forwarded = " ".join(m["content"] for m in CAPTURED["json"]["messages"])
+    assert AHV not in forwarded
+    assert "[AHV_1]" in forwarded
+    # The streamed reply the client sees has real values restored — split token and all:
+    assert AHV in body
+    assert IBAN in body
+    assert "[AHV_1]" not in body
+    assert "[IBAN_1]" not in body
+    assert "data: [DONE]" in body
+
+
+def test_streaming_no_pii_passes_through(stream_client: TestClient) -> None:
+    STREAM["lines"] = [
+        'data: {"choices":[{"index":0,"delta":{"content":"Hello there."}}]}',
+        "",
+        "data: [DONE]",
+        "",
+    ]
+    r = stream_client.post(
+        "/v1/chat/completions",
+        json={"stream": True, "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert r.status_code == 200
+    assert "Hello there." in r.text
+
+
+def test_streaming_upstream_error_is_surfaced(stream_client: TestClient) -> None:
+    STREAM.update({"lines": [], "status": 500})
+    r = stream_client.post(
+        "/v1/chat/completions",
+        json={"stream": True, "messages": [{"role": "user", "content": f"AHV {AHV}"}]},
+    )
+    assert r.status_code == 200  # SSE stream established
+    assert "upstream error" in r.text
+    assert "data: [DONE]" in r.text
 
 
 def test_upstream_error_is_passed_through(
