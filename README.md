@@ -22,8 +22,8 @@ latency, and it **cannot be talked out of a match**.
 ## Install
 
 ```bash
-pip install sovereign-shield              # core: stdlib-only, zero dependencies
-pip install "sovereign-shield[gateway]"   # + the optional LangChain proxy
+pip install sovereign-shield-ch              # core: stdlib-only, zero dependencies
+pip install "sovereign-shield-ch[gateway]"   # + the optional LangChain proxy
 ```
 
 Requires Python 3.12+.

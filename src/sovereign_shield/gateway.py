@@ -3,7 +3,7 @@ replies on the way back, so cloud inference never sees a real Swiss identifier.
 
 Optional. Requires the ``gateway`` extra::
 
-    pip install "sovereign-shield[gateway]"
+    pip install "sovereign-shield-ch[gateway]"
 
 Wrap any LangChain chat model; call it like the model it wraps::
 
@@ -38,7 +38,7 @@ try:
 except ImportError as exc:  # pragma: no cover - exercised only without the extra
     raise ImportError(
         "sovereign_shield.gateway needs LangChain. "
-        'Install the extra: pip install "sovereign-shield[gateway]"'
+        'Install the extra: pip install "sovereign-shield-ch[gateway]"'
     ) from exc
 
 from sovereign_shield.core import SovereignShield
