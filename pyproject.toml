@@ -38,10 +38,18 @@ gateway = [
     "langchain-core>=0.3",
     "langchain-google-genai>=2.0",
 ]
+# The stateless OpenAI-compatible reverse proxy (sovereign_shield.serve).
+proxy = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "httpx>=0.27",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "mypy>=1.10",
+    "fastapi>=0.110",
+    "httpx>=0.27",
 ]
 
 [project.urls]
@@ -49,6 +57,9 @@ Homepage = "https://github.com/acoseac/sovereign-shield"
 Repository = "https://github.com/acoseac/sovereign-shield"
 Issues = "https://github.com/acoseac/sovereign-shield/issues"
 "Live demo" = "https://shield.ars.md"
+
+[project.scripts]
+sovereign-shield-proxy = "sovereign_shield.serve:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -122,6 +133,11 @@ module = [
 ]
 ignore_missing_imports = true
 disable_error_code = ["call-arg", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+# Proxy extra — present only when [proxy] is installed.
+module = ["fastapi.*", "starlette.*", "httpx.*", "uvicorn.*"]
+ignore_missing_imports = true
 
 # --- pytest ---
 [tool.pytest.ini_options]
