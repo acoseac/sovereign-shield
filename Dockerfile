@@ -14,6 +14,10 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 RUN pip install --no-cache-dir ".[proxy]"
 
+# Drop root: run the service as an unprivileged user.
+RUN useradd --create-home --uid 10001 shield
+USER shield
+
 ENV HOST=0.0.0.0 \
     PORT=8000 \
     SOVEREIGN_UPSTREAM_BASE_URL=https://api.openai.com/v1

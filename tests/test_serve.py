@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 
@@ -33,6 +34,7 @@ class _FakeClient:
     """Stub upstream: records the forwarded request and echoes back its placeholders."""
 
     def __init__(self, *args, **kwargs) -> None:
+        # Accept and ignore httpx.AsyncClient's constructor args.
         pass
 
     async def __aenter__(self):
@@ -42,6 +44,7 @@ class _FakeClient:
         return False
 
     async def post(self, url, json=None, headers=None):
+        await asyncio.sleep(0)  # a real await — this stub mimics an async client
         CAPTURED.clear()
         CAPTURED.update({"url": url, "json": json, "headers": headers})
         sent = " ".join(
@@ -132,6 +135,7 @@ def test_upstream_error_is_passed_through(
 ) -> None:
     class _ErrClient(_FakeClient):
         async def post(self, url, json=None, headers=None):
+            await asyncio.sleep(0)
             return _FakeResp({"error": {"message": "bad key"}}, status=401)
 
     monkeypatch.setattr(serve.httpx, "AsyncClient", _ErrClient)

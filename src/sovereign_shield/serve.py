@@ -85,20 +85,24 @@ def sanitize_messages(
     return out, ctx
 
 
+def _rehydrate_message(shield: SovereignShield, msg: dict[str, Any], ctx: SessionContext) -> None:
+    """Restore real values in one assistant message (content + tool-call args)."""
+    if isinstance(msg.get("content"), str):
+        msg["content"] = shield.rehydrate(msg["content"], ctx).text
+    for call in msg.get("tool_calls") or []:
+        fn = call.get("function") if isinstance(call, dict) else None
+        if isinstance(fn, dict) and isinstance(fn.get("arguments"), str):
+            fn["arguments"] = shield.rehydrate(fn["arguments"], ctx).text
+
+
 def rehydrate_response(
     shield: SovereignShield, data: dict[str, Any], ctx: SessionContext
 ) -> dict[str, Any]:
-    """Restore real values in the assistant reply (content + any tool-call args)."""
+    """Restore real values in the assistant reply of an OpenAI chat completion."""
     for choice in data.get("choices", []):
         msg = choice.get("message") if isinstance(choice, dict) else None
-        if not isinstance(msg, dict):
-            continue
-        if isinstance(msg.get("content"), str):
-            msg["content"] = shield.rehydrate(msg["content"], ctx).text
-        for call in msg.get("tool_calls") or []:
-            fn = call.get("function") if isinstance(call, dict) else None
-            if isinstance(fn, dict) and isinstance(fn.get("arguments"), str):
-                fn["arguments"] = shield.rehydrate(fn["arguments"], ctx).text
+        if isinstance(msg, dict):
+            _rehydrate_message(shield, msg, ctx)
     return data
 
 
@@ -107,7 +111,13 @@ def healthz() -> dict[str, Any]:
     return {"status": "ok", "upstream": UPSTREAM}
 
 
-@app.post("/v1/chat/completions")
+@app.post(
+    "/v1/chat/completions",
+    responses={
+        400: {"description": "Streaming was requested; not supported yet."},
+        502: {"description": "The shield refused to forward (a raw value would survive)."},
+    },
+)
 async def chat_completions(request: Request) -> Response:
     body: dict[str, Any] = await request.json()
     if body.get("stream"):
