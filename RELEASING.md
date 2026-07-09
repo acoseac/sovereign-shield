@@ -1,6 +1,6 @@
 # Releasing
 
-`sovereign-shield` publishes to PyPI via **Trusted Publishing** (OIDC) — no API
+`sovereign-shield-ch` publishes to PyPI via **Trusted Publishing** (OIDC) — no API
 token or secret is stored in the repo. The [`Release`](.github/workflows/release.yml)
 workflow builds the sdist + wheel, runs `twine check --strict`, and uploads
 whenever a **GitHub Release** is published.
@@ -12,7 +12,7 @@ The PyPI project does not exist yet, so register a **pending publisher** at
 
 | Field | Value |
 |---|---|
-| PyPI Project Name | `sovereign-shield` |
+| PyPI Project Name | `sovereign-shield-ch` |
 | Owner | `acoseac` |
 | Repository name | `sovereign-shield` |
 | Workflow name | `release.yml` |

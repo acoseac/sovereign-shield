@@ -14,7 +14,7 @@ cloud LLM without the real identifiers ever leaving your jurisdiction:
 The detection core is stdlib-only (regex + checksums: AHV via EAN-13, IBAN via
 ISO-7064 mod-97, card via Luhn) and deterministic — it cannot be talked out of a
 match. The optional LangChain proxy lives in :mod:`sovereign_shield.gateway`
-(``pip install "sovereign-shield[gateway]"``).
+(``pip install "sovereign-shield-ch[gateway]"``).
 
 Not legal advice; not a guarantee of FADP/GDPR compliance. See the README.
 """

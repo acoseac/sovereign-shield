@@ -1,5 +1,5 @@
 [project]
-name = "sovereign-shield"
+name = "sovereign-shield-ch"
 dynamic = ["version"]
 description = "Deterministic, offline Swiss/EU (FADP/GDPR) PII gateway: tokenize personal data before a cloud LLM sees it, restore it on the way back."
 readme = "README.md"

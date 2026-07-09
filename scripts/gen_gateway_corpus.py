@@ -16,7 +16,7 @@ sanitized prompt.
 Dev-only; the demo ships the committed web/data/gateway.json and does not need this
 to deploy. Regenerating needs provider packages + keys, e.g.:
 
-    pip install "sovereign-shield[gateway]" langchain-anthropic langchain-deepseek
+    pip install "sovereign-shield-ch[gateway]" langchain-anthropic langchain-deepseek
     python scripts/gen_gateway_corpus.py
 
 Model ids below may need updating to each provider's current catalog.
