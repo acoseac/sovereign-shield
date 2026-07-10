@@ -1,8 +1,9 @@
-# Sovereign Shield — Gemini guard (Chrome MV3, MVP)
+# Sovereign Shield — LLM PII guard (Chrome MV3)
 
 A browser extension that redacts Swiss and EU identifiers **before** they leave your
-machine for Gemini, then restores them in the reply so the conversation still reads
-normally. Everything happens in the page. Nothing is uploaded, no API key, no server.
+machine for **Gemini, ChatGPT, or Claude**, then restores them in the reply so the
+conversation still reads normally. Everything happens in the page. Nothing is uploaded,
+no API key, no server.
 
 It reuses the exact detector from the [sovereign-shield](https://github.com/acoseac/sovereign-shield)
 library — the same `web/lib/shield.ts` that is kept byte-for-byte in parity with the
@@ -10,9 +11,9 @@ Python source. Detection is regex + checksum (Swiss AHV, IBAN worldwide, Italian
 Spanish/French/Dutch national IDs, card via Luhn, plus phone and email), so clean text
 passes through untouched and there are no false positives.
 
-> **Status: MVP / experiment.** The design is grounded in real Gemini traffic (see
-> below), but Google's wire format is private and changes often. Treat this as a
-> working proof of concept, not a hardened product. Test it before you rely on it.
+> **Status: experiment.** The design is grounded in real traffic from each site (see
+> below), but these wire formats are private and change often. Treat this as a working
+> proof of concept, not a hardened product. Test it before you rely on it.
 
 ## What it does
 
@@ -29,21 +30,31 @@ you see:    "...the refund for AHV 756.1234.5678.97 to IBAN CH930076201162385295
 
 ## How we know it works this way
 
-Confirmed by inspecting live `gemini.google.com` traffic:
+Endpoints confirmed by inspecting live traffic on each site:
 
-- **Transport is `XMLHttpRequest`, not `fetch`.** A fetch-only hook (the approach most
-  ChatGPT extensions use) would silently do nothing on Gemini. This hooks XHR.
-- **The generate call is** `POST /_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate`
-  (`rt=c` streaming), with the prompt inside the url-encoded `f.req` field. We match on
-  `StreamGenerate`. It is *not* `batchexecute` — that path only carries side RPCs (history,
-  titling). Verified live: an earlier `batchexecute`/`aPya6c` matcher never fired.
-- **The response stream is length-prefixed** (each chunk announces its byte count), so
-  restoring values by editing `responseText` desyncs the parser and hangs generation. We
-  let the stream parse untouched and swap token→value in the **rendered DOM** (a
-  `MutationObserver`) instead. Verified live.
-- **The page enforces Trusted Types + a strict CSP**, so you cannot inject a `<script>`
-  to patch the page's XHR. The only way in is a manifest `world: "MAIN"` content script,
-  which is CSP-exempt. That is why the guard is split in two (below).
+| Site | Generate endpoint | Transport | Body |
+| --- | --- | --- | --- |
+| Gemini | `…/BardFrontendService/StreamGenerate` | `XMLHttpRequest` | url-encoded `f.req` |
+| ChatGPT | `chatgpt.com/backend-api/f/conversation` | `fetch` | JSON (`messages[].content.parts[]`) |
+| Claude | `claude.ai/api/organizations/*/chat_conversations/*/completion` | `fetch` | JSON (`prompt`) |
+
+The guard hooks **both `fetch` and `XMLHttpRequest`** and matches by URL — whichever
+transport a site uses, the matching hook rewrites the request body. Design points that
+drove the shape:
+
+- **Gemini uses XHR, not `fetch`** — a fetch-only hook (the usual ChatGPT-extension
+  approach) is a no-op there; ChatGPT/Claude use `fetch`. Hooking both covers all three.
+- **Structure-agnostic body rewrite** — it walks every *string* in the parsed body and
+  tokenizes it, leaving numbers/ids/enums alone. No dependency on any provider's exact
+  field layout, so it survives their churn. The only per-site step is unwrapping the body
+  (Gemini's `f.req` vs raw JSON).
+- **The response is restored in the rendered DOM, not the stream.** Gemini's stream is
+  length-prefixed (each chunk announces its byte count), so editing `responseText` desyncs
+  the parser and hangs generation. A `MutationObserver` swaps token→value in the painted
+  text nodes instead — transport- and site-agnostic, so one rehydrator covers all three.
+- **Gemini enforces Trusted Types + a strict CSP**, so you cannot inject a `<script>` to
+  patch the page's fetch/XHR. A manifest `world: "MAIN"` content script (CSP-exempt) is
+  the only way in. That is why the guard is split in two (below).
 
 ## Architecture
 
@@ -51,7 +62,7 @@ Two content scripts, because the worlds have complementary powers:
 
 | File | World | Can it… | Job |
 | --- | --- | --- | --- |
-| `interceptor.ts` | `MAIN` | page's real `XMLHttpRequest` ✓, `chrome.*` ✗ | patch `open`/`send`, tokenize the enabled categories in `f.req` on `StreamGenerate`, rehydrate the rendered DOM, emit per-redaction events (category only) |
+| `interceptor.ts` | `MAIN` | page's real `fetch`/`XMLHttpRequest` ✓, `chrome.*` ✗ | patch `fetch` + XHR `open`/`send`, tokenize enabled categories in each site's generate body, rehydrate the rendered DOM, emit per-redaction events (category only) |
 | `bridge.ts` | `ISOLATED` | `chrome.*` ✓, page globals ✗ | push settings to the page (`data-ss-*`), forward redaction events to the worker, answer the popup |
 | `background.ts` | service worker | `chrome.action` ✓ | paint the per-tab badge, swap the active/paused icon, single writer for the activity log |
 | `popup.ts` / `options.ts` | extension pages | `chrome.*` ✓ | on/off, per-category toggles, activity log + Clear |
@@ -61,13 +72,13 @@ attributes on `<html>`: `data-ss-enabled` (bridge → guard), `data-ss-kept`
 (guard → bridge → popup), and `data-ss-build` (a build stamp, so a reload can be verified
 from the page — unpacked extensions keep running old code until you hit ↻ on the card).
 
-The request rewrite is **structure-agnostic**: it walks every *string* in the `f.req`
-JSON and tokenizes it (numbers — timestamps, request ids — are left alone), so it does
-not depend on Google's exact array layout and survives their frequent reshuffles.
+The request rewrite is **structure-agnostic**: it walks every *string* in the parsed
+body and tokenizes it (numbers — timestamps, request ids — left alone), so it does not
+depend on any provider's exact field layout and survives their reshuffles.
 
 ## Settings, badge & activity log
 
-- **Toolbar badge** — how many identifiers were kept local on the current Gemini tab (resets per page load).
+- **Toolbar badge** — how many identifiers were kept local on the current tab (resets per page load).
 - **Fail-open alert** — if a body-parse error ever lets a request through unredacted, the badge turns **red with `!`** so the bypass is never silent.
 - **Stale-tab banner** — after you update the extension, tabs that were already open show a "reload this tab" nudge; their old content script can't protect you until reloaded (`chrome://extensions` ↻ updates the code, not the open tabs).
 - **Popup** (click the icon) — on/off toggle, the live count, and a link to the full page.
@@ -84,8 +95,8 @@ npm run build          # -> extension/dist
 ```
 
 Then in Chrome: `chrome://extensions` → enable **Developer mode** → **Load unpacked** →
-select `extension/dist`. Open `gemini.google.com`, click the toolbar icon to confirm the
-guard is on, and send a message containing a (synthetic!) identifier.
+select `extension/dist`. Open Gemini, ChatGPT or Claude, click the toolbar icon to confirm
+the guard is on, and send a message containing a (synthetic!) identifier.
 
 `npm run typecheck` runs `tsc --noEmit` if you want types checked; the build itself uses
 esbuild and does not require it.
@@ -93,21 +104,23 @@ esbuild and does not require it.
 ## Known limits (read before trusting it)
 
 - **Fail-open.** If the body parser ever throws, the guard lets the original request
-  through rather than break your Gemini. That favours availability over secrecy — a
-  production build should fail-closed (abort the send). See the comment in
-  `interceptor.ts`.
-- **Format-dependent.** We match the `StreamGenerate` endpoint + the `f.req` envelope. If
-  Google renames the endpoint or restructures the payload, the guard stops acting until the
-  selector is updated. It fails safe (passes traffic through), not loud.
+  through rather than break your chat (and flips the badge red `!`). That favours
+  availability over secrecy — a production build should fail-closed. See `interceptor.ts`.
+- **Format-dependent.** We match each site's known generate endpoint (Gemini
+  `StreamGenerate`, ChatGPT `/backend-api/…/conversation`, Claude `/…/completion`). If a
+  provider renames its endpoint or restructures the payload, the guard stops acting on
+  that site until the selector is updated — it fails safe (passes traffic through).
 - **Structured identifiers only.** Names and street addresses are out of scope — they
   need an NER model, which this does not ship (same boundary as the core library).
-- **Re-encoding.** The outgoing body is re-serialised via `URLSearchParams`; standard
-  url-encoding, but if Gemini ever depends on an exact byte layout this could matter.
+- **Re-encoding.** The outgoing body is re-serialised (JSON re-stringify, or
+  `URLSearchParams` for Gemini); standard encodings, but if a provider ever depends on an
+  exact byte layout this could matter.
 - **Not in CI.** This sub-project has its own `package.json` and is built manually; the
   repo's Python + web pipelines do not touch it yet.
 
 ## Privacy
 
 The value↔token map lives only in page memory for the life of the tab. It is never
-persisted, never sent anywhere. The only thing stored (via `chrome.storage.local`) is
-the on/off toggle.
+persisted, never sent anywhere. The only things stored (via `chrome.storage.local`) are
+your settings (on/off, category toggles) and the value-free activity log (type + time +
+site).
