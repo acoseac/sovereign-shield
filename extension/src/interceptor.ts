@@ -191,11 +191,11 @@ async function rewriteFetch(
         body: rewriteBody(kind, init.body),
       });
     }
-    // Fallback: the body rides on a Request object.
-    if (input instanceof Request) {
+    // Fallback: the body rides on a Request object (POST only — no body on GET).
+    if (input instanceof Request && input.method.toUpperCase() === "POST") {
       const text = await input.clone().text();
       if (text) {
-        return origFetch.call(window, new Request(input, { body: rewriteBody(kind, text) }));
+        return origFetch.call(window, new Request(input, { method: "POST", body: rewriteBody(kind, text) }));
       }
     }
   } catch (err) {
