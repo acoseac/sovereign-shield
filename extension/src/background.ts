@@ -13,11 +13,13 @@ const iconPaths = (variant: "" | "paused-"): Record<number, string> => ({
 });
 
 function applyIcon(enabled: boolean): void {
-  void chrome.action.setIcon({ path: iconPaths(enabled ? "" : "paused-") });
+  chrome.action.setIcon({ path: iconPaths(enabled ? "" : "paused-") }).catch(() => undefined);
 }
 
-void chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
-void getSettings().then((s) => applyIcon(s.enabled));
+chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR }).catch(() => undefined);
+getSettings()
+  .then((s) => applyIcon(s.enabled))
+  .catch(() => undefined);
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && KEYS.enabled in changes) {
@@ -33,7 +35,7 @@ function enqueue(task: () => Promise<unknown>): void {
 }
 
 async function bump(tabId: number, category: string, url?: string): Promise<void> {
-  const prev = parseInt(await chrome.action.getBadgeText({ tabId }), 10) || 0;
+  const prev = Number.parseInt(await chrome.action.getBadgeText({ tabId }), 10) || 0;
   await chrome.action.setBadgeText({ tabId, text: String(prev + 1) });
   let host = "";
   try {
@@ -48,7 +50,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   const tabId = sender.tab?.id;
   if (typeof tabId !== "number") return;
   if (msg?.type === "ss-reset") {
-    void chrome.action.setBadgeText({ tabId, text: "" });
+    chrome.action.setBadgeText({ tabId, text: "" }).catch(() => undefined);
   } else if (msg?.type === "ss-redaction" && typeof msg.category === "string") {
     enqueue(() => bump(tabId, msg.category, sender.tab?.url));
   }

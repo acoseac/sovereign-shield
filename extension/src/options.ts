@@ -38,7 +38,7 @@ async function saveCategories(): Promise<void> {
 }
 
 enabledEl.addEventListener("change", () => {
-  void chrome.storage.local.set({ [KEYS.enabled]: enabledEl.checked });
+  chrome.storage.local.set({ [KEYS.enabled]: enabledEl.checked }).catch(() => undefined);
 });
 
 function fmtTime(t: number): string {

@@ -39,7 +39,7 @@ toggle.addEventListener("change", async () => {
 });
 
 document.getElementById("opts")?.addEventListener("click", () => {
-  void chrome.runtime.openOptionsPage();
+  chrome.runtime.openOptionsPage().catch(() => undefined);
 });
 
 refresh();

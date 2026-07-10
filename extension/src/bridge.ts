@@ -11,15 +11,15 @@ import { getSettings, KEYS } from "./storage";
 async function applySettings(): Promise<void> {
   const s = await getSettings();
   const root = document.documentElement;
-  root.setAttribute("data-ss-enabled", s.enabled ? "on" : "off");
-  root.setAttribute("data-ss-cats", s.categories.join(","));
+  root.dataset.ssEnabled = s.enabled ? "on" : "off";
+  root.dataset.ssCats = s.categories.join(",");
 }
 
-void applySettings();
+applySettings().catch(() => undefined);
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && (KEYS.enabled in changes || KEYS.categories in changes)) {
-    void applySettings();
+    applySettings().catch(() => undefined);
   }
 });
 
@@ -28,11 +28,10 @@ chrome.runtime.sendMessage({ type: "ss-reset" }).catch(() => undefined);
 
 // The guard (MAIN world) posts { source: "ss-guard", category } per new redaction.
 window.addEventListener("message", (ev) => {
-  if (ev.source !== window) return;
+  if (ev.source !== window || ev.origin !== window.location.origin) return;
   const d = ev.data as { source?: string; category?: string } | null;
-  if (d && d.source === "ss-guard" && typeof d.category === "string") {
-    chrome.runtime.sendMessage({ type: "ss-redaction", category: d.category }).catch(() => undefined);
-  }
+  if (!d || d.source !== "ss-guard" || typeof d.category !== "string") return;
+  chrome.runtime.sendMessage({ type: "ss-redaction", category: d.category }).catch(() => undefined);
 });
 
 // Popup status query (tabs.sendMessage from the popup).
@@ -40,8 +39,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "ss-status") {
     const root = document.documentElement;
     sendResponse({
-      enabled: root.getAttribute("data-ss-enabled") !== "off",
-      kept: Number(root.getAttribute("data-ss-kept") ?? "0"),
+      enabled: root.dataset.ssEnabled !== "off",
+      kept: Number(root.dataset.ssKept ?? "0"),
     });
   }
   return true;

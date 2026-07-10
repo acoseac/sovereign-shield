@@ -51,8 +51,8 @@ function rewriteBody(body: string): string {
 // Which categories the user has left enabled (bridge writes data-ss-cats from
 // storage). Absent attribute => tokenize every category.
 function allowedCategories(): ReadonlySet<string> | undefined {
-  const raw = document.documentElement.getAttribute("data-ss-cats");
-  if (raw === null) return undefined;
+  const raw = document.documentElement.dataset.ssCats;
+  if (raw === undefined) return undefined;
   return new Set(raw.split(",").filter(Boolean));
 }
 
