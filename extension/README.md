@@ -1,0 +1,94 @@
+# Sovereign Shield — Gemini guard (Chrome MV3, MVP)
+
+A browser extension that redacts Swiss and EU identifiers **before** they leave your
+machine for Gemini, then restores them in the reply so the conversation still reads
+normally. Everything happens in the page. Nothing is uploaded, no API key, no server.
+
+It reuses the exact detector from the [sovereign-shield](https://github.com/acoseac/sovereign-shield)
+library — the same `web/lib/shield.ts` that is kept byte-for-byte in parity with the
+Python source. Detection is regex + checksum (Swiss AHV, IBAN worldwide, Italian/
+Spanish/French/Dutch national IDs, card via Luhn, plus phone and email), so clean text
+passes through untouched and there are no false positives.
+
+> **Status: MVP / experiment.** The design is grounded in real Gemini traffic (see
+> below), but Google's wire format is private and changes often. Treat this as a
+> working proof of concept, not a hardened product. Test it before you rely on it.
+
+## What it does
+
+```
+you type:   "Refund AHV 756.1234.5678.97 to IBAN CH9300762011623852957"
+                     │
+   guard tokenizes the outgoing request  ▼
+sent to Gemini: "Refund [AHV_1] to [IBAN_1]"      ← real numbers never leave the page
+                     │
+   Gemini replies about [AHV_1] / [IBAN_1]         ▼
+   guard restores them as you read the stream
+you see:    "...the refund for AHV 756.1234.5678.97 to IBAN CH9300762011623852957..."
+```
+
+## How we know it works this way
+
+Confirmed by inspecting live `gemini.google.com` traffic:
+
+- **Transport is `XMLHttpRequest`, not `fetch`.** A fetch-only hook (the approach most
+  ChatGPT extensions use) would silently do nothing on Gemini. This hooks XHR.
+- **The generate call is** `POST /_/BardChatUi/data/batchexecute?rpcids=aPya6c…`, with
+  the prompt inside the url-encoded `f.req` field. We match on `aPya6c`.
+- **The page enforces Trusted Types + a strict CSP**, so you cannot inject a `<script>`
+  to patch the page's XHR. The only way in is a manifest `world: "MAIN"` content script,
+  which is CSP-exempt. That is why the guard is split in two (below).
+
+## Architecture
+
+Two content scripts, because the worlds have complementary powers:
+
+| File | World | Can it… | Job |
+| --- | --- | --- | --- |
+| `interceptor.ts` | `MAIN` | touch the page's real `XMLHttpRequest` ✓, `chrome.*` ✗ | patch `open`/`send`, tokenize `f.req`, rehydrate the response |
+| `bridge.ts` | `ISOLATED` | `chrome.*` ✓, page globals ✗ | read the on/off setting, relay the count to the popup |
+
+They share the DOM but not their globals, so they pass two values through `data-*`
+attributes on `<html>`: `data-ss-enabled` (bridge → guard) and `data-ss-kept`
+(guard → bridge → popup).
+
+The request rewrite is **structure-agnostic**: it walks every *string* in the `f.req`
+JSON and tokenizes it (numbers — timestamps, request ids — are left alone), so it does
+not depend on Google's exact array layout and survives their frequent reshuffles.
+
+## Build & load
+
+```bash
+cd extension
+npm install
+npm run build          # -> extension/dist
+```
+
+Then in Chrome: `chrome://extensions` → enable **Developer mode** → **Load unpacked** →
+select `extension/dist`. Open `gemini.google.com`, click the toolbar icon to confirm the
+guard is on, and send a message containing a (synthetic!) identifier.
+
+`npm run typecheck` runs `tsc --noEmit` if you want types checked; the build itself uses
+esbuild and does not require it.
+
+## Known limits (read before trusting it)
+
+- **Fail-open.** If the body parser ever throws, the guard lets the original request
+  through rather than break your Gemini. That favours availability over secrecy — a
+  production build should fail-closed (abort the send). See the comment in
+  `interceptor.ts`.
+- **Format-dependent.** We match `batchexecute` + `aPya6c`. If Google renames the RPC or
+  changes the envelope, the guard stops acting until the selectors are updated. It fails
+  safe (passes traffic through), not loud.
+- **Structured identifiers only.** Names and street addresses are out of scope — they
+  need an NER model, which this does not ship (same boundary as the core library).
+- **Re-encoding.** The outgoing body is re-serialised via `URLSearchParams`; standard
+  url-encoding, but if Gemini ever depends on an exact byte layout this could matter.
+- **Not in CI.** This sub-project has its own `package.json` and is built manually; the
+  repo's Python + web pipelines do not touch it yet.
+
+## Privacy
+
+The value↔token map lives only in page memory for the life of the tab. It is never
+persisted, never sent anywhere. The only thing stored (via `chrome.storage.local`) is
+the on/off toggle.
