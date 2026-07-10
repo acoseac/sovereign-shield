@@ -1,51 +1,49 @@
-// MAIN-world content script. Runs at document_start so our XMLHttpRequest patch
-// is in place before Gemini's app code captures its own reference.
+// MAIN-world content script. Runs at document_start so our fetch/XHR patches are
+// in place before the page's app code captures its own references.
 //
-// Why this shape (confirmed by inspecting live gemini.google.com traffic):
-//   - Gemini sends chat generation over XMLHttpRequest, NOT fetch. A fetch-only
-//     hook (the ChatGPT playbook) would silently do nothing here.
-//   - The generate call is  POST /_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate
-//     (rt=c streaming), with the prompt buried in the url-encoded `f.req` field.
-//     (NOT batchexecute — that path only carries side RPCs like history/titling.)
-//   - The page enforces Trusted Types + a strict CSP, so a MAIN-world content
-//     script (manifest `world: "MAIN"`, CSP-exempt) is the only way to patch the
-//     page's real XHR — you cannot inject a <script> from an isolated world.
+// Covers three chat UIs, each with a different generate transport/body — all
+// confirmed by inspecting live traffic:
+//   - Gemini  : POST .../BardFrontendService/StreamGenerate  (XHR, url-encoded f.req)
+//   - ChatGPT : POST chatgpt.com/backend-api/f/conversation  (fetch, JSON body)
+//   - Claude  : POST claude.ai/api/organizations/*/chat_conversations/*/completion (fetch, JSON)
+// Gemini also enforces Trusted Types + a strict CSP, so a MAIN-world content
+// script (manifest world:"MAIN", CSP-exempt) is the only way to patch the page's
+// real fetch/XHR — you cannot inject a <script> from an isolated world.
 import { Session } from "./tokenize";
 
 type XhrMeta = XMLHttpRequest & { __ssUrl?: string };
+type BodyKind = "freq" | "json";
 
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "4-review-fixes";
-document.documentElement.setAttribute("data-ss-build", BUILD);
+const BUILD = "5-multisite";
+document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
 function guardEnabled(): boolean {
-  return document.documentElement.getAttribute("data-ss-enabled") !== "off";
+  return document.documentElement.dataset.ssEnabled !== "off";
 }
 
 function reportCount(): void {
-  document.documentElement.setAttribute("data-ss-kept", String(session.count));
+  document.documentElement.dataset.ssKept = String(session.count);
 }
 
-// Rewrite the StreamGenerate body: walk every STRING in f.req and tokenize it.
-// Numbers (timestamps, request ids) are left untouched, so we never corrupt the
-// envelope. Structure-agnostic on purpose — it does not depend on Google's exact
-// array indices, so it survives their frequent reshuffles.
-function rewriteBody(body: string): string {
-  const params = new URLSearchParams(body);
-  const fReq = params.get("f.req");
-  if (!fReq) return body;
-  let parsed: unknown;
+function failopen(): void {
   try {
-    parsed = JSON.parse(fReq);
+    window.postMessage({ source: "ss-guard", kind: "failopen" }, location.origin);
   } catch {
-    return body; // not the JSON envelope we expected — leave it alone
+    /* best-effort */
   }
-  const allowed = allowedCategories();
-  params.set("f.req", JSON.stringify(walk(parsed, allowed)));
-  return params.toString();
+}
+
+// Which generate endpoint is this, and how is its body wrapped?
+//   "freq" = url-encoded `f.req` (Gemini)   "json" = raw JSON (ChatGPT, Claude)
+function generateKind(url: string): BodyKind | null {
+  if (url.includes("StreamGenerate")) return "freq";
+  if (/\/backend-api\/(?:f\/)?conversation(?:$|\?)/.test(url)) return "json"; // ChatGPT
+  if (url.includes("/chat_conversations/") && url.includes("/completion")) return "json"; // Claude
+  return null;
 }
 
 // Which categories the user has left enabled (bridge writes data-ss-cats from
@@ -56,6 +54,9 @@ function allowedCategories(): ReadonlySet<string> | undefined {
   return new Set(raw.split(",").filter(Boolean));
 }
 
+// Walk every STRING in a parsed body and tokenize it; numbers/booleans/structure
+// are left untouched (so ids, timestamps and enums never get corrupted).
+// Structure-agnostic on purpose — no dependency on any provider's exact layout.
 function walk(node: unknown, allowed: ReadonlySet<string> | undefined): unknown {
   if (typeof node === "string") return session.tokenize(node, allowed);
   if (Array.isArray(node)) return node.map((n) => walk(n, allowed));
@@ -67,13 +68,42 @@ function walk(node: unknown, allowed: ReadonlySet<string> | undefined): unknown 
   return node;
 }
 
+// Rewrite a request body string of the given kind. Returns the original body on
+// any parse surprise (fail-open); reports the running count after a real rewrite.
+function rewriteBody(kind: BodyKind, body: string): string {
+  const allowed = allowedCategories();
+  if (kind === "json") {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return body;
+    }
+    const out = JSON.stringify(walk(parsed, allowed));
+    reportCount();
+    return out;
+  }
+  // "freq": url-encoded  f.req=<json>&at=...&...
+  const params = new URLSearchParams(body);
+  const fReq = params.get("f.req");
+  if (!fReq) return body;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fReq);
+  } catch {
+    return body;
+  }
+  params.set("f.req", JSON.stringify(walk(parsed, allowed)));
+  reportCount();
+  return params.toString();
+}
+
 // Restore real values in the RENDERED DOM, not in the response stream. Gemini's
-// stream is length-prefixed (each chunk announces its byte count), so rewriting
-// [AHV_1] -> a longer real value inside responseText desyncs the parser and hangs
-// generation. Instead we let the stream parse untouched, then swap token->value in
-// the text nodes Gemini paints. rehydrate is idempotent, so the mutation our own
-// write triggers converges in one no-op pass. Editable regions (the composer, where
-// the user typed the real value already) are skipped.
+// stream is length-prefixed (each chunk announces its byte count), so rewriting a
+// token to a longer value inside responseText desyncs the parser and hangs
+// generation. We let every provider's stream parse untouched and swap token->value
+// in the text nodes they paint. rehydrate is idempotent, so the mutation our own
+// write triggers converges in one no-op pass. Editable regions (composers) skipped.
 function installDomRehydrator(): void {
   const EDITABLE = 'input, textarea, [contenteditable="true"], .ql-editor';
   const rehydrateText = (node: Text): void => {
@@ -103,6 +133,7 @@ function installDomRehydrator(): void {
   else document.addEventListener("DOMContentLoaded", start, { once: true });
 }
 
+// ---- XHR hook (Gemini) ----------------------------------------------------
 const proto = XMLHttpRequest.prototype;
 const origOpen = proto.open;
 const origSend = proto.send;
@@ -113,28 +144,57 @@ proto.open = function (this: XhrMeta, _method: string, url: string | URL) {
 } as typeof proto.open;
 
 proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit | null) {
-  const url = this.__ssUrl ?? "";
-  const isGenerate = url.includes("StreamGenerate");
-  if (isGenerate && guardEnabled()) {
+  const kind = generateKind(this.__ssUrl ?? "");
+  if (kind && guardEnabled() && typeof body === "string") {
     try {
-      let outBody = body;
-      if (typeof body === "string") outBody = rewriteBody(body);
-      this.addEventListener("loadend", reportCount);
-      return origSend.call(this, outBody as XMLHttpRequestBodyInit);
+      return origSend.call(this, rewriteBody(kind, body) as XMLHttpRequestBodyInit);
     } catch (err) {
-      // MVP is fail-open: a parser hiccup must never brick the user's Gemini.
-      // A production build would fail-closed (abort the send) instead — see README.
-      // Make the bypass loud: tell the bridge to flip the badge red.
-      console.warn("[sovereign-shield] passthrough after error:", err);
-      try {
-        window.postMessage({ source: "ss-guard", kind: "failopen" }, location.origin);
-      } catch {
-        /* best-effort */
-      }
+      console.warn("[sovereign-shield] XHR passthrough after error:", err);
+      failopen();
     }
   }
   return origSend.call(this, body ?? null);
 } as typeof proto.send;
+
+// ---- fetch hook (ChatGPT, Claude; and anything that migrates to fetch) -----
+const origFetch = window.fetch;
+window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    const url =
+      typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
+    const kind = generateKind(url);
+    if (kind && guardEnabled()) {
+      return rewriteFetch(kind, input, init);
+    }
+  } catch {
+    /* fall through to native */
+  }
+  return origFetch.call(window, input, init);
+} as typeof window.fetch;
+
+async function rewriteFetch(
+  kind: BodyKind,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    // Common case: the body is a JSON string in init.body.
+    if (init && typeof init.body === "string") {
+      return origFetch.call(window, input, { ...init, body: rewriteBody(kind, init.body) });
+    }
+    // Fallback: the body rides on a Request object.
+    if (input instanceof Request) {
+      const text = await input.clone().text();
+      if (text) {
+        return origFetch.call(window, new Request(input, { body: rewriteBody(kind, text) }));
+      }
+    }
+  } catch (err) {
+    console.warn("[sovereign-shield] fetch passthrough after error:", err);
+    failopen();
+  }
+  return origFetch.call(window, input, init);
+}
 
 // Report each newly-redacted identifier to the bridge (ISOLATED world) for the
 // activity log + badge. We send only the category — never the value.
@@ -147,4 +207,4 @@ session.onMint = (category) => {
 };
 
 installDomRehydrator();
-console.debug(`[sovereign-shield] Gemini guard installed (XHR / StreamGenerate) build ${BUILD}.`);
+console.debug(`[sovereign-shield] guard installed (fetch + XHR, 3 sites) build ${BUILD}.`);

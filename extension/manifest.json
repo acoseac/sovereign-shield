@@ -1,10 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "Sovereign Shield — Gemini guard",
-  "version": "0.1.0",
-  "description": "Redacts Swiss/EU identifiers before they reach Gemini and restores them in the reply. 100% local — nothing is uploaded.",
+  "name": "Sovereign Shield — LLM PII guard",
+  "version": "0.2.0",
+  "description": "Redacts Swiss/EU identifiers before they reach Gemini, ChatGPT or Claude, and restores them in the reply. 100% local — nothing is uploaded.",
   "permissions": ["storage"],
-  "host_permissions": ["https://gemini.google.com/*"],
+  "host_permissions": [
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*"
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -27,13 +32,23 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://gemini.google.com/*"],
+      "matches": [
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
       "js": ["interceptor.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://gemini.google.com/*"],
+      "matches": [
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
       "js": ["bridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"

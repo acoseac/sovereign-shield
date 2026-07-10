@@ -1,5 +1,7 @@
 // Popup: a guard on/off toggle plus a "kept local" count for the current tab.
 const KEY = "ssEnabled";
+const SUPPORTED = ["gemini.google.com", "chatgpt.com", "chat.openai.com", "claude.ai"];
+const onSupported = (url?: string): boolean => !!url && SUPPORTED.some((h) => url.includes(h));
 
 const toggle = document.getElementById("toggle") as HTMLInputElement;
 const keptEl = document.getElementById("kept") as HTMLElement;
@@ -15,12 +17,12 @@ async function refresh(): Promise<void> {
   toggle.checked = stored[KEY] !== false;
 
   const tab = await activeTab();
-  if (!tab?.id || !tab.url?.includes("gemini.google.com")) {
-    statusEl.textContent = "Open gemini.google.com to use the guard.";
+  if (!tab?.id || !onSupported(tab.url)) {
+    statusEl.textContent = "Open Gemini, ChatGPT or Claude to use the guard.";
     keptEl.textContent = "—";
     return;
   }
-  statusEl.textContent = toggle.checked ? "Active on this Gemini tab." : "Paused on this tab.";
+  statusEl.textContent = toggle.checked ? "Active on this tab." : "Paused on this tab.";
   try {
     const res = (await chrome.tabs.sendMessage(tab.id, { type: "ss-status" })) as {
       kept?: number;
@@ -29,7 +31,7 @@ async function refresh(): Promise<void> {
   } catch {
     // Content script not ready (e.g. tab opened before install) — reload to attach.
     keptEl.textContent = "0";
-    statusEl.textContent = "Reload the Gemini tab to attach the guard.";
+    statusEl.textContent = "Reload this tab to attach the guard.";
   }
 }
 
