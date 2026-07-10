@@ -168,9 +168,10 @@ async function extractPdfText(data: ArrayBuffer): Promise<string> {
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
     const content = await page.getTextContent();
-    out +=
-      content.items.map((it) => ("str" in it ? it.str + (it.hasEOL ? "\n" : " ") : "")).join("") +
-      "\n";
+    for (const it of content.items) {
+      if ("str" in it) out += it.str + (it.hasEOL ? "\n" : " ");
+    }
+    out += "\n";
   }
   return out;
 }
@@ -279,7 +280,7 @@ export default function Scanner() {
         loadText(await extractPdfText(await file.arrayBuffer()), file.name);
       } else {
         const raw = await file.text();
-        if (raw.includes(String.fromCharCode(0))) {
+        if (raw.includes(String.fromCodePoint(0))) {
           setNote(`“${file.name}” looks like a binary file — paste the text instead.`);
           setFileName(file.name);
           return;
