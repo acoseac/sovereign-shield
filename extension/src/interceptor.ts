@@ -11,13 +11,12 @@
 // real fetch/XHR — you cannot inject a <script> from an isolated world.
 import { Session } from "./tokenize";
 
-type XhrMeta = XMLHttpRequest & { __ssUrl?: string };
 type BodyKind = "freq" | "json";
 
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "5-multisite";
+const BUILD = "6-hardening";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -58,6 +57,7 @@ function allowedCategories(): ReadonlySet<string> | undefined {
 // are left untouched (so ids, timestamps and enums never get corrupted).
 // Structure-agnostic on purpose — no dependency on any provider's exact layout.
 function walk(node: unknown, allowed: ReadonlySet<string> | undefined): unknown {
+  if (node === null) return null;
   if (typeof node === "string") return session.tokenize(node, allowed);
   if (Array.isArray(node)) return node.map((n) => walk(n, allowed));
   if (node && typeof node === "object") {
@@ -105,17 +105,18 @@ function rewriteBody(kind: BodyKind, body: string): string {
 // in the text nodes they paint. rehydrate is idempotent, so the mutation our own
 // write triggers converges in one no-op pass. Editable regions (composers) skipped.
 function installDomRehydrator(): void {
-  const EDITABLE = 'input, textarea, [contenteditable="true"], .ql-editor';
+  const isEditable = (el: Element | null): boolean =>
+    el instanceof HTMLElement && (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA");
   const rehydrateText = (node: Text): void => {
     const v = node.nodeValue;
     if (!v || !v.includes("[")) return;
-    if (node.parentElement?.closest(EDITABLE)) return;
+    if (isEditable(node.parentElement)) return; // never touch composers
     const next = session.rehydrate(v);
     if (next !== v) node.nodeValue = next;
   };
   const scan = (root: Node): void => {
     if (root.nodeType === Node.TEXT_NODE) return rehydrateText(root as Text);
-    if (!(root instanceof Element) || root.closest(EDITABLE)) return;
+    if (!(root instanceof Element) || isEditable(root)) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let n: Node | null;
     while ((n = walker.nextNode())) rehydrateText(n as Text);
@@ -127,24 +128,27 @@ function installDomRehydrator(): void {
       else m.addedNodes.forEach(scan);
     }
   });
-  const start = (): void =>
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-  if (document.body) start();
-  else document.addEventListener("DOMContentLoaded", start, { once: true });
+  // documentElement exists at document_start, so observe immediately rather than
+  // waiting for body/DOMContentLoaded — never miss an early paint.
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 }
 
 // ---- XHR hook (Gemini) ----------------------------------------------------
+// URL is stashed in a closure-private WeakMap, not on the XHR instance — the
+// MAIN world is shared with the page, so an instance property would be readable
+// (and spoofable) by page scripts.
+const xhrUrls = new WeakMap<XMLHttpRequest, string>();
 const proto = XMLHttpRequest.prototype;
 const origOpen = proto.open;
 const origSend = proto.send;
 
-proto.open = function (this: XhrMeta, _method: string, url: string | URL) {
-  this.__ssUrl = String(url);
+proto.open = function (this: XMLHttpRequest, _method: string, url: string | URL) {
+  xhrUrls.set(this, String(url));
   return origOpen.apply(this, arguments as unknown as Parameters<typeof origOpen>);
 } as typeof proto.open;
 
-proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit | null) {
-  const kind = generateKind(this.__ssUrl ?? "");
+proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+  const kind = generateKind(xhrUrls.get(this) ?? "");
   if (kind && guardEnabled() && typeof body === "string") {
     try {
       return origSend.call(this, rewriteBody(kind, body) as XMLHttpRequestBodyInit);
@@ -195,7 +199,10 @@ async function rewriteFetch(
     if (input instanceof Request && input.method.toUpperCase() === "POST") {
       const text = await input.clone().text();
       if (text) {
-        return origFetch.call(window, new Request(input, { method: "POST", body: rewriteBody(kind, text) }));
+        // Clone headers explicitly so a string body can't down-grade the original
+        // Content-Type (e.g. application/json -> text/plain -> HTTP 415).
+        const headers = new Headers(input.headers);
+        return origFetch.call(window, new Request(input, { method: "POST", headers, body: rewriteBody(kind, text) }));
       }
     }
   } catch (err) {
