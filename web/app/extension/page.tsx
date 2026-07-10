@@ -85,7 +85,8 @@ export default function Page() {
           Detection is regex + checksum, compiled to TypeScript and kept byte-for-byte in parity
           with the Python <a href="https://github.com/acoseac/sovereign-shield">sovereign-shield</a>{" "}
           source. Structured identifiers only; names and addresses need an NER model. See{" "}
-          <a href="/how-it-works">how it works</a>.
+          <a href="/how-it-works">how it works</a> and the{" "}
+          <a href="/extension/privacy">privacy policy</a>.
         </p>
       </footer>
     </main>
