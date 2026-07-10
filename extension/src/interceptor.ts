@@ -17,7 +17,7 @@ type XhrMeta = XMLHttpRequest & { __ssUrl?: string };
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "3-dom-rehydrate";
+const BUILD = "4-review-fixes";
 document.documentElement.setAttribute("data-ss-build", BUILD);
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -124,7 +124,13 @@ proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit |
     } catch (err) {
       // MVP is fail-open: a parser hiccup must never brick the user's Gemini.
       // A production build would fail-closed (abort the send) instead — see README.
+      // Make the bypass loud: tell the bridge to flip the badge red.
       console.warn("[sovereign-shield] passthrough after error:", err);
+      try {
+        window.postMessage({ source: "ss-guard", kind: "failopen" }, location.origin);
+      } catch {
+        /* best-effort */
+      }
     }
   }
   return origSend.call(this, body ?? null);

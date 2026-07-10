@@ -62,11 +62,9 @@ export class Session {
    */
   rehydrate(text: string): string {
     if (this.tokenValue.size === 0 || !text.includes("[")) return text;
-    let out = text;
-    for (const [token, value] of this.tokenValue) {
-      if (out.includes(token)) out = out.split(token).join(value);
-    }
-    return out;
+    // Single pass: match any placeholder, look it up in O(1). Runs on every
+    // streamed text-node mutation, so it must not scale with the token count.
+    return text.replace(/\[[A-Z]+_\d+\]/g, (m) => this.tokenValue.get(m) ?? m);
   }
 
   /** How many distinct identifiers have been kept local this conversation. */
