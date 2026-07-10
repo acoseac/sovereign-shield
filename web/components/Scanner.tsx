@@ -2,9 +2,9 @@
 
 import { type ChangeEvent, type DragEvent, type ReactNode, useMemo, useRef, useState } from "react";
 
-import { auditOf, CATEGORY_LABEL, tokenizeText } from "@/lib/gateway";
+import { type AuditItem, auditOf, type Entity, tokenizeText } from "@/lib/gateway";
 
-// Flavour for the tiles + the shareable card. Labels come from CATEGORY_LABEL.
+// Flavour for the tiles + the shareable card. Labels come from lib/gateway.
 const CATEGORY_ICON: Record<string, string> = {
   ch_ahv: "🇨🇭",
   iban: "🏦",
@@ -17,6 +17,8 @@ const CATEGORY_ICON: Record<string, string> = {
 };
 
 const MAX_BYTES = 2_000_000;
+
+type Audit = { items: AuditItem[]; total: number };
 
 const SAMPLES: { id: string; label: string; text: string }[] = [
   {
@@ -50,15 +52,15 @@ function highlight(text: string, spans: { start: number; end: number }[]): React
   const sorted = [...spans].sort((a, b) => a.start - b.start);
   const out: ReactNode[] = [];
   let cursor = 0;
-  sorted.forEach((s, i) => {
+  for (const s of sorted) {
     if (s.start > cursor) out.push(text.slice(cursor, s.start));
     out.push(
-      <mark className="pii" key={i}>
+      <mark className="pii" key={s.start}>
         {text.slice(s.start, s.end)}
       </mark>,
     );
     cursor = s.end;
-  });
+  }
   out.push(text.slice(cursor));
   return out;
 }
@@ -69,11 +71,10 @@ function highlightTokens(text: string): ReactNode {
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
-  let i = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     out.push(
-      <mark className="tok" key={i++}>
+      <mark className="tok" key={m.index}>
         {m[0]}
       </mark>,
     );
@@ -84,7 +85,7 @@ function highlightTokens(text: string): ReactNode {
 }
 
 // Draw the shareable report card (counts + verdict only — never raw values).
-function drawCard(total: number, items: { label: string; category: string; count: number }[]): void {
+function drawCard(audit: Audit): void {
   const W = 1200;
   const H = 630;
   const c = document.createElement("canvas");
@@ -97,11 +98,12 @@ function drawCard(total: number, items: { label: string; category: string; count
   const muted = "#6b6b6b";
   const pii = "#b42318";
   const val = "#067647";
+  const clean = audit.total === 0;
+  const noun = audit.total === 1 ? "identifier" : "identifiers";
 
   g.fillStyle = "#fffdf2";
   g.fillRect(0, 0, W, H);
-  // top band
-  g.fillStyle = "#ffe500";
+  g.fillStyle = "#ffe500"; // top band
   g.fillRect(0, 0, W, 12);
 
   g.textBaseline = "alphabetic";
@@ -109,26 +111,24 @@ function drawCard(total: number, items: { label: string; category: string; count
   g.font = "700 22px 'DM Sans', system-ui, sans-serif";
   g.fillText("SOVEREIGN SHIELD · PRIVACY SCAN", 64, 84);
 
-  const clean = total === 0;
   g.fillStyle = clean ? val : pii;
   g.font = "800 88px 'DM Sans', system-ui, sans-serif";
-  g.fillText(clean ? "✓ Clean" : `⚠ ${total}`, 64, 196);
+  g.fillText(clean ? "✓ Clean" : `⚠ ${audit.total}`, 64, 196);
 
   g.fillStyle = ink;
   g.font = "700 34px 'DM Sans', system-ui, sans-serif";
   const headline = clean
     ? "No Swiss / EU identifiers found"
-    : `personal ${total === 1 ? "identifier" : "identifiers"} that shouldn't reach a cloud LLM`;
+    : `personal ${noun} that shouldn't reach a cloud LLM`;
   g.fillText(headline, clean ? 64 : 240, clean ? 196 : 184);
 
-  // category rows
   let y = 300;
   g.font = "600 30px 'DM Sans', system-ui, sans-serif";
   if (clean) {
     g.fillStyle = muted;
     g.fillText("Nothing to redact — safe to send as-is.", 64, y);
   } else {
-    for (const it of items.slice(0, 6)) {
+    for (const it of audit.items.slice(0, 6)) {
       const icon = CATEGORY_ICON[it.category] ?? "•";
       g.fillStyle = ink;
       g.fillText(`${icon}  ${it.label}`, 64, y);
@@ -140,8 +140,7 @@ function drawCard(total: number, items: { label: string; category: string; count
     }
   }
 
-  // footer
-  g.fillStyle = muted;
+  g.fillStyle = muted; // footer
   g.font = "500 24px 'DM Sans', system-ui, sans-serif";
   g.fillText("Scanned locally in the browser · nothing uploaded · shield.ars.md", 64, H - 56);
 
@@ -154,6 +153,78 @@ function drawCard(total: number, items: { label: string; category: string; count
     a.click();
     URL.revokeObjectURL(url);
   }, "image/png");
+}
+
+function ScanResult(
+  props: Readonly<{
+    text: string;
+    entities: Entity[];
+    sanitized: string;
+    audit: Audit;
+    fileName: string | null;
+    view: "found" | "sent";
+    onView: (v: "found" | "sent") => void;
+  }>,
+) {
+  const { text, entities, sanitized, audit, fileName, view, onView } = props;
+  const hit = audit.total > 0;
+  const noun = audit.total === 1 ? "identifier" : "identifiers";
+
+  return (
+    <>
+      <div className={`verdict ${hit ? "hit" : "clean"}`}>
+        <span className="verdict-big">{hit ? `⚠ ${audit.total}` : "✓ Clean"}</span>
+        <span className="verdict-text">
+          {hit ? (
+            <>
+              personal {noun} found
+              {fileName && (
+                <>
+                  {" "}
+                  in <b>{fileName}</b>
+                </>
+              )}{" "}
+              — none of this should reach a cloud LLM
+            </>
+          ) : (
+            <>no Swiss / EU identifiers detected — safe to send as-is</>
+          )}
+        </span>
+      </div>
+
+      {hit && (
+        <div className="audit-items scan-tiles">
+          {audit.items.map((it) => (
+            <span className="a-item" key={it.category}>
+              {CATEGORY_ICON[it.category] ?? "•"} {it.label} <b>×{it.count}</b>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="tabs scan-tabs">
+        <button className={`tab ${view === "found" ? "active" : ""}`} onClick={() => onView("found")}>
+          What&apos;s in your file
+        </button>
+        <button className={`tab ${view === "sent" ? "active" : ""}`} onClick={() => onView("sent")}>
+          What a cloud would receive
+        </button>
+      </div>
+
+      <div className="scan-doc">
+        {view === "found" ? highlight(text, entities) : highlightTokens(sanitized)}
+      </div>
+
+      <div className="actions">
+        <button className="btn" disabled={!hit} onClick={() => drawCard(audit)}>
+          ⬇ Download report card
+        </button>
+        <span className="muted">
+          The card shows counts only — never the values. The file never left your device.
+        </span>
+      </div>
+    </>
+  );
 }
 
 export default function Scanner() {
@@ -175,37 +246,34 @@ export default function Scanner() {
     setView("found");
   }
 
-  function readFile(file: File) {
+  async function readFile(file: File) {
     if (file.size > MAX_BYTES) {
       setNote(`That file is ${(file.size / 1e6).toFixed(1)} MB — please keep it under 2 MB.`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const raw = String(reader.result ?? "");
-      if (raw.startsWith("%PDF") || raw.includes("\u0000")) {
-        setNote(
-          `“${file.name}” looks like a PDF or binary file. PDF support is coming — for now, ` +
-            "paste the text and it'll scan instantly.",
-        );
-        setFileName(file.name);
-        return;
-      }
-      loadText(raw, file.name);
-    };
-    reader.readAsText(file);
+    const raw = await file.text();
+    // PDFs / binaries read as text start with %PDF or carry NUL bytes.
+    if (raw.startsWith("%PDF") || raw.includes("\u0000")) {
+      setNote(
+        `“${file.name}” looks like a PDF or binary file. PDF support is coming — for now, ` +
+          "paste the text and it'll scan instantly.",
+      );
+      setFileName(file.name);
+      return;
+    }
+    loadText(raw, file.name);
   }
 
   function onDrop(e: DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) readFile(file);
+    if (file) void readFile(file);
   }
 
   function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) readFile(file);
+    if (file) void readFile(file);
     e.target.value = "";
   }
 
@@ -245,7 +313,7 @@ export default function Scanner() {
         />
       </div>
 
-      {note ? <p className="scan-note warn">{note}</p> : null}
+      {note && <p className="scan-note warn">{note}</p>}
 
       <textarea
         className="ta"
@@ -257,73 +325,15 @@ export default function Scanner() {
       />
 
       {scanned ? (
-        <>
-          <div className={`verdict ${audit.total > 0 ? "hit" : "clean"}`}>
-            <span className="verdict-big">
-              {audit.total > 0 ? `⚠ ${audit.total}` : "✓ Clean"}
-            </span>
-            <span className="verdict-text">
-              {audit.total > 0 ? (
-                <>
-                  personal {audit.total === 1 ? "identifier" : "identifiers"} found
-                  {fileName ? (
-                    <>
-                      {" "}
-                      in <b>{fileName}</b>
-                    </>
-                  ) : null}{" "}
-                  — none of this should reach a cloud LLM
-                </>
-              ) : (
-                <>no Swiss / EU identifiers detected — safe to send as-is</>
-              )}
-            </span>
-          </div>
-
-          {audit.total > 0 ? (
-            <div className="audit-items scan-tiles">
-              {audit.items.map((it) => (
-                <span className="a-item" key={it.category}>
-                  {CATEGORY_ICON[it.category] ?? "•"} {it.label} <b>×{it.count}</b>
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="tabs scan-tabs">
-            <button
-              className={`tab ${view === "found" ? "active" : ""}`}
-              onClick={() => setView("found")}
-            >
-              What&apos;s in your file
-            </button>
-            <button
-              className={`tab ${view === "sent" ? "active" : ""}`}
-              onClick={() => setView("sent")}
-            >
-              What a cloud would receive
-            </button>
-          </div>
-
-          <div className="scan-doc">
-            {view === "found"
-              ? highlight(text, entities)
-              : highlightTokens(sanitized)}
-          </div>
-
-          <div className="actions">
-            <button
-              className="btn"
-              disabled={audit.total === 0}
-              onClick={() => drawCard(audit.total, audit.items)}
-            >
-              ⬇ Download report card
-            </button>
-            <span className="muted">
-              The card shows counts only — never the values. The file never left your device.
-            </span>
-          </div>
-        </>
+        <ScanResult
+          text={text}
+          entities={entities}
+          sanitized={sanitized}
+          audit={audit}
+          fileName={fileName}
+          view={view}
+          onView={setView}
+        />
       ) : (
         <p className="scan-note">
           Nothing is uploaded. Detection is the same deterministic engine the{" "}

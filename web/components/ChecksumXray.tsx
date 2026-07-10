@@ -35,7 +35,7 @@ function luhnTrace(value: string) {
       if (contrib > 9) contrib -= 9;
     }
     total += contrib;
-    return { d, doubled, contrib };
+    return { pos: i, d, doubled, contrib };
   });
   return { digits, cells, total, mod: total % 10 };
 }
@@ -47,7 +47,7 @@ function ean13Trace(value: string) {
     const d = Number(ch);
     const w = i % 2 === 0 ? 1 : 3;
     sum += d * w;
-    return { d, w, p: d * w };
+    return { pos: i, d, w, p: d * w };
   });
   const check = (10 - (sum % 10)) % 10;
   const actual = digits.length >= 13 ? Number(digits[12]) : null;
@@ -59,11 +59,11 @@ function ibanTrace(value: string) {
   const rearranged = s.slice(4) + s.slice(0, 4);
   const letters = [...new Set([...rearranged].filter((c) => c >= "A" && c <= "Z"))].map((c) => ({
     c,
-    n: parseInt(c, 36),
+    n: Number.parseInt(c, 36),
   }));
   let mapped = "";
   for (const c of rearranged) {
-    if (c >= "A" && c <= "Z") mapped += parseInt(c, 36).toString();
+    if (c >= "A" && c <= "Z") mapped += Number.parseInt(c, 36).toString();
     else if (c >= "0" && c <= "9") mapped += c;
   }
   let rem = 0;
@@ -145,16 +145,16 @@ export default function ChecksumXray() {
   );
 }
 
-function LuhnView({ t, valid }: { t: ReturnType<typeof luhnTrace>; valid: boolean }) {
+function LuhnView({ t, valid }: Readonly<{ t: ReturnType<typeof luhnTrace>; valid: boolean }>) {
   const bad = t.digits.length < 13 || t.digits.length > 19;
   return (
     <div className="xray-body">
       <div className="xcells" key={t.digits}>
-        {t.cells.map((c, i) => (
+        {t.cells.map((c) => (
           <span
             className={`xcell ${c.doubled ? "dbl" : ""}`}
-            style={{ ["--i" as string]: i }}
-            key={i}
+            style={{ ["--i" as string]: c.pos }}
+            key={c.pos}
           >
             <span className="xd">{c.d}</span>
             <span className="xsub">{c.doubled ? `×2→${c.contrib}` : c.contrib}</span>
@@ -174,12 +174,22 @@ function LuhnView({ t, valid }: { t: ReturnType<typeof luhnTrace>; valid: boolea
   );
 }
 
-function Ean13View({ t, valid }: { t: ReturnType<typeof ean13Trace>; valid: boolean }) {
+function Ean13View({ t, valid }: Readonly<{ t: ReturnType<typeof ean13Trace>; valid: boolean }>) {
+  const eq = valid ? "=" : "≠";
+  const tail = valid ? "→ valid ✓" : "→ invalid ✗";
+  const msg =
+    t.actual === null
+      ? "needs 13 digits"
+      : `computed ${t.check} ${eq} digit 13 (${t.actual}) ${tail}`;
   return (
     <div className="xray-body">
       <div className="xcells" key={t.digits}>
-        {t.cells.map((c, i) => (
-          <span className={`xcell ${c.w === 3 ? "dbl" : ""}`} style={{ ["--i" as string]: i }} key={i}>
+        {t.cells.map((c) => (
+          <span
+            className={`xcell ${c.w === 3 ? "dbl" : ""}`}
+            style={{ ["--i" as string]: c.pos }}
+            key={c.pos}
+          >
             <span className="xd">{c.d}</span>
             <span className="xsub">×{c.w}</span>
           </span>
@@ -194,19 +204,13 @@ function Ean13View({ t, valid }: { t: ReturnType<typeof ean13Trace>; valid: bool
           weight the first 12 digits 1·3·1·3… · Σ = <b>{t.sum}</b> · check = (10 − {t.sum} mod 10) mod
           10 = <b>{t.check}</b>
         </span>
-        <span className={valid ? "ok" : "bad"}>
-          {t.actual === null
-            ? "needs 13 digits"
-            : `computed ${t.check} ${valid ? "=" : "≠"} digit 13 (${t.actual}) ${
-                valid ? "→ valid ✓" : "→ invalid ✗"
-              }`}
-        </span>
+        <span className={valid ? "ok" : "bad"}>{msg}</span>
       </div>
     </div>
   );
 }
 
-function IbanView({ t, valid }: { t: ReturnType<typeof ibanTrace>; valid: boolean }) {
+function IbanView({ t, valid }: Readonly<{ t: ReturnType<typeof ibanTrace>; valid: boolean }>) {
   return (
     <div className="xray-body">
       <div className="xsteps">
