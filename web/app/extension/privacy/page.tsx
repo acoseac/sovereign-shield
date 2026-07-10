@@ -89,11 +89,10 @@ export default function Page() {
 
         <h2>Contact</h2>
         <p>
-          Questions or issues:{" "}
+          Questions or issues are welcome on GitHub:{" "}
           <a href="https://github.com/acoseac/sovereign-shield/issues" target="_blank" rel="noreferrer">
             github.com/acoseac/sovereign-shield
           </a>
-          .
         </p>
       </section>
 
