@@ -16,7 +16,7 @@ const CATEGORY_ICON: Record<string, string> = {
   address: "📍",
 };
 
-const MAX_BYTES = 2_000_000;
+const MAX_BYTES = 8_000_000;
 
 type Audit = { items: AuditItem[]; total: number };
 
@@ -155,6 +155,26 @@ function drawCard(audit: Audit): void {
   }, "image/png");
 }
 
+// Extract text from a PDF entirely in the browser — pdf.js is loaded on demand
+// (kept out of the main bundle) and its worker is bundled, so nothing is uploaded.
+async function extractPdfText(data: ArrayBuffer): Promise<string> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).toString();
+  const doc = await pdfjs.getDocument({ data }).promise;
+  let out = "";
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const content = await page.getTextContent();
+    out +=
+      content.items.map((it) => ("str" in it ? it.str + (it.hasEOL ? "\n" : " ") : "")).join("") +
+      "\n";
+  }
+  return out;
+}
+
 function ScanResult(
   props: Readonly<{
     text: string;
@@ -233,6 +253,7 @@ export default function Scanner() {
   const [note, setNote] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [view, setView] = useState<"found" | "sent">("found");
+  const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { entities, sanitized } = useMemo(() => tokenizeText(text), [text]);
@@ -248,21 +269,45 @@ export default function Scanner() {
 
   async function readFile(file: File) {
     if (file.size > MAX_BYTES) {
-      setNote(`That file is ${(file.size / 1e6).toFixed(1)} MB — please keep it under 2 MB.`);
+      setNote(`That file is ${(file.size / 1e6).toFixed(1)} MB — please keep it under 8 MB.`);
       return;
     }
-    const raw = await file.text();
-    // PDFs / binaries read as text start with %PDF or carry NUL bytes.
-    if (raw.startsWith("%PDF") || raw.includes("\u0000")) {
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+    setBusy(true);
+    try {
+      if (isPdf) {
+        loadText(await extractPdfText(await file.arrayBuffer()), file.name);
+      } else {
+        const raw = await file.text();
+        if (raw.includes(String.fromCharCode(0))) {
+          setNote(`“${file.name}” looks like a binary file — paste the text instead.`);
+          setFileName(file.name);
+          return;
+        }
+        loadText(raw, file.name);
+      }
+    } catch {
       setNote(
-        `“${file.name}” looks like a PDF or binary file. PDF support is coming — for now, ` +
-          "paste the text and it'll scan instantly.",
+        `Couldn't read “${file.name}”. A scanned or image-only PDF has no selectable text — ` +
+          "paste the text instead.",
       );
-      setFileName(file.name);
-      return;
+    } finally {
+      setBusy(false);
     }
-    loadText(raw, file.name);
   }
+
+  async function loadSamplePdf() {
+    setBusy(true);
+    try {
+      const res = await fetch("/samples/leak-radar-sample.pdf");
+      loadText(await extractPdfText(await res.arrayBuffer()), "leak-radar-sample.pdf");
+    } catch {
+      setNote("Couldn't load the sample PDF.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
 
   function onDrop(e: DragEvent) {
     e.preventDefault();
@@ -292,7 +337,7 @@ export default function Scanner() {
           <b>Drop a file here</b> — or paste text below
         </div>
         <div className="drop-sub">
-          .txt · .csv · .json · .md · .log · .eml — never uploaded, scanned in your browser
+          .pdf · .txt · .csv · .json · .md · .log · .eml — never uploaded, read in your browser
         </div>
         <div className="drop-actions">
           <button className="replay" onClick={() => inputRef.current?.click()}>
@@ -303,16 +348,20 @@ export default function Scanner() {
               {s.label}
             </button>
           ))}
+          <button className="chip" onClick={() => void loadSamplePdf()}>
+            📄 Sample PDF
+          </button>
         </div>
         <input
           ref={inputRef}
           type="file"
-          accept=".txt,.csv,.json,.md,.log,.eml,.text,text/*,application/json"
+          accept=".pdf,.txt,.csv,.json,.md,.log,.eml,.text,application/pdf,text/*,application/json"
           hidden
           onChange={onPick}
         />
       </div>
 
+      {busy && <p className="scan-note">Reading your file in the browser…</p>}
       {note && <p className="scan-note warn">{note}</p>}
 
       <textarea
