@@ -68,6 +68,8 @@ not depend on Google's exact array layout and survives their frequent reshuffles
 ## Settings, badge & activity log
 
 - **Toolbar badge** — how many identifiers were kept local on the current Gemini tab (resets per page load).
+- **Fail-open alert** — if a body-parse error ever lets a request through unredacted, the badge turns **red with `!`** so the bypass is never silent.
+- **Stale-tab banner** — after you update the extension, tabs that were already open show a "reload this tab" nudge; their old content script can't protect you until reloaded (`chrome://extensions` ↻ updates the code, not the open tabs).
 - **Popup** (click the icon) — on/off toggle, the live count, and a link to the full page.
 - **Options page** (the popup link, or `chrome://extensions` → Details → Extension options) — choose which categories to block, and view the activity log.
 - **Activity log** — records **type + time + site only, never the value** (not even masked). A rolling window of the last 200 events with a one-click Clear. The value↔placeholder map stays in page memory and is never written to disk, so the "nothing sensitive is persisted" promise holds.

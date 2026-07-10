@@ -34,9 +34,16 @@ export async function getSettings(): Promise<Settings> {
 }
 
 export async function appendLog(entry: LogEntry): Promise<void> {
+  await appendLogBatch([entry]);
+}
+
+/** Append many entries in a single read-modify-write (batched to respect the
+ *  chrome.storage write-rate limit when many identifiers land at once). */
+export async function appendLogBatch(entries: LogEntry[]): Promise<void> {
+  if (entries.length === 0) return;
   const v = await chrome.storage.local.get(KEYS.log);
   const log: LogEntry[] = Array.isArray(v[KEYS.log]) ? v[KEYS.log] : [];
-  log.push(entry);
+  log.push(...entries);
   if (log.length > LOG_CAP) log.splice(0, log.length - LOG_CAP); // rolling window
   await chrome.storage.local.set({ [KEYS.log]: log });
 }

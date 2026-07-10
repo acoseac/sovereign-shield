@@ -62,9 +62,16 @@ async function renderLog(): Promise<void> {
 
   const total = document.createElement("p");
   total.style.margin = "0 0 6px";
-  total.innerHTML = `<b>${log.length}</b> identifier${log.length === 1 ? "" : "s"} kept local${
-    log.length >= LOG_CAP ? ` (last ${LOG_CAP})` : ""
-  }.`;
+  const count = document.createElement("b");
+  count.textContent = String(log.length);
+  total.append(
+    count,
+    document.createTextNode(
+      ` identifier${log.length === 1 ? "" : "s"} kept local${
+        log.length >= LOG_CAP ? ` (last ${LOG_CAP})` : ""
+      }.`,
+    ),
+  );
   summary.append(total);
 
   const counts = new Map<string, number>();
