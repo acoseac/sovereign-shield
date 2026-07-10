@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import ChecksumXray from "@/components/ChecksumXray";
 import Nav from "@/components/Nav";
 
 export const metadata: Metadata = {
@@ -62,6 +63,8 @@ Draft a reply to [PERSON_1] ([AHV_1], [IBAN_1])
           and dull and correct: never trust the model to police itself; put a deterministic code
           boundary around it.
         </p>
+        <p>See it run — pick an identifier type, then change any digit and watch the check fail:</p>
+        <ChecksumXray />
 
         <h2>In production</h2>
         <ul>

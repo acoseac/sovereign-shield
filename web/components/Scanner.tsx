@@ -1,0 +1,338 @@
+"use client";
+
+import { type ChangeEvent, type DragEvent, type ReactNode, useMemo, useRef, useState } from "react";
+
+import { auditOf, CATEGORY_LABEL, tokenizeText } from "@/lib/gateway";
+
+// Flavour for the tiles + the shareable card. Labels come from CATEGORY_LABEL.
+const CATEGORY_ICON: Record<string, string> = {
+  ch_ahv: "🇨🇭",
+  iban: "🏦",
+  credit_card: "💳",
+  ch_phone: "☎️",
+  email: "✉️",
+  dob: "🎂",
+  name: "🪪",
+  address: "📍",
+};
+
+const MAX_BYTES = 2_000_000;
+
+const SAMPLES: { id: string; label: string; text: string }[] = [
+  {
+    id: "email",
+    label: "Support email",
+    text:
+      "Subject: Refund request\n\n" +
+      "Hi — please refund CHF 240 to my account IBAN CH93 0076 2011 6238 5295 7.\n" +
+      "My AHV is 756.1234.5678.97 and you can reach me on +41 79 214 88 03 or\n" +
+      "hans.muster@bluewin.ch. Thanks, Hans",
+  },
+  {
+    id: "csv",
+    label: "CSV export",
+    text:
+      "id,name,ahv,iban,card\n" +
+      "1,H. Muster,756.1234.5678.97,CH9300762011623852957,4111 1111 1111 1111\n" +
+      "2,A. Meier,756.9217.0769.85,CH5604835012345678009,5500 0000 0000 0004\n",
+  },
+  {
+    id: "clean",
+    label: "Clean text",
+    text:
+      "Our opening hours are Monday to Friday, 9:00–17:00. For general questions " +
+      "write to the team and we'll get back to you within two business days.",
+  },
+];
+
+// Raw text with the detected PII spans marked red (stays in the browser).
+function highlight(text: string, spans: { start: number; end: number }[]): ReactNode {
+  const sorted = [...spans].sort((a, b) => a.start - b.start);
+  const out: ReactNode[] = [];
+  let cursor = 0;
+  sorted.forEach((s, i) => {
+    if (s.start > cursor) out.push(text.slice(cursor, s.start));
+    out.push(
+      <mark className="pii" key={i}>
+        {text.slice(s.start, s.end)}
+      </mark>,
+    );
+    cursor = s.end;
+  });
+  out.push(text.slice(cursor));
+  return out;
+}
+
+// Sanitized text with the placeholders marked neutral (safe to send / screenshot).
+function highlightTokens(text: string): ReactNode {
+  const re = /\[[A-Z]+_\d+\]/g;
+  const out: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(
+      <mark className="tok" key={i++}>
+        {m[0]}
+      </mark>,
+    );
+    last = m.index + m[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
+}
+
+// Draw the shareable report card (counts + verdict only — never raw values).
+function drawCard(total: number, items: { label: string; category: string; count: number }[]): void {
+  const W = 1200;
+  const H = 630;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d");
+  if (!g) return;
+
+  const ink = "#0a0a0a";
+  const muted = "#6b6b6b";
+  const pii = "#b42318";
+  const val = "#067647";
+
+  g.fillStyle = "#fffdf2";
+  g.fillRect(0, 0, W, H);
+  // top band
+  g.fillStyle = "#ffe500";
+  g.fillRect(0, 0, W, 12);
+
+  g.textBaseline = "alphabetic";
+  g.fillStyle = muted;
+  g.font = "700 22px 'DM Sans', system-ui, sans-serif";
+  g.fillText("SOVEREIGN SHIELD · PRIVACY SCAN", 64, 84);
+
+  const clean = total === 0;
+  g.fillStyle = clean ? val : pii;
+  g.font = "800 88px 'DM Sans', system-ui, sans-serif";
+  g.fillText(clean ? "✓ Clean" : `⚠ ${total}`, 64, 196);
+
+  g.fillStyle = ink;
+  g.font = "700 34px 'DM Sans', system-ui, sans-serif";
+  const headline = clean
+    ? "No Swiss / EU identifiers found"
+    : `personal ${total === 1 ? "identifier" : "identifiers"} that shouldn't reach a cloud LLM`;
+  g.fillText(headline, clean ? 64 : 240, clean ? 196 : 184);
+
+  // category rows
+  let y = 300;
+  g.font = "600 30px 'DM Sans', system-ui, sans-serif";
+  if (clean) {
+    g.fillStyle = muted;
+    g.fillText("Nothing to redact — safe to send as-is.", 64, y);
+  } else {
+    for (const it of items.slice(0, 6)) {
+      const icon = CATEGORY_ICON[it.category] ?? "•";
+      g.fillStyle = ink;
+      g.fillText(`${icon}  ${it.label}`, 64, y);
+      g.fillStyle = pii;
+      g.font = "800 30px 'DM Sans', system-ui, sans-serif";
+      g.fillText(`×${it.count}`, 640, y);
+      g.font = "600 30px 'DM Sans', system-ui, sans-serif";
+      y += 52;
+    }
+  }
+
+  // footer
+  g.fillStyle = muted;
+  g.font = "500 24px 'DM Sans', system-ui, sans-serif";
+  g.fillText("Scanned locally in the browser · nothing uploaded · shield.ars.md", 64, H - 56);
+
+  c.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sovereign-shield-scan.png";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, "image/png");
+}
+
+export default function Scanner() {
+  const [text, setText] = useState("");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [view, setView] = useState<"found" | "sent">("found");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { entities, sanitized } = useMemo(() => tokenizeText(text), [text]);
+  const audit = auditOf(entities);
+  const scanned = text.trim().length > 0;
+
+  function loadText(value: string, name: string | null) {
+    setText(value);
+    setFileName(name);
+    setNote(null);
+    setView("found");
+  }
+
+  function readFile(file: File) {
+    if (file.size > MAX_BYTES) {
+      setNote(`That file is ${(file.size / 1e6).toFixed(1)} MB — please keep it under 2 MB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result ?? "");
+      if (raw.startsWith("%PDF") || raw.includes("\u0000")) {
+        setNote(
+          `“${file.name}” looks like a PDF or binary file. PDF support is coming — for now, ` +
+            "paste the text and it'll scan instantly.",
+        );
+        setFileName(file.name);
+        return;
+      }
+      loadText(raw, file.name);
+    };
+    reader.readAsText(file);
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) readFile(file);
+  }
+
+  function onPick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) readFile(file);
+    e.target.value = "";
+  }
+
+  return (
+    <>
+      <div
+        className={`drop ${dragOver ? "over" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+      >
+        <div className="drop-lead">
+          <b>Drop a file here</b> — or paste text below
+        </div>
+        <div className="drop-sub">
+          .txt · .csv · .json · .md · .log · .eml — never uploaded, scanned in your browser
+        </div>
+        <div className="drop-actions">
+          <button className="replay" onClick={() => inputRef.current?.click()}>
+            Choose a file
+          </button>
+          {SAMPLES.map((s) => (
+            <button className="chip" key={s.id} onClick={() => loadText(s.text, s.label)}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".txt,.csv,.json,.md,.log,.eml,.text,text/*,application/json"
+          hidden
+          onChange={onPick}
+        />
+      </div>
+
+      {note ? <p className="scan-note warn">{note}</p> : null}
+
+      <textarea
+        className="ta"
+        value={text}
+        spellCheck={false}
+        rows={5}
+        placeholder="…or paste an email, a support ticket, a CSV row, an exported chat log…"
+        onChange={(e) => loadText(e.target.value, fileName)}
+      />
+
+      {scanned ? (
+        <>
+          <div className={`verdict ${audit.total > 0 ? "hit" : "clean"}`}>
+            <span className="verdict-big">
+              {audit.total > 0 ? `⚠ ${audit.total}` : "✓ Clean"}
+            </span>
+            <span className="verdict-text">
+              {audit.total > 0 ? (
+                <>
+                  personal {audit.total === 1 ? "identifier" : "identifiers"} found
+                  {fileName ? (
+                    <>
+                      {" "}
+                      in <b>{fileName}</b>
+                    </>
+                  ) : null}{" "}
+                  — none of this should reach a cloud LLM
+                </>
+              ) : (
+                <>no Swiss / EU identifiers detected — safe to send as-is</>
+              )}
+            </span>
+          </div>
+
+          {audit.total > 0 ? (
+            <div className="audit-items scan-tiles">
+              {audit.items.map((it) => (
+                <span className="a-item" key={it.category}>
+                  {CATEGORY_ICON[it.category] ?? "•"} {it.label} <b>×{it.count}</b>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="tabs scan-tabs">
+            <button
+              className={`tab ${view === "found" ? "active" : ""}`}
+              onClick={() => setView("found")}
+            >
+              What&apos;s in your file
+            </button>
+            <button
+              className={`tab ${view === "sent" ? "active" : ""}`}
+              onClick={() => setView("sent")}
+            >
+              What a cloud would receive
+            </button>
+          </div>
+
+          <div className="scan-doc">
+            {view === "found"
+              ? highlight(text, entities)
+              : highlightTokens(sanitized)}
+          </div>
+
+          <div className="actions">
+            <button
+              className="btn"
+              disabled={audit.total === 0}
+              onClick={() => drawCard(audit.total, audit.items)}
+            >
+              ⬇ Download report card
+            </button>
+            <span className="muted">
+              The card shows counts only — never the values. The file never left your device.
+            </span>
+          </div>
+        </>
+      ) : (
+        <p className="scan-note">
+          Nothing is uploaded. Detection is the same deterministic engine the{" "}
+          <a href="https://github.com/acoseac/sovereign-shield" target="_blank" rel="noreferrer">
+            sovereign-shield
+          </a>{" "}
+          library runs, compiled to run in your browser — no server, no API key.
+        </p>
+      )}
+    </>
+  );
+}
