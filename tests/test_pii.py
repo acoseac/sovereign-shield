@@ -169,3 +169,41 @@ def test_eu_markers_never_leak_raw() -> None:
         norm = _norm_record(text)
         for h in hits:
             assert norm not in h.marker
+
+
+# --------------------------------------------------------------------------- #
+# EU / UK / global pack (all synthetic, valid-by-construction). The CPF, CNPJ and
+# NHS values are the canonical published test numbers, so these also spot-check
+# that the algorithms match the real specs, not just themselves.
+# --------------------------------------------------------------------------- #
+PACK_VALID: dict[PiiCategory, str] = {
+    PiiCategory.DE_STEUERID: "11223344553",
+    PiiCategory.PL_PESEL: "90051512340",
+    PiiCategory.PT_NIF: "123456789",
+    PiiCategory.BE_NRN: "85073003328",
+    PiiCategory.UK_NHS: "9434765919",
+    PiiCategory.BR_CPF: "11144477735",
+    PiiCategory.BR_CNPJ: "11222333000181",
+    PiiCategory.ZA_ID: "9001015009086",
+    PiiCategory.CN_ID: "110101199001011237",
+    PiiCategory.CA_SIN: "130692544",
+    PiiCategory.IN_AADHAAR: "234123412346",
+}
+
+
+def test_pack_each_valid_detected_as_its_category() -> None:
+    for category, value in PACK_VALID.items():
+        assert {h.category for h in detect_pii(value)} == {category}, category
+
+
+def test_pack_tampered_rejected() -> None:
+    for category, value in PACK_VALID.items():
+        bad = value[:-1] + str((int(value[-1]) + 1) % 10)  # bump check digit
+        assert category not in {h.category for h in detect_pii(bad)}, category
+
+
+def test_pack_separator_formatted() -> None:
+    assert {h.category for h in detect_pii("CPF 111.444.777-35")} == {PiiCategory.BR_CPF}
+    assert {h.category for h in detect_pii("NHS 943 476 5919")} == {PiiCategory.UK_NHS}
+    assert {h.category for h in detect_pii("CNPJ 11.222.333/0001-81")} == {PiiCategory.BR_CNPJ}
+    assert {h.category for h in detect_pii("BE 85.07.30-033.28")} == {PiiCategory.BE_NRN}

@@ -42,6 +42,17 @@ export const CATEGORY_LABEL: Record<string, string> = {
   ch_phone: "Phone",
   email: "Email",
   credit_card: "Card",
+  de_steuerid: "Steuer-ID (DE)",
+  pl_pesel: "PESEL (PL)",
+  pt_nif: "NIF (PT)",
+  be_nrn: "Rijksregisternr. (BE)",
+  uk_nhs: "NHS number (UK)",
+  br_cpf: "CPF (BR)",
+  br_cnpj: "CNPJ (BR)",
+  za_id: "ID number (ZA)",
+  cn_resident: "Resident ID (CN)",
+  ca_sin: "SIN (CA)",
+  in_aadhaar: "Aadhaar (IN)",
 };
 
 export function responseFor(docId: string, modelId: string): string | null {
@@ -90,6 +101,17 @@ const TOKEN_PREFIX: Record<string, string> = {
   ch_phone: "PHONE",
   email: "EMAIL",
   credit_card: "CARD",
+  de_steuerid: "STEUERID",
+  pl_pesel: "PESEL",
+  pt_nif: "NIF",
+  be_nrn: "NRN",
+  uk_nhs: "NHS",
+  br_cpf: "CPF",
+  br_cnpj: "CNPJ",
+  za_id: "ZAID",
+  cn_resident: "CNID",
+  ca_sin: "SIN",
+  in_aadhaar: "AADHAAR",
 };
 
 /** Live, client-side tokenization of arbitrary text (deterministic; structured
