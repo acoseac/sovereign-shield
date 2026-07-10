@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-export default function Nav({ current }: { current?: "home" | "how" | "bench" | "scan" }) {
+export default function Nav({
+  current,
+}: {
+  current?: "home" | "how" | "bench" | "scan" | "ext";
+}) {
   return (
     <nav className="nav">
       <Link className={current === "home" ? "active" : ""} href="/">
@@ -8,6 +12,9 @@ export default function Nav({ current }: { current?: "home" | "how" | "bench" | 
       </Link>
       <Link className={current === "scan" ? "active" : ""} href="/scan">
         Leak Radar
+      </Link>
+      <Link className={current === "ext" ? "active" : ""} href="/extension">
+        Extension
       </Link>
       <Link className={current === "how" ? "active" : ""} href="/how-it-works">
         How it works
