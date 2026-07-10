@@ -51,8 +51,10 @@ Two content scripts, because the worlds have complementary powers:
 
 | File | World | Can it… | Job |
 | --- | --- | --- | --- |
-| `interceptor.ts` | `MAIN` | touch the page's real `XMLHttpRequest` ✓, `chrome.*` ✗ | patch `open`/`send`, tokenize `f.req` on `StreamGenerate`, rehydrate the rendered DOM |
-| `bridge.ts` | `ISOLATED` | `chrome.*` ✓, page globals ✗ | read the on/off setting, relay the count to the popup |
+| `interceptor.ts` | `MAIN` | page's real `XMLHttpRequest` ✓, `chrome.*` ✗ | patch `open`/`send`, tokenize the enabled categories in `f.req` on `StreamGenerate`, rehydrate the rendered DOM, emit per-redaction events (category only) |
+| `bridge.ts` | `ISOLATED` | `chrome.*` ✓, page globals ✗ | push settings to the page (`data-ss-*`), forward redaction events to the worker, answer the popup |
+| `background.ts` | service worker | `chrome.action` ✓ | paint the per-tab badge, swap the active/paused icon, single writer for the activity log |
+| `popup.ts` / `options.ts` | extension pages | `chrome.*` ✓ | on/off, per-category toggles, activity log + Clear |
 
 They share the DOM but not their globals, so they pass two values through `data-*`
 attributes on `<html>`: `data-ss-enabled` (bridge → guard), `data-ss-kept`
@@ -62,6 +64,14 @@ from the page — unpacked extensions keep running old code until you hit ↻ on
 The request rewrite is **structure-agnostic**: it walks every *string* in the `f.req`
 JSON and tokenizes it (numbers — timestamps, request ids — are left alone), so it does
 not depend on Google's exact array layout and survives their frequent reshuffles.
+
+## Settings, badge & activity log
+
+- **Toolbar badge** — how many identifiers were kept local on the current Gemini tab (resets per page load).
+- **Popup** (click the icon) — on/off toggle, the live count, and a link to the full page.
+- **Options page** (the popup link, or `chrome://extensions` → Details → Extension options) — choose which categories to block, and view the activity log.
+- **Activity log** — records **type + time + site only, never the value** (not even masked). A rolling window of the last 200 events with a one-click Clear. The value↔placeholder map stays in page memory and is never written to disk, so the "nothing sensitive is persisted" promise holds.
+- **Icons** — generated from `icons/shield.svg` via `npm run icons`; a greyed variant shows when the guard is off.
 
 ## Build & load
 

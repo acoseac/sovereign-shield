@@ -38,4 +38,8 @@ toggle.addEventListener("change", async () => {
   await refresh();
 });
 
+document.getElementById("opts")?.addEventListener("click", () => {
+  void chrome.runtime.openOptionsPage();
+});
+
 refresh();
