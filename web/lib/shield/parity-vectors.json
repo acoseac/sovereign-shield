@@ -532,5 +532,477 @@
         "ch_ahv"
       ]
     }
+  },
+  {
+    "input": "DE89 3704 0044 0532 0130 00",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "DE\u202600 (22)",
+        "start": 0,
+        "end": 27
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "FR14 2004 1010 0505 0001 3M02 606",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "FR\u202606 (27)",
+        "start": 0,
+        "end": 33
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "NL91 ABNA 0417 1643 00",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "NL\u202600 (18)",
+        "start": 0,
+        "end": 22
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "ES91 2100 0418 4502 0005 1332",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "ES\u202632 (24)",
+        "start": 0,
+        "end": 29
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "GB82 WEST 1234 5698 7654 32",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "GB\u202632 (22)",
+        "start": 0,
+        "end": 27
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "DE89370400440532013001",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "12345678Z",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "es_dni",
+        "marker": "dni:\u20268Z",
+        "start": 0,
+        "end": 9
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "es_dni",
+      "categories": [
+        "es_dni"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "es_dni",
+      "categories": [
+        "es_dni"
+      ]
+    }
+  },
+  {
+    "input": "X1234567L",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "es_dni",
+        "marker": "dni:\u20267L",
+        "start": 0,
+        "end": 9
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "es_dni",
+      "categories": [
+        "es_dni"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "es_dni",
+      "categories": [
+        "es_dni"
+      ]
+    }
+  },
+  {
+    "input": "12345678A",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "185012751230073",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "fr_nir",
+        "marker": "nir:\u202673",
+        "start": 0,
+        "end": 15
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "fr_nir",
+      "categories": [
+        "fr_nir"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "fr_nir",
+      "categories": [
+        "fr_nir"
+      ]
+    }
+  },
+  {
+    "input": "1 85 01 27 512 300 73",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "fr_nir",
+        "marker": "nir:\u202673",
+        "start": 0,
+        "end": 21
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "fr_nir",
+      "categories": [
+        "fr_nir"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "fr_nir",
+      "categories": [
+        "fr_nir"
+      ]
+    }
+  },
+  {
+    "input": "RSSMRA85T10A562S",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "it_cf",
+        "marker": "cf:\u20262S",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "it_cf",
+      "categories": [
+        "it_cf"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "it_cf",
+      "categories": [
+        "it_cf"
+      ]
+    }
+  },
+  {
+    "input": "RSSMRA85T10A562A",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "111222333",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "nl_bsn",
+        "marker": "bsn:\u202633",
+        "start": 0,
+        "end": 9
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "nl_bsn",
+      "categories": [
+        "nl_bsn"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "nl_bsn",
+      "categories": [
+        "nl_bsn"
+      ]
+    }
+  },
+  {
+    "input": "111222334",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "IBAN DE89 3704 0044 0532 0130 00, DNI 12345678Z, CF RSSMRA85T10A562S, BSN 111222333",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "DE\u202600 (22)",
+        "start": 5,
+        "end": 32
+      },
+      {
+        "category": "es_dni",
+        "marker": "dni:\u20268Z",
+        "start": 38,
+        "end": 47
+      },
+      {
+        "category": "it_cf",
+        "marker": "cf:\u20262S",
+        "start": 52,
+        "end": 68
+      },
+      {
+        "category": "nl_bsn",
+        "marker": "bsn:\u202633",
+        "start": 74,
+        "end": 83
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "es_dni,iban,it_cf,nl_bsn",
+      "categories": [
+        "es_dni",
+        "iban",
+        "it_cf",
+        "nl_bsn"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "es_dni,iban,it_cf,nl_bsn",
+      "categories": [
+        "es_dni",
+        "iban",
+        "it_cf",
+        "nl_bsn"
+      ]
+    }
+  },
+  {
+    "input": "My IBAN is CH9300762011623852957. Confirm CH9300762011623852957 please.",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "CH\u202657 (21)",
+        "start": 11,
+        "end": 32
+      },
+      {
+        "category": "iban",
+        "marker": "CH\u202657 (21)",
+        "start": 42,
+        "end": 63
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
+  },
+  {
+    "input": "DE89370400440532013000 THANKS",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "iban",
+        "marker": "DE\u202600 (22)",
+        "start": 0,
+        "end": 22
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "iban",
+      "categories": [
+        "iban"
+      ]
+    }
   }
 ]

@@ -4,7 +4,17 @@
 // Deterministic, offline, no dependencies. This is the SAME shield the sovereign-shield
 // library runs; it just runs in the browser so the demo needs no API keys and no server.
 
-export type PiiCategory = "ch_ahv" | "iban" | "ch_phone" | "email" | "credit_card" | "dob";
+export type PiiCategory =
+  | "ch_ahv"
+  | "iban"
+  | "it_cf"
+  | "es_dni"
+  | "fr_nir"
+  | "nl_bsn"
+  | "ch_phone"
+  | "email"
+  | "credit_card"
+  | "dob";
 
 export interface PiiHit {
   category: PiiCategory;
@@ -71,13 +81,95 @@ export function luhnOk(value: string): boolean {
   return total % 10 === 0;
 }
 
+// ISO 13616 IBAN length per country — paired with mod-97 to stay precise per country.
+const IBAN_LEN: Record<string, number> = {
+  AD: 24, AE: 23, AL: 28, AT: 20, AZ: 28, BA: 20, BE: 16, BG: 22,
+  BH: 22, BR: 29, BY: 28, CH: 21, CR: 22, CY: 28, CZ: 24, DE: 22,
+  DK: 18, DO: 28, EE: 20, EG: 29, ES: 24, FI: 18, FO: 18, FR: 27,
+  GB: 22, GE: 22, GI: 23, GL: 18, GR: 27, GT: 28, HR: 21, HU: 28,
+  IE: 22, IL: 23, IS: 26, IT: 27, JO: 30, KW: 30, KZ: 20, LB: 28,
+  LC: 32, LI: 21, LT: 20, LU: 20, LV: 21, MC: 27, MD: 24, ME: 22,
+  MK: 19, MR: 27, MT: 31, MU: 30, NL: 18, NO: 15, PK: 24, PL: 28,
+  PS: 29, PT: 25, QA: 29, RO: 24, RS: 22, SA: 24, SC: 31, SE: 24,
+  SI: 19, SK: 24, SM: 27, TL: 23, TN: 24, TR: 26, UA: 29, VA: 22,
+  VG: 24, XK: 20,
+};
+
+function ibanOk(value: string): boolean {
+  const iban = value.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  if (iban.length !== IBAN_LEN[iban.slice(0, 2)]) return false;
+  return ibanMod97Ok(iban);
+}
+
+const DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
+
+function esDniOk(value: string): boolean {
+  const s = value.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  const m = /^([XYZ]?)(\d{7,8})([A-Z])$/.exec(s);
+  if (!m) return false;
+  const [, prefix, digits, letter] = m;
+  if (prefix && digits.length !== 7) return false;
+  if (!prefix && digits.length !== 8) return false;
+  const num = Number((prefix ? String("XYZ".indexOf(prefix)) : "") + digits);
+  return DNI_LETTERS[num % 23] === letter;
+}
+
+function frNirOk(value: string): boolean {
+  const s = value.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  if (s.length !== 15 || !/^[12]/.test(s) || !/^\d{2}$/.test(s.slice(13))) return false;
+  const body = s.slice(0, 13).replaceAll("2A", "19").replaceAll("2B", "18");
+  if (!/^\d{13}$/.test(body)) return false;
+  return 97 - (Number(body) % 97) === Number(s.slice(13));
+}
+
+// Codice Fiscale odd/even position conversion tables (odd = 1-indexed positions 1,3,…).
+const CF_ODD: Record<string, number> = {
+  "0": 1, "1": 0, "2": 5, "3": 7, "4": 9, "5": 13, "6": 15, "7": 17, "8": 19, "9": 21,
+  A: 1, B: 0, C: 5, D: 7, E: 9, F: 13, G: 15, H: 17, I: 19, J: 21,
+  K: 2, L: 4, M: 18, N: 20, O: 11, P: 3, Q: 6, R: 8, S: 12, T: 14,
+  U: 16, V: 10, W: 22, X: 25, Y: 24, Z: 23,
+};
+
+function cfEven(c: string): number {
+  return /\d/.test(c) ? Number(c) : (c.codePointAt(0) ?? 0) - 65;
+}
+
+function itCfOk(value: string): boolean {
+  const s = value.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(s)) return false;
+  let total = 0;
+  for (let i = 0; i < 15; i++) total += i % 2 === 0 ? CF_ODD[s[i]] : cfEven(s[i]);
+  return String.fromCodePoint(65 + (total % 26)) === s[15];
+}
+
+function nlBsnOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 9 || d === "000000000") return false;
+  const w = [9, 8, 7, 6, 5, 4, 3, 2, -1];
+  let total = 0;
+  for (let i = 0; i < 9; i++) total += Number(d[i]) * w[i];
+  return total % 11 === 0;
+}
+
 // --- shape regexes (priority order; specific/validated first) ---
 const AHV_RE = /\b756[.  ]?\d{4}[.  ]?\d{4}[.  ]?\d{2}\b/g;
-const IBAN_RE = /\b(?:CH|LI)\d{2}(?:[ ]?[0-9A-Z]){17}\b/gi;
+const IBAN_RE = /\b[A-Z]{2}\d{2}(?:[0-9A-Z]{11,30}|(?: [0-9A-Z]{4}){2,7}(?: [0-9A-Z]{1,3})?)\b/gi;
 const PAN_RE = /\b\d(?:[ -]?\d){12,18}\b/g;
 const PHONE_CH_RE = /(?<!\d)(?:\+41|0041|0)(?:[ .]?\d){9}(?!\d)/g;
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
 const DOB_RE = /\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}\b/g;
+const ES_DNI_RE = /\b[XYZ]?\d{7,8}[A-Z]\b/gi;
+const FR_NIR_RE = /\b[12] ?\d{2} ?\d{2} ?(?:\d{2}|2[AB]) ?\d{3} ?\d{3} ?\d{2}\b/gi;
+const IT_CF_RE = /\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b/gi;
+const NL_BSN_RE = /\b\d{9}\b/g;
+
+// EU IDs render as a short prefix + last two chars (never the raw value).
+const SUFFIX_MASK: Record<string, [string, (r: string) => string]> = {
+  it_cf: ["cf", normRecord],
+  es_dni: ["dni", normRecord],
+  fr_nir: ["nir", onlyDigits],
+  nl_bsn: ["bsn", onlyDigits],
+};
 
 function mask(raw: string, category: PiiCategory): string {
   if (category === "ch_ahv") {
@@ -97,16 +189,22 @@ function mask(raw: string, category: PiiCategory): string {
     const head = local ? local[0] : "";
     return `${head}***@${domain}`;
   }
+  const suffix = SUFFIX_MASK[category];
+  if (suffix) return `${suffix[0]}:…${suffix[1](raw).slice(-2)}`;
   return "dob:XXXX-XX-XX";
 }
 
 type Detector = [PiiCategory, RegExp, ((s: string) => boolean) | null];
 const DETECTORS: Detector[] = [
   ["ch_ahv", AHV_RE, ean13Ok],
-  ["iban", IBAN_RE, ibanMod97Ok],
+  ["iban", IBAN_RE, ibanOk],
+  ["it_cf", IT_CF_RE, itCfOk],
+  ["es_dni", ES_DNI_RE, esDniOk],
+  ["fr_nir", FR_NIR_RE, frNirOk],
   ["ch_phone", PHONE_CH_RE, null],
   ["email", EMAIL_RE, null],
   ["credit_card", PAN_RE, luhnOk],
+  ["nl_bsn", NL_BSN_RE, nlBsnOk],
 ];
 
 interface RawHit {

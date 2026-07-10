@@ -116,7 +116,11 @@ guard never trips on a random 13-digit string. Separators are stripped first, so
 | Category | Identifier | Validation |
 |---|---|---|
 | `ch_ahv` | Swiss AHV / AVS number | EAN-13 check digit |
-| `iban` | CH / LI IBAN | ISO-7064 mod-97 |
+| `iban` | IBAN (any country) | country length + ISO-7064 mod-97 |
+| `it_cf` | Italian Codice Fiscale | check character (mod 26) |
+| `es_dni` | Spanish DNI / NIE | check letter (mod 23) |
+| `fr_nir` | French NIR / social security | check key (mod 97) |
+| `nl_bsn` | Dutch BSN | 11-test |
 | `credit_card` | Card PAN | Luhn |
 | `ch_phone` | Swiss phone | shape only |
 | `email` | Email | shape only |

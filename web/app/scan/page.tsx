@@ -26,8 +26,8 @@ export default function Page() {
 
       <footer className="foot">
         <p>
-          Detection is regex + checksum (AHV via EAN-13, IBAN via mod-97, card via Luhn, plus phone
-          and email) — the{" "}
+          Detection is regex + checksum (Swiss AHV, IBAN worldwide, Italian/Spanish/French/Dutch
+          national IDs, card via Luhn, plus phone and email) — the{" "}
           <a href="https://github.com/acoseac/sovereign-shield" target="_blank" rel="noreferrer">
             sovereign-shield
           </a>{" "}
