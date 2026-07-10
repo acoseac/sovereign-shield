@@ -8,6 +8,10 @@ import { type AuditItem, auditOf, type Entity, tokenizeText } from "@/lib/gatewa
 const CATEGORY_ICON: Record<string, string> = {
   ch_ahv: "🇨🇭",
   iban: "🏦",
+  it_cf: "🇮🇹",
+  es_dni: "🇪🇸",
+  fr_nir: "🇫🇷",
+  nl_bsn: "🇳🇱",
   credit_card: "💳",
   ch_phone: "☎️",
   email: "✉️",

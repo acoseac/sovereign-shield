@@ -47,7 +47,11 @@ Draft a reply to [PERSON_1] ([AHV_1], [IBAN_1])
             <b>Swiss AHV / AVS</b> — matched by shape, validated by its EAN-13 check digit.
           </li>
           <li>
-            <b>IBAN</b> (CH/LI) — validated by ISO-7064 mod-97.
+            <b>IBAN</b> (any country) — validated by its length and ISO-7064 mod-97.
+          </li>
+          <li>
+            <b>EU national IDs</b> — Italian codice fiscale, Spanish DNI/NIE, French NIR, and Dutch
+            BSN, each validated by its own check digit or letter.
           </li>
           <li>
             <b>Card numbers</b> — validated by the Luhn algorithm.
@@ -89,7 +93,8 @@ Draft a reply to [PERSON_1] ([AHV_1], [IBAN_1])
         <h2>Where it stops</h2>
         <ul>
           <li>
-            Structured identifiers (AHV, IBAN, card, phone, email) are the deterministic core.
+            Structured identifiers (AHV, IBAN, EU national IDs, card, phone, email) are the
+            deterministic core.
             Free-form data — names, street addresses — needs a named-entity model; run a small one
             locally alongside, and fail closed on high-risk flows.
           </li>

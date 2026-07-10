@@ -5,8 +5,13 @@ from __future__ import annotations
 from sovereign_shield.pii import (
     PiiCategory,
     _ean13_ok,
+    _es_dni_ok,
+    _fr_nir_ok,
     _iban_mod97_ok,
+    _iban_ok,
+    _it_cf_ok,
     _luhn_ok,
+    _nl_bsn_ok,
     _norm_record,
     detect_pii,
 )
@@ -98,3 +103,69 @@ def test_dob_is_off_by_default() -> None:
 
 def test_clean_text_has_no_hits() -> None:
     assert detect_pii("I can help you open a support ticket instead.") == []
+
+
+# --------------------------------------------------------------------------- #
+# EU identifiers (all synthetic-but-valid)
+# --------------------------------------------------------------------------- #
+IBAN_DE = "DE89 3704 0044 0532 0130 00"
+IBAN_FR = "FR14 2004 1010 0505 0001 3M02 606"
+IBAN_NL = "NL91 ABNA 0417 1643 00"
+IBAN_ES = "ES91 2100 0418 4502 0005 1332"
+DNI_ES = "12345678Z"
+NIE_ES = "X1234567L"
+NIR_FR = "185012751230073"
+CF_IT = "RSSMRA85T10A562S"
+BSN_NL = "111222333"
+
+
+def test_iban_broadened_to_all_countries() -> None:
+    for iban in (IBAN_DE, IBAN_FR, IBAN_NL, IBAN_ES):
+        assert {h.category for h in detect_pii(iban)} == {PiiCategory.IBAN}
+    assert _iban_ok("ZZ89370400440532013000") is False  # unknown country
+    assert _iban_ok("DE8937040044053201300") is False  # wrong length for DE
+    assert detect_pii("DE89370400440532013001") == []  # tampered check digits
+
+
+def test_es_dni_nie() -> None:
+    assert {h.category for h in detect_pii(f"DNI {DNI_ES}")} == {PiiCategory.ES_DNI}
+    assert {h.category for h in detect_pii(NIE_ES)} == {PiiCategory.ES_DNI}
+    assert _es_dni_ok("12345678A") is False  # wrong check letter
+    assert detect_pii("order 12345678A closed") == []
+
+
+def test_fr_nir() -> None:
+    assert {h.category for h in detect_pii(f"NIR {NIR_FR}")} == {PiiCategory.FR_NIR}
+    assert {h.category for h in detect_pii("1 85 01 27 512 300 73")} == {PiiCategory.FR_NIR}
+    assert _fr_nir_ok("185012751230074") is False  # tampered key
+
+
+def test_it_codice_fiscale() -> None:
+    assert {h.category for h in detect_pii(f"CF {CF_IT}")} == {PiiCategory.IT_CF}
+    assert _it_cf_ok("RSSMRA85T10A562A") is False  # wrong check letter
+
+
+def test_nl_bsn_eleven_test() -> None:
+    assert {h.category for h in detect_pii(BSN_NL)} == {PiiCategory.NL_BSN}
+    assert _nl_bsn_ok("111222334") is False  # fails the 11-test
+    assert detect_pii("111222334") == []  # so it is never flagged
+
+
+def test_detects_mixed_eu_document() -> None:
+    doc = f"IBAN {IBAN_DE}, DNI {DNI_ES}, CF {CF_IT}, BSN {BSN_NL}"
+    cats = [h.category for h in detect_pii(doc)]
+    assert cats == [
+        PiiCategory.IBAN,
+        PiiCategory.ES_DNI,
+        PiiCategory.IT_CF,
+        PiiCategory.NL_BSN,
+    ]
+
+
+def test_eu_markers_never_leak_raw() -> None:
+    for text in (IBAN_DE, DNI_ES, NIR_FR, CF_IT, BSN_NL):
+        hits = detect_pii(text)
+        assert hits
+        norm = _norm_record(text)
+        for h in hits:
+            assert norm not in h.marker
