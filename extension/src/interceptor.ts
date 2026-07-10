@@ -157,12 +157,16 @@ proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit |
 } as typeof proto.send;
 
 // ---- fetch hook (ChatGPT, Claude; and anything that migrates to fetch) -----
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof Request) return input.url;
+  return String(input);
+}
+
 const origFetch = window.fetch;
 window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   try {
-    const url =
-      typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
-    const kind = generateKind(url);
+    const kind = generateKind(requestUrl(input));
     if (kind && guardEnabled()) {
       return rewriteFetch(kind, input, init);
     }
@@ -178,9 +182,14 @@ async function rewriteFetch(
   init?: RequestInit,
 ): Promise<Response> {
   try {
-    // Common case: the body is a JSON string in init.body.
-    if (init && typeof init.body === "string") {
-      return origFetch.call(window, input, { ...init, body: rewriteBody(kind, init.body) });
+    // Common case: the body is a JSON string in init.body. Generate calls are
+    // POST; requiring POST both matches reality and satisfies "no body on GET".
+    if (init && typeof init.body === "string" && (init.method ?? "").toUpperCase() === "POST") {
+      return origFetch.call(window, input, {
+        ...init,
+        method: "POST",
+        body: rewriteBody(kind, init.body),
+      });
     }
     // Fallback: the body rides on a Request object.
     if (input instanceof Request) {
