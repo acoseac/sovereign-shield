@@ -116,9 +116,8 @@ function esDniOk(value: string): boolean {
 
 function frNirOk(value: string): boolean {
   const s = value.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
-  if (s.length !== 15 || (s[0] !== "1" && s[0] !== "2") || !/^\d{2}$/.test(s.slice(13)))
-    return false;
-  const body = s.slice(0, 13).replace(/2A/g, "19").replace(/2B/g, "18");
+  if (s.length !== 15 || !/^[12]/.test(s) || !/^\d{2}$/.test(s.slice(13))) return false;
+  const body = s.slice(0, 13).replaceAll("2A", "19").replaceAll("2B", "18");
   if (!/^\d{13}$/.test(body)) return false;
   return 97 - (Number(body) % 97) === Number(s.slice(13));
 }
@@ -132,7 +131,7 @@ const CF_ODD: Record<string, number> = {
 };
 
 function cfEven(c: string): number {
-  return /\d/.test(c) ? Number(c) : c.charCodeAt(0) - 65;
+  return /\d/.test(c) ? Number(c) : (c.codePointAt(0) ?? 0) - 65;
 }
 
 function itCfOk(value: string): boolean {
@@ -140,7 +139,7 @@ function itCfOk(value: string): boolean {
   if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(s)) return false;
   let total = 0;
   for (let i = 0; i < 15; i++) total += i % 2 === 0 ? CF_ODD[s[i]] : cfEven(s[i]);
-  return String.fromCharCode(65 + (total % 26)) === s[15];
+  return String.fromCodePoint(65 + (total % 26)) === s[15];
 }
 
 function nlBsnOk(value: string): boolean {
@@ -160,9 +159,17 @@ const PHONE_CH_RE = /(?<!\d)(?:\+41|0041|0)(?:[ .]?\d){9}(?!\d)/g;
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
 const DOB_RE = /\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}\b/g;
 const ES_DNI_RE = /\b[XYZ]?\d{7,8}[A-Z]\b/gi;
-const FR_NIR_RE = /\b[12][ ]?\d{2}[ ]?\d{2}[ ]?(?:\d{2}|2[AB])[ ]?\d{3}[ ]?\d{3}[ ]?\d{2}\b/gi;
+const FR_NIR_RE = /\b[12] ?\d{2} ?\d{2} ?(?:\d{2}|2[AB]) ?\d{3} ?\d{3} ?\d{2}\b/gi;
 const IT_CF_RE = /\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b/gi;
 const NL_BSN_RE = /\b\d{9}\b/g;
+
+// EU IDs render as a short prefix + last two chars (never the raw value).
+const SUFFIX_MASK: Record<string, [string, (r: string) => string]> = {
+  it_cf: ["cf", normRecord],
+  es_dni: ["dni", normRecord],
+  fr_nir: ["nir", onlyDigits],
+  nl_bsn: ["bsn", onlyDigits],
+};
 
 function mask(raw: string, category: PiiCategory): string {
   if (category === "ch_ahv") {
@@ -182,10 +189,8 @@ function mask(raw: string, category: PiiCategory): string {
     const head = local ? local[0] : "";
     return `${head}***@${domain}`;
   }
-  if (category === "it_cf") return `cf:…${normRecord(raw).slice(-2)}`;
-  if (category === "es_dni") return `dni:…${normRecord(raw).slice(-2)}`;
-  if (category === "fr_nir") return `nir:…${onlyDigits(raw).slice(-2)}`;
-  if (category === "nl_bsn") return `bsn:…${onlyDigits(raw).slice(-2)}`;
+  const suffix = SUFFIX_MASK[category];
+  if (suffix) return `${suffix[0]}:…${suffix[1](raw).slice(-2)}`;
   return "dob:XXXX-XX-XX";
 }
 

@@ -65,6 +65,10 @@ def _digits(s: str) -> str:
     return re.sub(r"\D", "", s)
 
 
+# Strip everything but alphanumerics (separator-robust normalisation for checksums).
+_STRIP_RE = re.compile(r"[^0-9A-Za-z]")
+
+
 def _ean13_ok(value: str) -> bool:
     """Validate the EAN-13 / GTIN check digit used by the 13-digit AHV number.
 
@@ -81,7 +85,7 @@ def _ean13_ok(value: str) -> bool:
 def _iban_mod97_ok(value: str) -> bool:
     """ISO 7064 mod-97-10: move the first four chars to the end, map letters
     A-Z to 10-35, interpret as an integer, valid iff ``mod 97 == 1``."""
-    iban = re.sub(r"[^0-9A-Za-z]", "", value).upper()
+    iban = _STRIP_RE.sub("", value).upper()
     if len(iban) < 5:
         return False
     rearranged = iban[4:] + iban[:4]
@@ -125,7 +129,7 @@ _IBAN_LEN: dict[str, int] = {
 
 def _iban_ok(value: str) -> bool:
     """IBAN: a known country code, that country's exact length, and ISO-7064 mod-97."""
-    iban = re.sub(r"[^0-9A-Za-z]", "", value).upper()
+    iban = _STRIP_RE.sub("", value).upper()
     if len(iban) != _IBAN_LEN.get(iban[:2], -1):
         return False
     return _iban_mod97_ok(iban)
@@ -136,7 +140,7 @@ _DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
 
 def _es_dni_ok(value: str) -> bool:
     """Spanish DNI/NIE: an 8-digit body (NIE prefix X/Y/Z → 0/1/2) plus a mod-23 letter."""
-    s = re.sub(r"[^0-9A-Za-z]", "", value).upper()
+    s = _STRIP_RE.sub("", value).upper()
     m = re.fullmatch(r"([XYZ]?)(\d{7,8})([A-Z])", s)
     if not m:
         return False
@@ -154,7 +158,7 @@ def _fr_nir_ok(value: str) -> bool:
 
     Corsica departments 2A / 2B are substituted with 19 / 18 before the modulus.
     """
-    s = re.sub(r"[^0-9A-Za-z]", "", value).upper()
+    s = _STRIP_RE.sub("", value).upper()
     if len(s) != 15 or s[0] not in "12" or not s[13:].isdigit():
         return False
     body = s[:13].replace("2A", "19").replace("2B", "18")
@@ -179,7 +183,7 @@ def _cf_even(c: str) -> int:
 def _it_cf_ok(value: str) -> bool:
     """Italian Codice Fiscale: 16 alphanumerics; the final char is a mod-26 check letter
     over the first 15 (odd-position and even-position conversion tables)."""
-    s = re.sub(r"[^0-9A-Za-z]", "", value).upper()
+    s = _STRIP_RE.sub("", value).upper()
     if not re.fullmatch(r"[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]", s):
         return False
     total = sum(_CF_ODD[c] if i % 2 == 0 else _cf_even(c) for i, c in enumerate(s[:15]))
@@ -201,7 +205,7 @@ def _norm_record(s: str) -> str:
     So ``756.1234.5678.97`` and ``756 1234 5678 97`` compare equal — the fix for
     the strict, separator-sensitive :func:`sovereign_shield.leak.detect_exact_leak`.
     """
-    return re.sub(r"[^0-9A-Za-z]", "", s).upper()
+    return _STRIP_RE.sub("", s).upper()
 
 
 # --------------------------------------------------------------------------- #
@@ -226,7 +230,7 @@ _DOB_RE = re.compile(r"\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](
 _ES_DNI_RE = re.compile(r"\b[XYZ]?\d{7,8}[A-Z]\b", re.IGNORECASE)
 # French NIR / INSEE: 15 chars (Corsica department 2A/2B allowed), spacing tolerated.
 _FR_NIR_RE = re.compile(
-    r"\b[12][ ]?\d{2}[ ]?\d{2}[ ]?(?:\d{2}|2[AB])[ ]?\d{3}[ ]?\d{3}[ ]?\d{2}\b", re.IGNORECASE
+    r"\b[12] ?\d{2} ?\d{2} ?(?:\d{2}|2[AB]) ?\d{3} ?\d{3} ?\d{2}\b", re.IGNORECASE
 )
 # Italian Codice Fiscale: 16 alphanumerics in the standard (non-omocodia) shape.
 _IT_CF_RE = re.compile(r"\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b", re.IGNORECASE)
