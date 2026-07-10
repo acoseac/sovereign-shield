@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sovereign Shield</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      body {
+        width: 260px;
+        margin: 0;
+        padding: 16px;
+        line-height: 1.45;
+      }
+      h1 {
+        font-size: 14px;
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .count {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 12px 0 2px;
+      }
+      .muted {
+        color: color-mix(in srgb, currentColor 55%, transparent);
+        font-size: 12px;
+        margin: 2px 0 0;
+      }
+      switch,
+      input[type="checkbox"] {
+        width: 34px;
+        height: 20px;
+        cursor: pointer;
+      }
+      hr {
+        border: none;
+        border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+        margin: 14px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🛡️ Sovereign Shield</h1>
+    <div class="row">
+      <label for="toggle">Guard this Gemini tab</label>
+      <input type="checkbox" id="toggle" />
+    </div>
+    <hr />
+    <div class="count"><span id="kept">0</span></div>
+    <p class="muted">identifiers kept local this conversation</p>
+    <p class="muted" id="status"></p>
+    <script src="popup.js"></script>
+  </body>
+</html>

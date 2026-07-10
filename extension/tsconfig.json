@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "types": ["chrome"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src"]
+}
