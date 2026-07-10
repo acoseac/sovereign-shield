@@ -49,6 +49,24 @@
         border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
         margin: 14px 0;
       }
+      .link {
+        display: block;
+        width: 100%;
+        margin-top: 14px;
+        font: inherit;
+        font-size: 12px;
+        text-align: center;
+        background: transparent;
+        border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+        border-radius: 8px;
+        padding: 7px;
+        color: inherit;
+        cursor: pointer;
+      }
+      .link:hover {
+        border-color: #0e7c66;
+        color: #0e7c66;
+      }
     </style>
   </head>
   <body>
@@ -61,6 +79,7 @@
     <div class="count"><span id="kept">0</span></div>
     <p class="muted">identifiers kept local this conversation</p>
     <p class="muted" id="status"></p>
+    <button id="opts" class="link">Settings &amp; activity log ↗</button>
     <script src="popup.js"></script>
   </body>
 </html>

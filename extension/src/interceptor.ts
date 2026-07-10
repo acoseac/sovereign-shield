@@ -43,16 +43,25 @@ function rewriteBody(body: string): string {
   } catch {
     return body; // not the JSON envelope we expected — leave it alone
   }
-  params.set("f.req", JSON.stringify(walk(parsed)));
+  const allowed = allowedCategories();
+  params.set("f.req", JSON.stringify(walk(parsed, allowed)));
   return params.toString();
 }
 
-function walk(node: unknown): unknown {
-  if (typeof node === "string") return session.tokenize(node);
-  if (Array.isArray(node)) return node.map(walk);
+// Which categories the user has left enabled (bridge writes data-ss-cats from
+// storage). Absent attribute => tokenize every category.
+function allowedCategories(): ReadonlySet<string> | undefined {
+  const raw = document.documentElement.dataset.ssCats;
+  if (raw === undefined) return undefined;
+  return new Set(raw.split(",").filter(Boolean));
+}
+
+function walk(node: unknown, allowed: ReadonlySet<string> | undefined): unknown {
+  if (typeof node === "string") return session.tokenize(node, allowed);
+  if (Array.isArray(node)) return node.map((n) => walk(n, allowed));
   if (node && typeof node === "object") {
     const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(node)) out[key] = walk(value);
+    for (const [key, value] of Object.entries(node)) out[key] = walk(value, allowed);
     return out;
   }
   return node;
@@ -120,6 +129,16 @@ proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit |
   }
   return origSend.call(this, body ?? null);
 } as typeof proto.send;
+
+// Report each newly-redacted identifier to the bridge (ISOLATED world) for the
+// activity log + badge. We send only the category — never the value.
+session.onMint = (category) => {
+  try {
+    window.postMessage({ source: "ss-guard", category }, location.origin);
+  } catch {
+    /* best-effort telemetry; never block the guard */
+  }
+};
 
 installDomRehydrator();
 console.debug(`[sovereign-shield] Gemini guard installed (XHR / StreamGenerate) build ${BUILD}.`);

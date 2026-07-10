@@ -1,14 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "Sovereign Shield — Gemini guard (MVP)",
-  "version": "0.0.1",
+  "name": "Sovereign Shield — Gemini guard",
+  "version": "0.1.0",
   "description": "Redacts Swiss/EU identifiers before they reach Gemini and restores them in the reply. 100% local — nothing is uploaded.",
   "permissions": ["storage"],
   "host_permissions": ["https://gemini.google.com/*"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Sovereign Shield"
+    "default_title": "Sovereign Shield",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://gemini.google.com/*"],

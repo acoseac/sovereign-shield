@@ -26,13 +26,20 @@ export class Session {
   private readonly tokenValue = new Map<string, string>();
   private readonly counters: Record<string, number> = {};
 
-  /** Replace every checksum-valid identifier in `text` with a stable placeholder. */
-  tokenize(text: string): string {
+  /** Fired once per newly-minted token (distinct value), with its category only. */
+  onMint?: (category: string) => void;
+
+  /**
+   * Replace every checksum-valid identifier in `text` with a stable placeholder.
+   * If `allowed` is given, only those categories are tokenized; the rest pass through.
+   */
+  tokenize(text: string, allowed?: ReadonlySet<string>): string {
     const hits = detectPii(text);
     if (hits.length === 0) return text;
     // Replace back-to-front so earlier offsets stay valid as we splice.
     let out = text;
     for (const h of [...hits].sort((a, b) => b.start - a.start)) {
+      if (allowed && !allowed.has(h.category)) continue;
       const value = text.slice(h.start, h.end);
       let token = this.valueToken.get(value);
       if (!token) {
@@ -41,6 +48,7 @@ export class Session {
         token = `[${prefix}_${this.counters[prefix]}]`;
         this.valueToken.set(value, token);
         this.tokenValue.set(token, value);
+        this.onMint?.(h.category);
       }
       out = out.slice(0, h.start) + token + out.slice(h.end);
     }
