@@ -11,6 +11,17 @@ export type PiiCategory =
   | "es_dni"
   | "fr_nir"
   | "nl_bsn"
+  | "de_steuerid"
+  | "pl_pesel"
+  | "pt_nif"
+  | "be_nrn"
+  | "uk_nhs"
+  | "br_cpf"
+  | "br_cnpj"
+  | "za_id"
+  | "cn_resident"
+  | "ca_sin"
+  | "in_aadhaar"
   | "ch_phone"
   | "email"
   | "credit_card"
@@ -151,6 +162,155 @@ function nlBsnOk(value: string): boolean {
   return total % 11 === 0;
 }
 
+// --- EU / UK / global pack (same shape-then-checksum contract) ---
+const MDAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function luhnCore(d: string): boolean {
+  let total = 0;
+  const parity = d.length % 2;
+  for (let i = 0; i < d.length; i++) {
+    let n = Number(d[i]);
+    if (i % 2 === parity) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    total += n;
+  }
+  return total % 10 === 0;
+}
+
+function deSteueridOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 11 || d[0] === "0") return false;
+  let product = 10;
+  for (let i = 0; i < 10; i++) {
+    let s = (Number(d[i]) + product) % 10;
+    if (s === 0) s = 10;
+    product = (s * 2) % 11;
+  }
+  return (11 - product) % 10 === Number(d[10]);
+}
+
+function plPeselOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 11) return false;
+  const month = Number(d.slice(2, 4)) % 20;
+  const day = Number(d.slice(4, 6));
+  if (!(month >= 1 && month <= 12 && day >= 1 && day <= MDAYS[month - 1])) return false;
+  const w = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3];
+  let total = 0;
+  for (let i = 0; i < 10; i++) total += Number(d[i]) * w[i];
+  return (10 - (total % 10)) % 10 === Number(d[10]);
+}
+
+function ptNifOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 9 || !"1235689".includes(d[0])) return false;
+  let total = 0;
+  for (let i = 0; i < 8; i++) total += Number(d[i]) * (9 - i);
+  const check = 11 - (total % 11);
+  return (check >= 10 ? 0 : check) === Number(d[8]);
+}
+
+function beNrnOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 11 || Number(d.slice(2, 4)) > 12 || Number(d.slice(4, 6)) > 31) return false;
+  const body = Number(d.slice(0, 9));
+  const check = Number(d.slice(9));
+  return 97 - (body % 97) === check || 97 - ((2000000000 + body) % 97) === check;
+}
+
+function ukNhsOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 10) return false;
+  let total = 0;
+  for (let i = 0; i < 9; i++) total += Number(d[i]) * (10 - i);
+  let check = 11 - (total % 11);
+  if (check === 11) check = 0;
+  return check !== 10 && check === Number(d[9]);
+}
+
+function brCpfOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 11 || d === d[0].repeat(11)) return false;
+  for (const n of [9, 10]) {
+    let total = 0;
+    for (let i = 0; i < n; i++) total += Number(d[i]) * (n + 1 - i);
+    const check = ((total * 10) % 11) % 10;
+    if (check !== Number(d[n])) return false;
+  }
+  return true;
+}
+
+function brCnpjOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 14 || d === d[0].repeat(14)) return false;
+  const weightSets: [number[], number][] = [
+    [[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], 12],
+    [[6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], 13],
+  ];
+  for (const [weights, pos] of weightSets) {
+    let total = 0;
+    for (let i = 0; i < pos; i++) total += Number(d[i]) * weights[i];
+    const r = total % 11;
+    if ((r < 2 ? 0 : 11 - r) !== Number(d[pos])) return false;
+  }
+  return true;
+}
+
+function zaIdOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 13) return false;
+  const month = Number(d.slice(2, 4));
+  const day = Number(d.slice(4, 6));
+  if (!(month >= 1 && month <= 12 && day >= 1 && day <= MDAYS[month - 1])) return false;
+  return luhnCore(d);
+}
+
+function cnIdOk(value: string): boolean {
+  const s = normRecord(value);
+  if (!/^\d{17}[\dX]$/.test(s)) return false;
+  const year = Number(s.slice(6, 10));
+  const month = Number(s.slice(10, 12));
+  const day = Number(s.slice(12, 14));
+  if (!(year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= MDAYS[month - 1]))
+    return false;
+  const w = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+  let total = 0;
+  for (let i = 0; i < 17; i++) total += Number(s[i]) * w[i];
+  return "10X98765432"[total % 11] === s[17];
+}
+
+function caSinOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 9 || d[0] === "0") return false;
+  return luhnCore(d);
+}
+
+// Verhoeff dihedral-group tables for the Aadhaar check digit.
+const VERHOEFF_D = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+  [2, 3, 4, 0, 1, 7, 8, 9, 5, 6], [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+  [4, 0, 1, 2, 3, 9, 5, 6, 7, 8], [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+  [6, 5, 9, 8, 7, 1, 0, 4, 3, 2], [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+  [8, 7, 6, 5, 9, 3, 2, 1, 0, 4], [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+];
+const VERHOEFF_P = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+  [5, 8, 0, 3, 7, 9, 6, 1, 4, 2], [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+  [9, 4, 5, 3, 1, 2, 6, 8, 7, 0], [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+  [2, 7, 9, 3, 8, 0, 6, 4, 1, 5], [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
+];
+
+function inAadhaarOk(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 12 || d[0] === "0" || d[0] === "1") return false;
+  let c = 0;
+  const rev = [...d].reverse();
+  for (let i = 0; i < rev.length; i++) c = VERHOEFF_D[c][VERHOEFF_P[i % 8][Number(rev[i])]];
+  return c === 0;
+}
+
 // --- shape regexes (priority order; specific/validated first) ---
 const AHV_RE = /\b756[.  ]?\d{4}[.  ]?\d{4}[.  ]?\d{2}\b/g;
 const IBAN_RE = /\b[A-Z]{2}\d{2}(?:[0-9A-Z]{11,30}|(?: [0-9A-Z]{4}){2,7}(?: [0-9A-Z]{1,3})?)\b/gi;
@@ -162,6 +322,18 @@ const ES_DNI_RE = /\b[XYZ]?\d{7,8}[A-Z]\b/gi;
 const FR_NIR_RE = /\b[12] ?\d{2} ?\d{2} ?(?:\d{2}|2[AB]) ?\d{3} ?\d{3} ?\d{2}\b/gi;
 const IT_CF_RE = /\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b/gi;
 const NL_BSN_RE = /\b\d{9}\b/g;
+// EU / UK / global pack — common separators tolerated; each closed by its checksum.
+const DE_STEUERID_RE = /\b\d{2} ?\d{3} ?\d{3} ?\d{3}\b/g;
+const PL_PESEL_RE = /\b\d{11}\b/g;
+const PT_NIF_RE = /\b\d{3} ?\d{3} ?\d{3}\b/g;
+const BE_NRN_RE = /\b\d{2}[. ]?\d{2}[. ]?\d{2}[- ]?\d{3}[. ]?\d{2}\b/g;
+const UK_NHS_RE = /\b\d{3} ?\d{3} ?\d{4}\b/g;
+const BR_CPF_RE = /\b\d{3}[. ]?\d{3}[. ]?\d{3}[- ]?\d{2}\b/g;
+const BR_CNPJ_RE = /\b\d{2}[. ]?\d{3}[. ]?\d{3}[/ ]?\d{4}[- ]?\d{2}\b/g;
+const ZA_ID_RE = /\b\d{13}\b/g;
+const CN_ID_RE = /\b\d{17}[\dXx]\b/g;
+const CA_SIN_RE = /\b\d{3}[ -]?\d{3}[ -]?\d{3}\b/g;
+const IN_AADHAAR_RE = /\b\d{4} ?\d{4} ?\d{4}\b/g;
 
 // EU IDs render as a short prefix + last two chars (never the raw value).
 const SUFFIX_MASK: Record<string, [string, (r: string) => string]> = {
@@ -169,6 +341,17 @@ const SUFFIX_MASK: Record<string, [string, (r: string) => string]> = {
   es_dni: ["dni", normRecord],
   fr_nir: ["nir", onlyDigits],
   nl_bsn: ["bsn", onlyDigits],
+  de_steuerid: ["steuerid", onlyDigits],
+  pl_pesel: ["pesel", onlyDigits],
+  pt_nif: ["nif", onlyDigits],
+  be_nrn: ["nrn", onlyDigits],
+  uk_nhs: ["nhs", onlyDigits],
+  br_cpf: ["cpf", onlyDigits],
+  br_cnpj: ["cnpj", onlyDigits],
+  za_id: ["zaid", onlyDigits],
+  cn_resident: ["cnid", normRecord],
+  ca_sin: ["sin", onlyDigits],
+  in_aadhaar: ["aadhaar", onlyDigits],
 };
 
 function mask(raw: string, category: PiiCategory): string {
@@ -201,10 +384,21 @@ const DETECTORS: Detector[] = [
   ["it_cf", IT_CF_RE, itCfOk],
   ["es_dni", ES_DNI_RE, esDniOk],
   ["fr_nir", FR_NIR_RE, frNirOk],
+  ["be_nrn", BE_NRN_RE, beNrnOk],
+  ["pl_pesel", PL_PESEL_RE, plPeselOk],
+  ["br_cpf", BR_CPF_RE, brCpfOk],
+  ["br_cnpj", BR_CNPJ_RE, brCnpjOk],
+  ["za_id", ZA_ID_RE, zaIdOk],
+  ["cn_resident", CN_ID_RE, cnIdOk],
+  ["de_steuerid", DE_STEUERID_RE, deSteueridOk],
+  ["pt_nif", PT_NIF_RE, ptNifOk],
   ["ch_phone", PHONE_CH_RE, null],
   ["email", EMAIL_RE, null],
   ["credit_card", PAN_RE, luhnOk],
+  ["uk_nhs", UK_NHS_RE, ukNhsOk],
+  ["in_aadhaar", IN_AADHAAR_RE, inAadhaarOk],
   ["nl_bsn", NL_BSN_RE, nlBsnOk],
+  ["ca_sin", CA_SIN_RE, caSinOk],
 ];
 
 interface RawHit {

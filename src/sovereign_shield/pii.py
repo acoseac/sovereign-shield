@@ -40,6 +40,17 @@ class PiiCategory(StrEnum):
     ES_DNI = "es_dni"  # Spanish DNI / NIE
     FR_NIR = "fr_nir"  # French NIR (INSEE social-security no.)
     NL_BSN = "nl_bsn"  # Dutch BSN (burgerservicenummer)
+    DE_STEUERID = "de_steuerid"  # German tax ID (Steuer-IdNr)
+    PL_PESEL = "pl_pesel"  # Polish PESEL
+    PT_NIF = "pt_nif"  # Portuguese NIF (tax)
+    BE_NRN = "be_nrn"  # Belgian National Register Number
+    UK_NHS = "uk_nhs"  # UK NHS number
+    BR_CPF = "br_cpf"  # Brazilian CPF
+    BR_CNPJ = "br_cnpj"  # Brazilian CNPJ (company)
+    ZA_ID = "za_id"  # South African ID number
+    CN_ID = "cn_resident"  # Chinese resident identity card
+    CA_SIN = "ca_sin"  # Canadian Social Insurance Number
+    IN_AADHAAR = "in_aadhaar"  # Indian Aadhaar
     DOB = "dob"  # date of birth — off by default (high false-positive)
 
 
@@ -199,6 +210,169 @@ def _nl_bsn_ok(value: str) -> bool:
     return total % 11 == 0
 
 
+# --------------------------------------------------------------------------- #
+# EU / UK / global pack. Same shape-then-checksum contract; IDs that embed a
+# birth date validate it too (a real check on top of the digit checksum).
+# --------------------------------------------------------------------------- #
+_MDAYS = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)  # lenient (day-of-month) check
+
+
+def _luhn_core(d: str) -> bool:
+    """Length-agnostic Luhn (the card detector keeps its own 13-19 length gate)."""
+    total, parity = 0, len(d) % 2
+    for i, ch in enumerate(d):
+        n = int(ch)
+        if i % 2 == parity:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+    return total % 10 == 0
+
+
+def _de_steuerid_ok(value: str) -> bool:
+    """German tax IdNr: 11 digits, ISO 7064 MOD 11,10 check digit; never leads with 0."""
+    d = _digits(value)
+    if len(d) != 11 or d[0] == "0":
+        return False
+    product = 10
+    for c in d[:10]:
+        s = (int(c) + product) % 10 or 10
+        product = (s * 2) % 11
+    return (11 - product) % 10 == int(d[10])
+
+
+def _pl_pesel_ok(value: str) -> bool:
+    """Polish PESEL: 11 digits, embedded birth date (month carries the century) + mod-10."""
+    d = _digits(value)
+    if len(d) != 11:
+        return False
+    month, day = int(d[2:4]) % 20, int(d[4:6])
+    if not (1 <= month <= 12 and 1 <= day <= _MDAYS[month - 1]):
+        return False
+    w = (1, 3, 7, 9, 1, 3, 7, 9, 1, 3)
+    total = sum(int(c) * wt for c, wt in zip(d[:10], w, strict=True))
+    return (10 - total % 10) % 10 == int(d[10])
+
+
+def _pt_nif_ok(value: str) -> bool:
+    """Portuguese NIF: 9 digits, a valid leading type digit and a mod-11 check digit."""
+    d = _digits(value)
+    if len(d) != 9 or d[0] not in "1235689":
+        return False
+    total = sum(int(c) * (9 - i) for i, c in enumerate(d[:8]))
+    check = 11 - total % 11
+    return (0 if check >= 10 else check) == int(d[8])
+
+
+def _be_nrn_ok(value: str) -> bool:
+    """Belgian National Register No: 11 digits, birth date + mod-97 of the first 9
+    (with a +2000000000 adjustment for people born in/after 2000)."""
+    d = _digits(value)
+    if len(d) != 11 or int(d[2:4]) > 12 or int(d[4:6]) > 31:
+        return False
+    body, check = int(d[:9]), int(d[9:])
+    return 97 - body % 97 == check or 97 - (2_000_000_000 + body) % 97 == check
+
+
+def _uk_nhs_ok(value: str) -> bool:
+    """UK NHS number: 10 digits, weighted mod-11 (weights 10..2); check 11->0, 10 invalid."""
+    d = _digits(value)
+    if len(d) != 10:
+        return False
+    total = sum(int(c) * (10 - i) for i, c in enumerate(d[:9]))
+    check = 11 - total % 11
+    if check == 11:
+        check = 0
+    return check != 10 and check == int(d[9])
+
+
+def _br_cpf_ok(value: str) -> bool:
+    """Brazilian CPF: 11 digits, two mod-11 check digits; rejects all-identical."""
+    d = _digits(value)
+    if len(d) != 11 or d == d[0] * 11:
+        return False
+    for n in (9, 10):
+        total = sum(int(d[i]) * (n + 1 - i) for i in range(n))
+        check = (total * 10) % 11 % 10
+        if check != int(d[n]):
+            return False
+    return True
+
+
+def _br_cnpj_ok(value: str) -> bool:
+    """Brazilian CNPJ: 14 digits, two mod-11 check digits (weights cycle 2..9)."""
+    d = _digits(value)
+    if len(d) != 14 or d == d[0] * 14:
+        return False
+    w1 = (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
+    w2 = (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
+    for weights, pos in ((w1, 12), (w2, 13)):
+        r = sum(int(d[i]) * weights[i] for i in range(pos)) % 11
+        if (0 if r < 2 else 11 - r) != int(d[pos]):
+            return False
+    return True
+
+
+def _za_id_ok(value: str) -> bool:
+    """South African ID: 13 digits, embedded birth date (YYMMDD) + Luhn over all 13."""
+    d = _digits(value)
+    if len(d) != 13:
+        return False
+    month, day = int(d[2:4]), int(d[4:6])
+    if not (1 <= month <= 12 and 1 <= day <= _MDAYS[month - 1]):
+        return False
+    return _luhn_core(d)
+
+
+def _cn_id_ok(value: str) -> bool:
+    """Chinese resident ID: 18 chars (last may be X), embedded YYYYMMDD + ISO 7064 mod-11,2."""
+    s = _STRIP_RE.sub("", value).upper()
+    if not re.fullmatch(r"\d{17}[\dX]", s):
+        return False
+    year, month, day = int(s[6:10]), int(s[10:12]), int(s[12:14])
+    if not (1900 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= _MDAYS[month - 1]):
+        return False
+    w = (7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2)
+    total = sum(int(c) * wt for c, wt in zip(s[:17], w, strict=True))
+    return "10X98765432"[total % 11] == s[17]
+
+
+def _ca_sin_ok(value: str) -> bool:
+    """Canadian SIN: 9 digits, Luhn; never leads with 0."""
+    d = _digits(value)
+    if len(d) != 9 or d[0] == "0":
+        return False
+    return _luhn_core(d)
+
+
+# Verhoeff dihedral-group tables for the Aadhaar check digit.
+_VERHOEFF_D = (
+    (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), (1, 2, 3, 4, 0, 6, 7, 8, 9, 5),
+    (2, 3, 4, 0, 1, 7, 8, 9, 5, 6), (3, 4, 0, 1, 2, 8, 9, 5, 6, 7),
+    (4, 0, 1, 2, 3, 9, 5, 6, 7, 8), (5, 9, 8, 7, 6, 0, 4, 3, 2, 1),
+    (6, 5, 9, 8, 7, 1, 0, 4, 3, 2), (7, 6, 5, 9, 8, 2, 1, 0, 4, 3),
+    (8, 7, 6, 5, 9, 3, 2, 1, 0, 4), (9, 8, 7, 6, 5, 4, 3, 2, 1, 0),
+)  # fmt: skip
+_VERHOEFF_P = (
+    (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), (1, 5, 7, 6, 2, 8, 3, 0, 9, 4),
+    (5, 8, 0, 3, 7, 9, 6, 1, 4, 2), (8, 9, 1, 6, 0, 4, 3, 5, 2, 7),
+    (9, 4, 5, 3, 1, 2, 6, 8, 7, 0), (4, 2, 8, 6, 5, 7, 3, 9, 0, 1),
+    (2, 7, 9, 3, 8, 0, 6, 4, 1, 5), (7, 0, 4, 6, 9, 1, 3, 2, 5, 8),
+)  # fmt: skip
+
+
+def _in_aadhaar_ok(value: str) -> bool:
+    """Indian Aadhaar: 12 digits, first digit 2-9, Verhoeff checksum."""
+    d = _digits(value)
+    if len(d) != 12 or d[0] in "01":
+        return False
+    c = 0
+    for i, ch in enumerate(reversed(d)):
+        c = _VERHOEFF_D[c][_VERHOEFF_P[i % 8][int(ch)]]
+    return c == 0
+
+
 def _norm_record(s: str) -> str:
     """Whitespace/separator-robust comparator: keep only alphanumerics, upper.
 
@@ -236,6 +410,18 @@ _FR_NIR_RE = re.compile(
 _IT_CF_RE = re.compile(r"\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b", re.IGNORECASE)
 # Dutch BSN: 9 bare digits (validated by the 11-test — the false-positive filter).
 _NL_BSN_RE = re.compile(r"\b\d{9}\b")
+# EU / UK / global pack — common separators tolerated; each closed by its checksum.
+_DE_STEUERID_RE = re.compile(r"\b\d{2} ?\d{3} ?\d{3} ?\d{3}\b")  # 11 digits, 2-3-3-3
+_PL_PESEL_RE = re.compile(r"\b\d{11}\b")
+_PT_NIF_RE = re.compile(r"\b\d{3} ?\d{3} ?\d{3}\b")  # 9 digits
+_BE_NRN_RE = re.compile(r"\b\d{2}[. ]?\d{2}[. ]?\d{2}[- ]?\d{3}[. ]?\d{2}\b")  # 11 digits
+_UK_NHS_RE = re.compile(r"\b\d{3} ?\d{3} ?\d{4}\b")  # 10 digits, 3-3-4
+_BR_CPF_RE = re.compile(r"\b\d{3}[. ]?\d{3}[. ]?\d{3}[- ]?\d{2}\b")  # 11 digits
+_BR_CNPJ_RE = re.compile(r"\b\d{2}[. ]?\d{3}[. ]?\d{3}[/ ]?\d{4}[- ]?\d{2}\b")  # 14 digits
+_ZA_ID_RE = re.compile(r"\b\d{13}\b")
+_CN_ID_RE = re.compile(r"\b\d{17}[\dXx]\b")  # 18 chars, checksum may be X
+_CA_SIN_RE = re.compile(r"\b\d{3}[ -]?\d{3}[ -]?\d{3}\b")  # 9 digits
+_IN_AADHAAR_RE = re.compile(r"\b\d{4} ?\d{4} ?\d{4}\b")  # 12 digits, 4-4-4
 
 
 def _mask(raw: str, category: PiiCategory) -> str:
@@ -263,6 +449,28 @@ def _mask(raw: str, category: PiiCategory) -> str:
         return f"nir:…{_digits(raw)[-2:]}"
     if category is PiiCategory.NL_BSN:
         return f"bsn:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.DE_STEUERID:
+        return f"steuerid:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.PL_PESEL:
+        return f"pesel:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.PT_NIF:
+        return f"nif:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.BE_NRN:
+        return f"nrn:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.UK_NHS:
+        return f"nhs:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.BR_CPF:
+        return f"cpf:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.BR_CNPJ:
+        return f"cnpj:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.ZA_ID:
+        return f"zaid:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.CN_ID:
+        return f"cnid:…{_norm_record(raw)[-2:]}"
+    if category is PiiCategory.CA_SIN:
+        return f"sin:…{_digits(raw)[-2:]}"
+    if category is PiiCategory.IN_AADHAAR:
+        return f"aadhaar:…{_digits(raw)[-2:]}"
     return "dob:XXXX-XX-XX"
 
 
@@ -273,10 +481,25 @@ _DETECTORS: list[tuple[PiiCategory, re.Pattern[str], object]] = [
     (PiiCategory.IT_CF, _IT_CF_RE, _it_cf_ok),
     (PiiCategory.ES_DNI, _ES_DNI_RE, _es_dni_ok),
     (PiiCategory.FR_NIR, _FR_NIR_RE, _fr_nir_ok),
+    # strong pack (date / mod-97 / double check digit) — safe to run early.
+    (PiiCategory.BE_NRN, _BE_NRN_RE, _be_nrn_ok),
+    (PiiCategory.PL_PESEL, _PL_PESEL_RE, _pl_pesel_ok),
+    (PiiCategory.BR_CPF, _BR_CPF_RE, _br_cpf_ok),
+    # length-overlaps the card PAN (13/14/18 digits) → must precede CREDIT_CARD.
+    (PiiCategory.BR_CNPJ, _BR_CNPJ_RE, _br_cnpj_ok),
+    (PiiCategory.ZA_ID, _ZA_ID_RE, _za_id_ok),
+    (PiiCategory.CN_ID, _CN_ID_RE, _cn_id_ok),
+    # medium (single check digit + structure).
+    (PiiCategory.DE_STEUERID, _DE_STEUERID_RE, _de_steuerid_ok),
+    (PiiCategory.PT_NIF, _PT_NIF_RE, _pt_nif_ok),
     (PiiCategory.PHONE_CH, _PHONE_CH_RE, None),
     (PiiCategory.EMAIL, _EMAIL_RE, None),
     (PiiCategory.CREDIT_CARD, _PAN_RE, _luhn_ok),
+    # weak (single check digit, no anchoring) — last, so a stronger detector wins first.
+    (PiiCategory.UK_NHS, _UK_NHS_RE, _uk_nhs_ok),
+    (PiiCategory.IN_AADHAAR, _IN_AADHAAR_RE, _in_aadhaar_ok),
     (PiiCategory.NL_BSN, _NL_BSN_RE, _nl_bsn_ok),
+    (PiiCategory.CA_SIN, _CA_SIN_RE, _ca_sin_ok),
 ]
 
 

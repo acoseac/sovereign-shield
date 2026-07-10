@@ -15,6 +15,17 @@ export const CATEGORIES: readonly Category[] = [
   { key: "es_dni", label: "DNI / NIE (ES)" },
   { key: "fr_nir", label: "NIR (FR)" },
   { key: "nl_bsn", label: "BSN (NL)" },
+  { key: "de_steuerid", label: "Steuer-ID (DE)" },
+  { key: "pl_pesel", label: "PESEL (PL)" },
+  { key: "pt_nif", label: "NIF (PT)" },
+  { key: "be_nrn", label: "Rijksregisternr. (BE)" },
+  { key: "uk_nhs", label: "NHS number (UK)" },
+  { key: "br_cpf", label: "CPF (BR)" },
+  { key: "br_cnpj", label: "CNPJ (BR)" },
+  { key: "za_id", label: "ID number (ZA)" },
+  { key: "cn_resident", label: "Resident ID (CN)" },
+  { key: "ca_sin", label: "SIN (CA)" },
+  { key: "in_aadhaar", label: "Aadhaar (IN)" },
 ];
 
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(

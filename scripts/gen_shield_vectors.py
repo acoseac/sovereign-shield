@@ -64,6 +64,27 @@ INPUTS = [
     "IBAN DE89 3704 0044 0532 0130 00, DNI 12345678Z, CF RSSMRA85T10A562S, BSN 111222333",
     "My IBAN is CH9300762011623852957. Confirm CH9300762011623852957 please.",
     "DE89370400440532013000 THANKS",
+    # EU / UK / global pack (all synthetic, valid-by-construction unless tampered)
+    "11223344553",  # DE Steuer-ID
+    "11223344554",  # DE Steuer-ID tampered
+    "90051512340",  # PL PESEL
+    "123456789",  # PT NIF
+    "85.07.30-033.28",  # BE NRN (dotted)
+    "85073003328",  # BE NRN (bare)
+    "943 476 5919",  # UK NHS (spaced)
+    "9434765919",  # UK NHS (bare)
+    "111.444.777-35",  # BR CPF (formatted)
+    "11144477735",  # BR CPF (bare)
+    "11144477736",  # BR CPF tampered
+    "11.222.333/0001-81",  # BR CNPJ (formatted)
+    "11222333000181",  # BR CNPJ (bare)
+    "9001015009086",  # ZA ID
+    "110101199001011237",  # CN resident ID
+    "130 692 544",  # CA SIN (spaced)
+    "130692544",  # CA SIN (bare)
+    "2341 2341 2346",  # IN Aadhaar (spaced)
+    "234123412346",  # IN Aadhaar (bare)
+    "NHS 943 476 5919, CPF 111.444.777-35, PESEL 90051512340, Aadhaar 2341 2341 2346",
 ]
 
 

@@ -1004,5 +1004,558 @@
         "iban"
       ]
     }
+  },
+  {
+    "input": "11223344553",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "de_steuerid",
+        "marker": "steuerid:\u202653",
+        "start": 0,
+        "end": 11
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "de_steuerid",
+      "categories": [
+        "de_steuerid"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "de_steuerid",
+      "categories": [
+        "de_steuerid"
+      ]
+    }
+  },
+  {
+    "input": "11223344554",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "90051512340",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "pl_pesel",
+        "marker": "pesel:\u202640",
+        "start": 0,
+        "end": 11
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "pl_pesel",
+      "categories": [
+        "pl_pesel"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "pl_pesel",
+      "categories": [
+        "pl_pesel"
+      ]
+    }
+  },
+  {
+    "input": "123456789",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "pt_nif",
+        "marker": "nif:\u202689",
+        "start": 0,
+        "end": 9
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "pt_nif",
+      "categories": [
+        "pt_nif"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "pt_nif",
+      "categories": [
+        "pt_nif"
+      ]
+    }
+  },
+  {
+    "input": "85.07.30-033.28",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "be_nrn",
+        "marker": "nrn:\u202628",
+        "start": 0,
+        "end": 15
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "be_nrn",
+      "categories": [
+        "be_nrn"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "be_nrn",
+      "categories": [
+        "be_nrn"
+      ]
+    }
+  },
+  {
+    "input": "85073003328",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "be_nrn",
+        "marker": "nrn:\u202628",
+        "start": 0,
+        "end": 11
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "be_nrn",
+      "categories": [
+        "be_nrn"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "be_nrn",
+      "categories": [
+        "be_nrn"
+      ]
+    }
+  },
+  {
+    "input": "943 476 5919",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "uk_nhs",
+        "marker": "nhs:\u202619",
+        "start": 0,
+        "end": 12
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "uk_nhs",
+      "categories": [
+        "uk_nhs"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "uk_nhs",
+      "categories": [
+        "uk_nhs"
+      ]
+    }
+  },
+  {
+    "input": "9434765919",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "uk_nhs",
+        "marker": "nhs:\u202619",
+        "start": 0,
+        "end": 10
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "uk_nhs",
+      "categories": [
+        "uk_nhs"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "uk_nhs",
+      "categories": [
+        "uk_nhs"
+      ]
+    }
+  },
+  {
+    "input": "111.444.777-35",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "br_cpf",
+        "marker": "cpf:\u202635",
+        "start": 0,
+        "end": 14
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "br_cpf",
+      "categories": [
+        "br_cpf"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "br_cpf",
+      "categories": [
+        "br_cpf"
+      ]
+    }
+  },
+  {
+    "input": "11144477735",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "br_cpf",
+        "marker": "cpf:\u202635",
+        "start": 0,
+        "end": 11
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "br_cpf",
+      "categories": [
+        "br_cpf"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "br_cpf",
+      "categories": [
+        "br_cpf"
+      ]
+    }
+  },
+  {
+    "input": "11144477736",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "de_steuerid",
+        "marker": "steuerid:\u202636",
+        "start": 0,
+        "end": 11
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "de_steuerid",
+      "categories": [
+        "de_steuerid"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "de_steuerid",
+      "categories": [
+        "de_steuerid"
+      ]
+    }
+  },
+  {
+    "input": "11.222.333/0001-81",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "br_cnpj",
+        "marker": "cnpj:\u202681",
+        "start": 0,
+        "end": 18
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "br_cnpj",
+      "categories": [
+        "br_cnpj"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "br_cnpj",
+      "categories": [
+        "br_cnpj"
+      ]
+    }
+  },
+  {
+    "input": "11222333000181",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "br_cnpj",
+        "marker": "cnpj:\u202681",
+        "start": 0,
+        "end": 14
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "br_cnpj",
+      "categories": [
+        "br_cnpj"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "br_cnpj",
+      "categories": [
+        "br_cnpj"
+      ]
+    }
+  },
+  {
+    "input": "9001015009086",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "za_id",
+        "marker": "zaid:\u202686",
+        "start": 0,
+        "end": 13
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "za_id",
+      "categories": [
+        "za_id"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "za_id",
+      "categories": [
+        "za_id"
+      ]
+    }
+  },
+  {
+    "input": "110101199001011237",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "cn_resident",
+        "marker": "cnid:\u202637",
+        "start": 0,
+        "end": 18
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "cn_resident",
+      "categories": [
+        "cn_resident"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "cn_resident",
+      "categories": [
+        "cn_resident"
+      ]
+    }
+  },
+  {
+    "input": "130 692 544",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ca_sin",
+        "marker": "sin:\u202644",
+        "start": 0,
+        "end": 11
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ca_sin",
+      "categories": [
+        "ca_sin"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ca_sin",
+      "categories": [
+        "ca_sin"
+      ]
+    }
+  },
+  {
+    "input": "130692544",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ca_sin",
+        "marker": "sin:\u202644",
+        "start": 0,
+        "end": 9
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ca_sin",
+      "categories": [
+        "ca_sin"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ca_sin",
+      "categories": [
+        "ca_sin"
+      ]
+    }
+  },
+  {
+    "input": "2341 2341 2346",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "in_aadhaar",
+        "marker": "aadhaar:\u202646",
+        "start": 0,
+        "end": 14
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "in_aadhaar",
+      "categories": [
+        "in_aadhaar"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "in_aadhaar",
+      "categories": [
+        "in_aadhaar"
+      ]
+    }
+  },
+  {
+    "input": "234123412346",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "in_aadhaar",
+        "marker": "aadhaar:\u202646",
+        "start": 0,
+        "end": 12
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "in_aadhaar",
+      "categories": [
+        "in_aadhaar"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "in_aadhaar",
+      "categories": [
+        "in_aadhaar"
+      ]
+    }
+  },
+  {
+    "input": "NHS 943 476 5919, CPF 111.444.777-35, PESEL 90051512340, Aadhaar 2341 2341 2346",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "uk_nhs",
+        "marker": "nhs:\u202619",
+        "start": 4,
+        "end": 16
+      },
+      {
+        "category": "br_cpf",
+        "marker": "cpf:\u202635",
+        "start": 22,
+        "end": 36
+      },
+      {
+        "category": "pl_pesel",
+        "marker": "pesel:\u202640",
+        "start": 44,
+        "end": 55
+      },
+      {
+        "category": "in_aadhaar",
+        "marker": "aadhaar:\u202646",
+        "start": 65,
+        "end": 79
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "br_cpf,in_aadhaar,pl_pesel,uk_nhs",
+      "categories": [
+        "br_cpf",
+        "in_aadhaar",
+        "pl_pesel",
+        "uk_nhs"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "br_cpf,in_aadhaar,pl_pesel,uk_nhs",
+      "categories": [
+        "br_cpf",
+        "in_aadhaar",
+        "pl_pesel",
+        "uk_nhs"
+      ]
+    }
   }
 ]
