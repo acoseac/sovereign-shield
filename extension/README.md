@@ -33,8 +33,14 @@ Confirmed by inspecting live `gemini.google.com` traffic:
 
 - **Transport is `XMLHttpRequest`, not `fetch`.** A fetch-only hook (the approach most
   ChatGPT extensions use) would silently do nothing on Gemini. This hooks XHR.
-- **The generate call is** `POST /_/BardChatUi/data/batchexecute?rpcids=aPya6c…`, with
-  the prompt inside the url-encoded `f.req` field. We match on `aPya6c`.
+- **The generate call is** `POST /_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate`
+  (`rt=c` streaming), with the prompt inside the url-encoded `f.req` field. We match on
+  `StreamGenerate`. It is *not* `batchexecute` — that path only carries side RPCs (history,
+  titling). Verified live: an earlier `batchexecute`/`aPya6c` matcher never fired.
+- **The response stream is length-prefixed** (each chunk announces its byte count), so
+  restoring values by editing `responseText` desyncs the parser and hangs generation. We
+  let the stream parse untouched and swap token→value in the **rendered DOM** (a
+  `MutationObserver`) instead. Verified live.
 - **The page enforces Trusted Types + a strict CSP**, so you cannot inject a `<script>`
   to patch the page's XHR. The only way in is a manifest `world: "MAIN"` content script,
   which is CSP-exempt. That is why the guard is split in two (below).
@@ -45,12 +51,13 @@ Two content scripts, because the worlds have complementary powers:
 
 | File | World | Can it… | Job |
 | --- | --- | --- | --- |
-| `interceptor.ts` | `MAIN` | touch the page's real `XMLHttpRequest` ✓, `chrome.*` ✗ | patch `open`/`send`, tokenize `f.req`, rehydrate the response |
+| `interceptor.ts` | `MAIN` | touch the page's real `XMLHttpRequest` ✓, `chrome.*` ✗ | patch `open`/`send`, tokenize `f.req` on `StreamGenerate`, rehydrate the rendered DOM |
 | `bridge.ts` | `ISOLATED` | `chrome.*` ✓, page globals ✗ | read the on/off setting, relay the count to the popup |
 
 They share the DOM but not their globals, so they pass two values through `data-*`
-attributes on `<html>`: `data-ss-enabled` (bridge → guard) and `data-ss-kept`
-(guard → bridge → popup).
+attributes on `<html>`: `data-ss-enabled` (bridge → guard), `data-ss-kept`
+(guard → bridge → popup), and `data-ss-build` (a build stamp, so a reload can be verified
+from the page — unpacked extensions keep running old code until you hit ↻ on the card).
 
 The request rewrite is **structure-agnostic**: it walks every *string* in the `f.req`
 JSON and tokenizes it (numbers — timestamps, request ids — are left alone), so it does
@@ -77,9 +84,9 @@ esbuild and does not require it.
   through rather than break your Gemini. That favours availability over secrecy — a
   production build should fail-closed (abort the send). See the comment in
   `interceptor.ts`.
-- **Format-dependent.** We match `batchexecute` + `aPya6c`. If Google renames the RPC or
-  changes the envelope, the guard stops acting until the selectors are updated. It fails
-  safe (passes traffic through), not loud.
+- **Format-dependent.** We match the `StreamGenerate` endpoint + the `f.req` envelope. If
+  Google renames the endpoint or restructures the payload, the guard stops acting until the
+  selector is updated. It fails safe (passes traffic through), not loud.
 - **Structured identifiers only.** Names and street addresses are out of scope — they
   need an NER model, which this does not ship (same boundary as the core library).
 - **Re-encoding.** The outgoing body is re-serialised via `URLSearchParams`; standard

@@ -4,8 +4,9 @@
 // Why this shape (confirmed by inspecting live gemini.google.com traffic):
 //   - Gemini sends chat generation over XMLHttpRequest, NOT fetch. A fetch-only
 //     hook (the ChatGPT playbook) would silently do nothing here.
-//   - The generate call is  POST /_/BardChatUi/data/batchexecute?rpcids=aPya6c...
-//     with the prompt buried in the url-encoded `f.req` field.
+//   - The generate call is  POST /_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate
+//     (rt=c streaming), with the prompt buried in the url-encoded `f.req` field.
+//     (NOT batchexecute — that path only carries side RPCs like history/titling.)
 //   - The page enforces Trusted Types + a strict CSP, so a MAIN-world content
 //     script (manifest `world: "MAIN"`, CSP-exempt) is the only way to patch the
 //     page's real XHR — you cannot inject a <script> from an isolated world.
@@ -14,6 +15,10 @@ import { Session } from "./tokenize";
 type XhrMeta = XMLHttpRequest & { __ssUrl?: string };
 
 const session = new Session();
+
+// Build stamp so a reload can be verified from the page (data-ss-build on <html>).
+const BUILD = "3-dom-rehydrate";
+document.documentElement.setAttribute("data-ss-build", BUILD);
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
 function guardEnabled(): boolean {
@@ -24,7 +29,7 @@ function reportCount(): void {
   document.documentElement.setAttribute("data-ss-kept", String(session.count));
 }
 
-// Rewrite the batchexecute body: walk every STRING in f.req and tokenize it.
+// Rewrite the StreamGenerate body: walk every STRING in f.req and tokenize it.
 // Numbers (timestamps, request ids) are left untouched, so we never corrupt the
 // envelope. Structure-agnostic on purpose — it does not depend on Google's exact
 // array indices, so it survives their frequent reshuffles.
@@ -53,23 +58,40 @@ function walk(node: unknown): unknown {
   return node;
 }
 
-// Shadow this instance's responseText/response getters so whatever the app reads
-// off the stream is already rehydrated. Cumulative reads make this cheap: each
-// read gets the full text so far, and detokenize only swaps complete tokens.
-function patchResponseReads(xhr: XMLHttpRequest): void {
-  const proto = XMLHttpRequest.prototype;
-  for (const prop of ["responseText", "response"] as const) {
-    const desc = Object.getOwnPropertyDescriptor(proto, prop);
-    if (!desc?.get) continue;
-    const nativeGet = desc.get;
-    Object.defineProperty(xhr, prop, {
-      configurable: true,
-      get(this: XMLHttpRequest) {
-        const raw = nativeGet.call(this);
-        return typeof raw === "string" ? session.rehydrate(raw) : raw;
-      },
-    });
-  }
+// Restore real values in the RENDERED DOM, not in the response stream. Gemini's
+// stream is length-prefixed (each chunk announces its byte count), so rewriting
+// [AHV_1] -> a longer real value inside responseText desyncs the parser and hangs
+// generation. Instead we let the stream parse untouched, then swap token->value in
+// the text nodes Gemini paints. rehydrate is idempotent, so the mutation our own
+// write triggers converges in one no-op pass. Editable regions (the composer, where
+// the user typed the real value already) are skipped.
+function installDomRehydrator(): void {
+  const EDITABLE = 'input, textarea, [contenteditable="true"], .ql-editor';
+  const rehydrateText = (node: Text): void => {
+    const v = node.nodeValue;
+    if (!v || !v.includes("[")) return;
+    if (node.parentElement?.closest(EDITABLE)) return;
+    const next = session.rehydrate(v);
+    if (next !== v) node.nodeValue = next;
+  };
+  const scan = (root: Node): void => {
+    if (root.nodeType === Node.TEXT_NODE) return rehydrateText(root as Text);
+    if (!(root instanceof Element) || root.closest(EDITABLE)) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let n: Node | null;
+    while ((n = walker.nextNode())) rehydrateText(n as Text);
+  };
+  const observer = new MutationObserver((mutations) => {
+    if (session.count === 0) return; // nothing to restore yet
+    for (const m of mutations) {
+      if (m.type === "characterData") rehydrateText(m.target as Text);
+      else m.addedNodes.forEach(scan);
+    }
+  });
+  const start = (): void =>
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  if (document.body) start();
+  else document.addEventListener("DOMContentLoaded", start, { once: true });
 }
 
 const proto = XMLHttpRequest.prototype;
@@ -83,12 +105,11 @@ proto.open = function (this: XhrMeta, _method: string, url: string | URL) {
 
 proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit | null) {
   const url = this.__ssUrl ?? "";
-  const isGenerate = url.includes("batchexecute") && url.includes("aPya6c");
+  const isGenerate = url.includes("StreamGenerate");
   if (isGenerate && guardEnabled()) {
     try {
       let outBody = body;
       if (typeof body === "string") outBody = rewriteBody(body);
-      patchResponseReads(this);
       this.addEventListener("loadend", reportCount);
       return origSend.call(this, outBody as XMLHttpRequestBodyInit);
     } catch (err) {
@@ -100,4 +121,5 @@ proto.send = function (this: XhrMeta, body?: Document | XMLHttpRequestBodyInit |
   return origSend.call(this, body ?? null);
 } as typeof proto.send;
 
-console.debug("[sovereign-shield] Gemini guard installed (XHR / aPya6c).");
+installDomRehydrator();
+console.debug(`[sovereign-shield] Gemini guard installed (XHR / StreamGenerate) build ${BUILD}.`);
