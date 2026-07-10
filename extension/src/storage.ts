@@ -42,9 +42,9 @@ export async function appendLog(entry: LogEntry): Promise<void> {
 export async function appendLogBatch(entries: LogEntry[]): Promise<void> {
   if (entries.length === 0) return;
   const v = await chrome.storage.local.get(KEYS.log);
-  const log: LogEntry[] = Array.isArray(v[KEYS.log]) ? v[KEYS.log] : [];
+  let log: LogEntry[] = Array.isArray(v[KEYS.log]) ? v[KEYS.log] : [];
   log.push(...entries);
-  if (log.length > LOG_CAP) log.splice(0, log.length - LOG_CAP); // rolling window
+  if (log.length > LOG_CAP) log = log.slice(-LOG_CAP); // rolling window
   await chrome.storage.local.set({ [KEYS.log]: log });
 }
 

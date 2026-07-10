@@ -64,7 +64,7 @@ export class Session {
     if (this.tokenValue.size === 0 || !text.includes("[")) return text;
     // Single pass: match any placeholder, look it up in O(1). Runs on every
     // streamed text-node mutation, so it must not scale with the token count.
-    return text.replace(/\[[A-Z]+_\d+\]/g, (m) => this.tokenValue.get(m) ?? m);
+    return text.replace(/\[[A-Z_]+_\d+\]/g, (m) => this.tokenValue.get(m) ?? m);
   }
 
   /** How many distinct identifiers have been kept local this conversation. */
