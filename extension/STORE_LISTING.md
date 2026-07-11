@@ -69,6 +69,21 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 
 ---
 
+## Test instructions (Access → Test instructions tab)
+
+Leave **Username / Password blank** — the extension has no login of its own, and third-party
+AI-site credentials must never be shared here. Paste this into **Additional instructions** (≤500 chars):
+
+> No credentials needed — the extension has no account of its own (guard on by default). It acts only on gemini.google.com, chatgpt.com, chat.openai.com and claude.ai; test in your own logged-in session on any one.
+>
+> To verify: on Gemini, send "My AHV is 756.1234.5678.97" (synthetic, checksum-valid). The toolbar badge shows 1; in DevTools > Network the outgoing StreamGenerate request contains [AHV_1], not the digits; the reply restores it. Options page: category toggles + a value-free log.
+
+Strongly recommended: the extension only acts on logged-in third-party sites, so an exact
+synthetic-AHV recipe prevents a "couldn't observe the functionality" round-trip during the
+host-permission review.
+
+---
+
 ## Screenshots (required: ≥1, 1280×800 PNG)
 
 Four are ready in `~/Desktop/sovereign-shield-store-screenshots/`, all exactly 1280×800.
@@ -89,7 +104,8 @@ Upload in this order (the store shows the first as the primary tile):
 - [ ] `npm run package` → upload `sovereign-shield-<version>.zip`.
 - [ ] Summary, description, category filled from above.
 - [ ] Privacy policy URL live at shield.ars.md/extension/privacy.
-- [ ] Data disclosure + permission justifications filled.
+- [ ] Data disclosure + permission justifications filled; remote code = **No**.
+- [ ] Test instructions filled (Access tab) — no credentials, synthetic-AHV recipe above.
 - [ ] ≥1 screenshot (1280×800) uploaded.
 - [ ] Visibility: **Unlisted** for the first release (public search later).
 - [ ] Submit → expect manual review (host access to major sites is scrutinised).
