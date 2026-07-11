@@ -16,7 +16,7 @@ type BodyKind = "freq" | "json";
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "6-hardening";
+const BUILD = "7-transport-scope";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -133,34 +133,52 @@ function installDomRehydrator(): void {
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 }
 
+// ---- transport hooks ------------------------------------------------------
+// Each chat UI sends its prompt over exactly one transport: Gemini over XHR
+// (StreamGenerate), ChatGPT/Claude over fetch. We install ONLY the transport a
+// site actually uses, so our content script never becomes the initiator of the
+// page's own unrelated cross-origin beacons. That matters because, e.g., Gemini's
+// GTM fires a request to ad.doubleclick.net that Gemini's *own* page CSP blocks;
+// if our fetch wrapper forwarded it, Chrome would file that CSP error against
+// this extension even though we never read or touch the request. Unknown hosts
+// (should the manifest gain one) get BOTH hooks, so the guard never silently
+// no-ops on a site we forgot to classify.
+const HOST = location.hostname;
+const hostIn = (domains: string[]): boolean =>
+  domains.some((d) => HOST === d || HOST.endsWith("." + d));
+const XHR_ONLY = hostIn(["gemini.google.com"]); // generate rides on XHR, never fetch
+const FETCH_ONLY = hostIn(["chatgpt.com", "chat.openai.com", "claude.ai"]); // fetch, never XHR
+
 // ---- XHR hook (Gemini) ----------------------------------------------------
 // URL is stashed in a closure-private WeakMap, not on the XHR instance — the
 // MAIN world is shared with the page, so an instance property would be readable
 // (and spoofable) by page scripts.
-const xhrUrls = new WeakMap<XMLHttpRequest, string>();
-const proto = XMLHttpRequest.prototype;
-const origOpen = proto.open;
-const origSend = proto.send;
+if (!FETCH_ONLY) {
+  const xhrUrls = new WeakMap<XMLHttpRequest, string>();
+  const proto = XMLHttpRequest.prototype;
+  const origOpen = proto.open;
+  const origSend = proto.send;
 
-proto.open = function (this: XMLHttpRequest, _method: string, url: string | URL) {
-  xhrUrls.set(this, String(url));
-  return origOpen.apply(this, arguments as unknown as Parameters<typeof origOpen>);
-} as typeof proto.open;
+  proto.open = function (this: XMLHttpRequest, _method: string, url: string | URL) {
+    xhrUrls.set(this, String(url));
+    return origOpen.apply(this, arguments as unknown as Parameters<typeof origOpen>);
+  } as typeof proto.open;
 
-proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
-  const kind = generateKind(xhrUrls.get(this) ?? "");
-  if (kind && guardEnabled() && typeof body === "string") {
-    try {
-      return origSend.call(this, rewriteBody(kind, body) as XMLHttpRequestBodyInit);
-    } catch (err) {
-      console.warn("[sovereign-shield] XHR passthrough after error:", err);
-      failopen();
+  proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+    const kind = generateKind(xhrUrls.get(this) ?? "");
+    if (kind && guardEnabled() && typeof body === "string") {
+      try {
+        return origSend.call(this, rewriteBody(kind, body) as XMLHttpRequestBodyInit);
+      } catch (err) {
+        console.warn("[sovereign-shield] XHR passthrough after error:", err);
+        failopen();
+      }
     }
-  }
-  return origSend.call(this, body ?? null);
-} as typeof proto.send;
+    return origSend.call(this, body ?? null);
+  } as typeof proto.send;
+}
 
-// ---- fetch hook (ChatGPT, Claude; and anything that migrates to fetch) -----
+// ---- fetch hook (ChatGPT, Claude; and any unknown host, as a fail-safe) ----
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
   if (input instanceof Request) return input.url;
@@ -168,17 +186,19 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 const origFetch = window.fetch;
-window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  try {
-    const kind = generateKind(requestUrl(input));
-    if (kind && guardEnabled()) {
-      return rewriteFetch(kind, input, init);
+if (!XHR_ONLY) {
+  window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    try {
+      const kind = generateKind(requestUrl(input));
+      if (kind && guardEnabled()) {
+        return rewriteFetch(kind, input, init);
+      }
+    } catch {
+      /* fall through to native */
     }
-  } catch {
-    /* fall through to native */
-  }
-  return origFetch.call(window, input, init);
-} as typeof window.fetch;
+    return origFetch.call(window, input, init);
+  } as typeof window.fetch;
+}
 
 async function rewriteFetch(
   kind: BodyKind,
@@ -223,4 +243,6 @@ session.onMint = (category) => {
 };
 
 installDomRehydrator();
-console.debug(`[sovereign-shield] guard installed (fetch + XHR, 3 sites) build ${BUILD}.`);
+console.debug(
+  `[sovereign-shield] guard installed on ${HOST} (${XHR_ONLY ? "xhr" : FETCH_ONLY ? "fetch" : "xhr+fetch"}) build ${BUILD}.`,
+);
