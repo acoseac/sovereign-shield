@@ -116,6 +116,17 @@ esbuild and does not require it.
 - **Re-encoding.** The outgoing body is re-serialised (JSON re-stringify, or
   `URLSearchParams` for Gemini); standard encodings, but if a provider ever depends on an
   exact byte layout this could matter.
+- **Native "Copy" / "Edit message" can surface a token.** The guard restores values in the
+  *rendered* reply, but the site's own React/Vue state still holds the tokenized string. If
+  you use the platform's built-in Copy button or re-open a past prompt with "Edit", you may
+  see or copy `[AHV_1]` rather than the value. Copy from the visible text, or keep the
+  original to hand. Intercepting the page's clipboard/edit paths would fix it but adds real
+  regression risk, so it is left as a known limit for now.
+- **Token split across DOM nodes.** Rehydration runs per text node. In the rare case a
+  streaming UI paints one token across separate sibling nodes
+  (`<span>[AHV_</span><span>1]</span>`) instead of one growing text node, the halves never
+  match and stay redacted. Not observed on the three supported sites (short tokens render
+  atomically), so it is noted rather than pre-emptively engineered around.
 - **Not in CI.** This sub-project has its own `package.json` and is built manually; the
   repo's Python + web pipelines do not touch it yet.
 

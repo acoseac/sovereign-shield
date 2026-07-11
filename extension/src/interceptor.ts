@@ -16,7 +16,7 @@ type BodyKind = "freq" | "json";
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "7-transport-scope";
+const BUILD = "8-review-hardening";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -36,13 +36,23 @@ function failopen(): void {
   }
 }
 
-// Which generate endpoint is this, and how is its body wrapped?
+// Generate-endpoint fingerprints, one per supported chat UI — all confirmed
+// against live traffic (see file header). Providers reshuffle their internal API
+// paths from time to time; when that happens, update the matcher HERE and nothing
+// in the fetch/XHR wrappers needs to change.
 //   "freq" = url-encoded `f.req` (Gemini)   "json" = raw JSON (ChatGPT, Claude)
+const GENERATE_ENDPOINTS: ReadonlyArray<{
+  site: string;
+  kind: BodyKind;
+  match: (url: string) => boolean;
+}> = [
+  { site: "Gemini", kind: "freq", match: (u) => u.includes("StreamGenerate") },
+  { site: "ChatGPT", kind: "json", match: (u) => /\/backend-api\/(?:f\/)?conversation(?:$|\?)/.test(u) },
+  { site: "Claude", kind: "json", match: (u) => u.includes("/chat_conversations/") && u.includes("/completion") },
+];
+
 function generateKind(url: string): BodyKind | null {
-  if (url.includes("StreamGenerate")) return "freq";
-  if (/\/backend-api\/(?:f\/)?conversation(?:$|\?)/.test(url)) return "json"; // ChatGPT
-  if (url.includes("/chat_conversations/") && url.includes("/completion")) return "json"; // Claude
-  return null;
+  return GENERATE_ENDPOINTS.find((e) => e.match(url))?.kind ?? null;
 }
 
 // Which categories the user has left enabled (bridge writes data-ss-cats from
@@ -159,9 +169,9 @@ if (!FETCH_ONLY) {
   const origOpen = proto.open;
   const origSend = proto.send;
 
-  proto.open = function (this: XMLHttpRequest, _method: string, url: string | URL) {
-    xhrUrls.set(this, String(url));
-    return origOpen.apply(this, arguments as unknown as Parameters<typeof origOpen>);
+  proto.open = function (this: XMLHttpRequest, ...args: Parameters<typeof origOpen>) {
+    xhrUrls.set(this, String(args[1])); // args = [method, url, async?, user?, pass?]
+    return origOpen.apply(this, args);
   } as typeof proto.open;
 
   proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
@@ -216,13 +226,19 @@ async function rewriteFetch(
       });
     }
     // Fallback: the body rides on a Request object (POST only — no body on GET).
+    // Only buffer it when it's JSON or url-encoded form data; anything else
+    // (e.g. a multipart file upload) is passed straight through, so we never read
+    // a large or streamed body into a string just to hand it back untouched.
     if (input instanceof Request && input.method.toUpperCase() === "POST") {
-      const text = await input.clone().text();
-      if (text) {
-        // Clone headers explicitly so a string body can't down-grade the original
-        // Content-Type (e.g. application/json -> text/plain -> HTTP 415).
-        const headers = new Headers(input.headers);
-        return origFetch.call(window, new Request(input, { method: "POST", headers, body: rewriteBody(kind, text) }));
+      const ct = input.headers.get("content-type") ?? "";
+      if (/application\/json|x-www-form-urlencoded/i.test(ct)) {
+        const text = await input.clone().text();
+        if (text) {
+          // Clone headers explicitly so a string body can't down-grade the original
+          // Content-Type (e.g. application/json -> text/plain -> HTTP 415).
+          const headers = new Headers(input.headers);
+          return origFetch.call(window, new Request(input, { method: "POST", headers, body: rewriteBody(kind, text) }));
+        }
       }
     }
   } catch (err) {

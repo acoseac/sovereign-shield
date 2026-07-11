@@ -1,7 +1,7 @@
 // Options page: master on/off, per-category block toggles, and the activity log
 // (type + time + site only). Live-updates on storage changes.
 import { CATEGORIES, CATEGORY_LABEL } from "./categories";
-import { KEYS, LOG_CAP, clearLog, getSettings, readLog } from "./storage";
+import { KEYS, LOG_CAP, getSettings, readLog } from "./storage";
 
 const byId = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -102,7 +102,9 @@ async function renderLog(): Promise<void> {
 }
 
 byId("clear").addEventListener("click", () => {
-  void clearLog().then(renderLog);
+  // Route through the background (the single log writer) so a clear can't race a
+  // buffered batch flush; the storage.onChanged listener re-renders on success.
+  chrome.runtime.sendMessage({ type: "ss-clear" }).catch(() => undefined);
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
