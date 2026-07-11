@@ -1001,6 +1001,32 @@ mark.val {
 .ext-tester h2 {
   margin: 0 0 6px;
 }
+.ext-proof {
+  margin: 0 0 32px;
+}
+.ext-proof h2 {
+  margin: 0 0 6px;
+}
+.ext-shot {
+  margin: 14px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+}
+.ext-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ext-shot figcaption {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
 
 .idt {
   margin: 16px 0 0;

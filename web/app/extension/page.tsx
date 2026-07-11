@@ -70,6 +70,30 @@ export default function Page() {
         </p>
       </section>
 
+      <section className="ext-proof">
+        <h2>See it on the wire</h2>
+        <p className="tag">
+          A real Gemini session with the guard on. The prompt includes a Swiss AHV number, and the
+          request Gemini actually sent to Google — <code>StreamGenerate</code>, open in DevTools on
+          the right — carries <code>[AHV_1]</code>, never the digits. The real number, restored only
+          in your browser, is what you read in the drafted reply on the left. Search the whole
+          network log for the real number and you get zero hits.
+        </p>
+        <figure className="ext-shot">
+          <img
+            src="/gemini-redaction-proof.png"
+            alt="A Gemini chat drafting an email that contains a Swiss AHV number, beside Chrome DevTools showing the outgoing StreamGenerate request carries the placeholder [AHV_1] instead of the real number"
+            width={3040}
+            height={1678}
+          />
+          <figcaption>
+            Left: what you see. Right: what Gemini&apos;s servers received — <code>[AHV_1]</code>,
+            eight times, in the request the extension rewrote (Initiator:{" "}
+            <code>interceptor.js</code>).
+          </figcaption>
+        </figure>
+      </section>
+
       <section className="ext-tester">
         <h2>Try the detectors</h2>
         <p className="tag">
