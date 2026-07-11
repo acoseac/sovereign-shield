@@ -31,7 +31,7 @@ export default function Page() {
         <p>
           On <code>gemini.google.com</code>, <code>chatgpt.com</code>, <code>chat.openai.com</code>{" "}
           and <code>claude.ai</code>, it inspects the request the page is about to send to its
-          model, replaces any checksum-validated Swiss/EU (and other supported) identifier with a
+          model, replaces any checksum-validated Swiss, EU or international identifier with a
           placeholder <em>before</em> the request leaves your browser, and restores the real value in
           the reply you read. This all happens locally, in the page.
         </p>

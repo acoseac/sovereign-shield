@@ -1,15 +1,16 @@
 # Sovereign Shield — LLM PII guard (Chrome MV3)
 
-A browser extension that redacts Swiss and EU identifiers **before** they leave your
-machine for **Gemini, ChatGPT, or Claude**, then restores them in the reply so the
+A browser extension that redacts Swiss, EU and international identifiers **before** they leave
+your machine for **Gemini, ChatGPT, or Claude**, then restores them in the reply so the
 conversation still reads normally. Everything happens in the page. Nothing is uploaded,
 no API key, no server.
 
 It reuses the exact detector from the [sovereign-shield](https://github.com/acoseac/sovereign-shield)
 library — the same `web/lib/shield.ts` that is kept byte-for-byte in parity with the
-Python source. Detection is regex + checksum (Swiss AHV, IBAN worldwide, Italian/
-Spanish/French/Dutch national IDs, card via Luhn, plus phone and email), so clean text
-passes through untouched and there are no false positives.
+Python source. Detection is regex + checksum — Swiss AHV, IBAN worldwide, card (Luhn), and
+national/tax/health IDs across the EU (IT/ES/FR/NL/DE/PL/PT/BE), UK, Brazil, South Africa,
+China, Canada and India, plus phone and email — so clean text passes through untouched and
+there are no false positives.
 
 > **Status: experiment.** The design is grounded in real traffic from each site (see
 > below), but these wire formats are private and change often. Treat this as a working

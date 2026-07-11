@@ -16,13 +16,13 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Name** (from manifest): `Sovereign Shield — LLM PII guard`
 
 **Summary** (≤132 chars):
-> Redacts Swiss/EU identifiers before they reach ChatGPT, Gemini or Claude and restores them in the reply — 100% local.
+> Redacts Swiss, EU & international identifiers before ChatGPT/Gemini/Claude, then restores them in the reply — 100% local.
 
 **Category:** Productivity
 **Language:** English
 
 **Detailed description:**
-> Sovereign Shield keeps Swiss and EU identifiers out of the big chat assistants. Before your
+> Sovereign Shield keeps Swiss, EU and international identifiers out of the big chat assistants. Before your
 > prompt leaves the browser for ChatGPT, Gemini or Claude, it swaps any checksum-validated
 > identifier for a neutral placeholder, then restores the real value in the reply — so the
 > conversation reads normally while the sensitive number never leaves your machine.
