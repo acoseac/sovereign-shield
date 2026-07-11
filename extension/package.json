@@ -2,7 +2,7 @@
   "name": "sovereign-shield-gemini-extension",
   "private": true,
   "version": "0.0.1",
-  "description": "Chrome MV3 extension that redacts Swiss/EU identifiers before they reach Gemini.",
+  "description": "Chrome MV3 extension that redacts Swiss, EU & international identifiers before ChatGPT, Gemini & Claude.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
