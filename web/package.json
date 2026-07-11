@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Live demo of Sovereign Shield — a deterministic Swiss/EU (FADP/GDPR) PII gateway.",
+  "description": "Live demo of Sovereign Shield — a deterministic Swiss, EU & international PII gateway (FADP/GDPR).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

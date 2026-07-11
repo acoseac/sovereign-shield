@@ -444,7 +444,7 @@ function CustomMode() {
         onChange={(e) => setText(e.target.value)}
       />
       <div className="flow">
-        <Stage n="1" title="Your text" cap="structured Swiss/EU identifiers, detected live" show active={false}>
+        <Stage n="1" title="Your text" cap="structured Swiss, EU and international identifiers, detected live" show active={false}>
           {text ? renderRaw(text, entities, text.length) : "(type or paste something above)"}
         </Stage>
         <Conn on border top="🛡 redact" arrow="→" bottom="would leave 🇨🇭" />
@@ -474,9 +474,9 @@ function CustomMode() {
           {audit.total === 0 ? <span className="muted">no structured PII found</span> : null}
         </div>
         <p className="custom-note">
-          Deterministic detection covers structured Swiss/EU identifiers (AHV, IBAN, card, phone,
-          email). Person names and street addresses need an NER model — in the worked examples
-          they&apos;re annotated; here you see the deterministic core.
+          Deterministic detection covers structured Swiss, EU and international identifiers (AHV,
+          IBAN, cards, national IDs). Person names and street addresses need an NER model — in the
+          worked examples they&apos;re annotated; here you see the deterministic core.
         </p>
       </div>
     </>
