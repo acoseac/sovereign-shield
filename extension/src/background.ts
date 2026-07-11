@@ -2,7 +2,7 @@
 // and swap the action icon. Badge updates are immediate; activity-log writes are
 // buffered and flushed in batches so a paste with many identifiers doesn't hit
 // chrome.storage's write-rate limit.
-import { appendLogBatch, getSettings, KEYS, type LogEntry } from "./storage";
+import { appendLogBatch, clearLog, getSettings, KEYS, type LogEntry } from "./storage";
 
 const BADGE_COLOR = "#0E7C66";
 const ALERT_COLOR = "#B91C1C";
@@ -60,6 +60,12 @@ async function bumpBadge(tabId: number): Promise<void> {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
+  // Clearing the log comes from the options page (no sender.tab). Route it through
+  // the same write queue as appends so a clear can't race an in-flight batch flush.
+  if (msg?.type === "ss-clear") {
+    enqueue(() => clearLog());
+    return;
+  }
   const tabId = sender.tab?.id;
   if (typeof tabId !== "number") return;
   if (msg?.type === "ss-reset") {

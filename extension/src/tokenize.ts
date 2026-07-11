@@ -54,7 +54,10 @@ export class Session {
       const value = text.slice(h.start, h.end);
       let token = this.valueToken.get(value);
       if (!token) {
-        const prefix = TOKEN_PREFIX[h.category] ?? h.category.toUpperCase();
+        // Sanitise so the prefix can only contain characters the rehydrate regex
+        // matches — a future category key with a digit or dash can't mint a token
+        // that then never gets restored.
+        const prefix = (TOKEN_PREFIX[h.category] ?? h.category.toUpperCase()).replace(/[^A-Z0-9_]/g, "_");
         this.counters[prefix] = (this.counters[prefix] ?? 0) + 1;
         token = `[${prefix}_${this.counters[prefix]}]`;
         this.valueToken.set(value, token);
@@ -75,7 +78,7 @@ export class Session {
     if (this.tokenValue.size === 0 || !text.includes("[")) return text;
     // Single pass: match any placeholder, look it up in O(1). Runs on every
     // streamed text-node mutation, so it must not scale with the token count.
-    return text.replace(/\[[A-Z_]+_\d+\]/g, (m) => this.tokenValue.get(m) ?? m);
+    return text.replace(/\[[A-Z0-9_]+_\d+\]/g, (m) => this.tokenValue.get(m) ?? m);
   }
 
   /** How many distinct identifiers have been kept local this conversation. */
