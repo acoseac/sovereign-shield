@@ -6,7 +6,7 @@ import Nav from "@/components/Nav";
 export const metadata: Metadata = {
   title: "How the Sovereign AI Gateway works",
   description:
-    "A deterministic, offline gateway that tokenizes Swiss/EU personal data before a prompt reaches a public LLM, and restores it on the way back.",
+    "A deterministic, offline gateway that tokenizes Swiss, EU & international personal data before a prompt reaches a public LLM, and restores it on the way back.",
 };
 
 export default function Page() {

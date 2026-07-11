@@ -4,9 +4,9 @@ import Nav from "@/components/Nav";
 import Scanner from "@/components/Scanner";
 
 export const metadata: Metadata = {
-  title: "Leak Radar — scan a file for Swiss/EU personal data, in your browser",
+  title: "Leak Radar — scan a file for Swiss, EU & international personal data, in your browser",
   description:
-    "Drop a file or paste text and see every Swiss/EU identifier (AHV, IBAN, card, phone, email) it contains before it ever reaches a cloud LLM. Deterministic, offline, nothing uploaded.",
+    "Drop a file or paste text and see every Swiss, EU & international identifier (AHV, IBAN, cards, national IDs) it contains before it ever reaches a cloud LLM. Deterministic, offline, nothing uploaded.",
 };
 
 export default function Page() {
@@ -26,8 +26,9 @@ export default function Page() {
 
       <footer className="foot">
         <p>
-          Detection is regex + checksum (Swiss AHV, IBAN worldwide, Italian/Spanish/French/Dutch
-          national IDs, card via Luhn, plus phone and email) — the{" "}
+          Detection is regex + checksum — Swiss AHV, IBAN worldwide, cards via Luhn, phone and
+          email, plus national IDs for Italy, Spain, France, the Netherlands, Germany, Poland,
+          Portugal, Belgium, the UK, Brazil, South Africa, China, Canada and India — the{" "}
           <a href="https://github.com/acoseac/sovereign-shield" target="_blank" rel="noreferrer">
             sovereign-shield
           </a>{" "}
