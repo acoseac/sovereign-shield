@@ -4,9 +4,9 @@ import IdentifierTester from "@/components/IdentifierTester";
 import Nav from "@/components/Nav";
 
 export const metadata: Metadata = {
-  title: "Browser extension — redact Swiss/EU identifiers in ChatGPT, Gemini & Claude",
+  title: "Browser extension — redact Swiss, EU & international identifiers in ChatGPT, Gemini & Claude",
   description:
-    "A Chrome extension that redacts Swiss and EU identifiers before they reach ChatGPT, Gemini or Claude and restores them in the reply — 100% local. Plus a live tester for every checksum-validated identifier the shield detects.",
+    "A Chrome extension that redacts Swiss, EU and international identifiers before they reach ChatGPT, Gemini or Claude and restores them in the reply — 100% local. Plus a live tester for every checksum-validated identifier the shield detects.",
 };
 
 const SITES = ["ChatGPT", "Gemini", "Claude"];
@@ -18,7 +18,7 @@ export default function Page() {
       <header className="header">
         <h1>Browser extension</h1>
         <p className="tag">
-          Use the big chat assistants without handing them Swiss or EU identifiers. The extension
+          Use the big chat assistants without handing them Swiss, EU or international identifiers. The extension
           redacts them <strong>before</strong> the request leaves your browser and restores them in
           the reply, so the conversation still reads normally — <strong>100% local</strong>, no API
           key, no server.
@@ -85,7 +85,8 @@ export default function Page() {
           Detection is regex + checksum, compiled to TypeScript and kept byte-for-byte in parity
           with the Python <a href="https://github.com/acoseac/sovereign-shield">sovereign-shield</a>{" "}
           source. Structured identifiers only; names and addresses need an NER model. See{" "}
-          <a href="/how-it-works">how it works</a>.
+          <a href="/how-it-works">how it works</a> and the{" "}
+          <a href="/extension/privacy">privacy policy</a>.
         </p>
       </footer>
     </main>

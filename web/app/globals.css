@@ -1122,3 +1122,25 @@ mark.val {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- legal / privacy prose --- */
+.legal {
+  max-width: 680px;
+  line-height: 1.6;
+}
+.legal h2 {
+  font-size: 16px;
+  margin: 26px 0 6px;
+}
+.legal p,
+.legal li {
+  color: var(--text);
+  font-size: 15px;
+}
+.legal ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+.legal li {
+  margin: 6px 0;
+}
