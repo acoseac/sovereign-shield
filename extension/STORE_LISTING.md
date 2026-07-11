@@ -21,27 +21,25 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Category:** Productivity
 **Language:** English
 
-**Detailed description:**
-> Sovereign Shield keeps Swiss, EU and international identifiers out of the big chat assistants. Before your
-> prompt leaves the browser for ChatGPT, Gemini or Claude, it swaps any checksum-validated
-> identifier for a neutral placeholder, then restores the real value in the reply — so the
-> conversation reads normally while the sensitive number never leaves your machine.
+**Detailed description** (1,349 characters — under the 1,600 limit):
+> Sovereign Shield keeps Swiss, EU and international identifiers out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces any checksum-validated identifier with a neutral placeholder, then restores the real value in the reply — so the conversation reads normally while the sensitive number never leaves your machine.
 >
-> Everything runs locally. No account, no API key, no server, no analytics, and no data ever
-> leaves your device.
+> Everything runs locally. No account, no API key, no server, no analytics, and no data ever leaves your device.
 >
-> Detects (regex shape + real check digit, so ordinary text is never touched):
+> Detection is deterministic: an identifier matches only when its regex shape AND its real check digit agree, so ordinary text is never touched and there are no false positives.
+>
+> What it detects:
 > • Swiss AHV/AVS, IBAN (worldwide), credit card
 > • Italy Codice fiscale, Spain DNI/NIE, France NIR, Netherlands BSN
 > • Germany Steuer-ID, Poland PESEL, Portugal NIF, Belgium Rijksregisternummer
 > • UK NHS number
 > • Brazil CPF & CNPJ, South Africa ID, China resident ID, Canada SIN, India Aadhaar
 >
-> You choose which categories to block, and an on-device activity log shows what was kept
-> local — recording the type, time and site only, never the value.
+> You stay in control: choose which categories to block, and an on-device activity log shows what was kept local — type, time and site only, never the value.
 >
-> How it works: the extension hooks the request each site makes to its model and rewrites the
-> outgoing prompt in the page. It is open source: https://github.com/acoseac/sovereign-shield
+> The value-to-placeholder map lives only in your tab's memory and is never stored or transmitted. Structured identifiers only — names and addresses are out of scope.
+>
+> Open source: https://github.com/acoseac/sovereign-shield
 
 ---
 
@@ -73,15 +71,15 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 
 ## Screenshots (required: ≥1, 1280×800 PNG)
 
-Capture with the extension loaded (options page and popup are the cleanest shots):
+Four are ready in `~/Desktop/sovereign-shield-store-screenshots/`, all exactly 1280×800.
+Upload in this order (the store shows the first as the primary tile):
 
-1. **Options page** — settings (category toggles) + the activity log. Open `chrome://extensions` →
-   Details → Extension options, size the window to 1280×800.
-2. **Popup** — on a chat tab after a redaction, showing the count. (Pad to 1280×800 on a plain
-   background if the popup alone is smaller.)
-3. **In action** — a chat site with the toolbar badge showing a count. Optional but persuasive.
-
-(Ask Claude to capture these once the extension is loaded — they need the live extension.)
+1. `1-showcase.png` — the /extension showcase hero: what it is, at a glance.
+2. `2-tester.png` — the live identifier tester (detected + "what the model receives").
+3. `3-options.png` — the options UI: all 20 category toggles + the value-free activity log.
+4. `4-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
+   while the reply shows the restored number (the "receipts" shot; slim white bands top/bottom
+   from fitting a wider capture to 1280×800).
 
 ---
 
