@@ -21,7 +21,7 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Category:** Productivity
 **Language:** English
 
-**Detailed description** (1,349 characters — under the 1,600 limit):
+**Detailed description** (1,503 characters — under the 1,600 limit):
 > Sovereign Shield keeps Swiss, EU and international identifiers out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces any checksum-validated identifier with a neutral placeholder, then restores the real value in the reply — so the conversation reads normally while the sensitive number never leaves your machine.
 >
 > Everything runs locally. No account, no API key, no server, no analytics, and no data ever leaves your device.
@@ -38,6 +38,8 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 > You stay in control: choose which categories to block, and an on-device activity log shows what was kept local — type, time and site only, never the value.
 >
 > The value-to-placeholder map lives only in your tab's memory and is never stored or transmitted. Structured identifiers only — names and addresses are out of scope.
+>
+> Tip: on Gemini, if a message doesn't send on the first Enter right after pasting, just press Enter again — that's Gemini's own editor, not the extension.
 >
 > Open source: https://github.com/acoseac/sovereign-shield
 
