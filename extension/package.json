@@ -8,7 +8,8 @@
     "build": "node build.mjs",
     "icons": "node gen-icons.mjs",
     "package": "npm run build && node package.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",
