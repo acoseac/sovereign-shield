@@ -2,6 +2,7 @@
 // and swap the action icon. Badge updates are immediate; activity-log writes are
 // buffered and flushed in batches so a paste with many identifiers doesn't hit
 // chrome.storage's write-rate limit.
+import { ALL_CATEGORY_KEYS } from "./categories";
 import { appendLogBatch, clearLog, getSettings, KEYS, type LogEntry } from "./storage";
 
 const BADGE_COLOR = "#0E7C66";
@@ -54,6 +55,12 @@ function scheduleFlush(): void {
   setTimeout(flushNow, 800);
 }
 
+// An MV3 service worker can be torn down mid-debounce, which would drop the timer
+// and lose whatever is still buffered. Flush on the way out. Best-effort: the write
+// is async and may not finish if Chrome kills the worker immediately, but it turns
+// a guaranteed loss into a likely save.
+chrome.runtime.onSuspend.addListener(flushNow);
+
 async function bumpBadge(tabId: number): Promise<void> {
   const prev = Number.parseInt(await chrome.action.getBadgeText({ tabId }), 10) || 0;
   await chrome.action.setBadgeText({ tabId, text: String(prev + 1) });
@@ -75,7 +82,14 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     // A parse error let a request through unredacted — make it loud.
     chrome.action.setBadgeBackgroundColor({ tabId, color: ALERT_COLOR }).catch(() => undefined);
     chrome.action.setBadgeText({ tabId, text: "!" }).catch(() => undefined);
-  } else if (msg?.type === "ss-redaction" && typeof msg.category === "string") {
+  } else if (
+    msg?.type === "ss-redaction" &&
+    typeof msg.category === "string" &&
+    ALL_CATEGORY_KEYS.includes(msg.category)
+  ) {
+    // The category is validated against the known keys: the guard runs in the page's
+    // MAIN world, so a hostile script on a supported site could post a fake redaction.
+    // Bounding it to the ~20 real categories stops arbitrary/huge strings reaching the log.
     enqueue(() => bumpBadge(tabId));
     let host = "";
     try {

@@ -5,6 +5,7 @@
 //     background, the single writer for the activity log + badge
 //   - answers the popup's status query
 //   - detects a stale (extension-updated) tab and nudges a reload
+import { ALL_CATEGORY_KEYS } from "./categories";
 import { getSettings, KEYS } from "./storage";
 
 // --- stale-tab detection ---------------------------------------------------
@@ -79,7 +80,10 @@ window.addEventListener("message", (ev) => {
   }
   if (d.kind === "failopen") {
     chrome.runtime.sendMessage({ type: "ss-failopen" }).catch(() => undefined);
-  } else if (typeof d.category === "string") {
+  } else if (typeof d.category === "string" && ALL_CATEGORY_KEYS.includes(d.category)) {
+    // Only forward known categories: the MAIN world is shared with the page, so any
+    // script there can post a spoofed { source: "ss-guard", category }. Rejecting
+    // unknown values keeps arbitrary/oversized strings out of the log and badge path.
     chrome.runtime.sendMessage({ type: "ss-redaction", category: d.category }).catch(() => undefined);
   }
 });

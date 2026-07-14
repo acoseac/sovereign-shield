@@ -1,7 +1,19 @@
 // Popup: a guard on/off toggle plus a "kept local" count for the current tab.
-const KEY = "ssEnabled";
+import { KEYS } from "./storage";
+
+const KEY = KEYS.enabled;
 const SUPPORTED = ["gemini.google.com", "chatgpt.com", "chat.openai.com", "claude.ai"];
-const onSupported = (url?: string): boolean => !!url && SUPPORTED.some((h) => url.includes(h));
+// Match on the parsed hostname, not a substring: otherwise a URL like
+// "evil.example/?ref=chatgpt.com" would read as a supported site.
+const onSupported = (urlStr?: string): boolean => {
+  if (!urlStr) return false;
+  try {
+    const { hostname } = new URL(urlStr);
+    return SUPPORTED.some((h) => hostname === h || hostname.endsWith("." + h));
+  } catch {
+    return false;
+  }
+};
 
 const toggle = document.getElementById("toggle") as HTMLInputElement;
 const keptEl = document.getElementById("kept") as HTMLElement;
