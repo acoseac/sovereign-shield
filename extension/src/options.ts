@@ -16,17 +16,26 @@ async function renderSettings(): Promise<void> {
   enabledEl.checked = s.enabled;
 
   const box = byId("categories");
-  box.replaceChildren();
+  if (box.childElementCount === 0) {
+    // First render: build the checkbox list once.
+    for (const c of CATEGORIES) {
+      const label = document.createElement("label");
+      label.className = "cat";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = `cat-${c.key}`;
+      cb.checked = s.categories.includes(c.key);
+      cb.addEventListener("change", saveCategories);
+      label.append(cb, document.createTextNode(c.label));
+      box.append(label);
+    }
+    return;
+  }
+  // Live update (a storage change echoes back here): only sync the checked state, so
+  // toggling a box mid-keyboard-navigation doesn't blow away the list and lose focus.
   for (const c of CATEGORIES) {
-    const label = document.createElement("label");
-    label.className = "cat";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = `cat-${c.key}`;
-    cb.checked = s.categories.includes(c.key);
-    cb.addEventListener("change", saveCategories);
-    label.append(cb, document.createTextNode(c.label));
-    box.append(label);
+    const cb = document.getElementById(`cat-${c.key}`) as HTMLInputElement | null;
+    if (cb) cb.checked = s.categories.includes(c.key);
   }
 }
 
