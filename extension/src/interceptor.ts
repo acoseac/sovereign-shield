@@ -248,7 +248,19 @@ async function rewriteFetch(
           // Clone headers explicitly so a string body can't down-grade the original
           // Content-Type (e.g. application/json -> text/plain -> HTTP 415).
           const headers = new Headers(input.headers);
-          return origFetch.call(window, new Request(input, { method: "POST", headers, body: rewriteBody(kind, text) }));
+          // Spread init so any options the caller passed alongside the Request survive,
+          // and pin the abort signal so "Stop generating" still cancels the rewritten
+          // request (init's signal wins if present, else the Request's own).
+          return origFetch.call(
+            window,
+            new Request(input, {
+              ...init,
+              method: "POST",
+              headers,
+              body: rewriteBody(kind, text),
+              signal: init?.signal ?? input.signal,
+            }),
+          );
         }
       }
     }
