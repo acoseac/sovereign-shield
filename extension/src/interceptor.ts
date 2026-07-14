@@ -115,8 +115,19 @@ function rewriteBody(kind: BodyKind, body: string): string {
 // in the text nodes they paint. rehydrate is idempotent, so the mutation our own
 // write triggers converges in one no-op pass. Editable regions (composers) skipped.
 function installDomRehydrator(): void {
-  const isEditable = (el: Element | null): boolean =>
-    el instanceof HTMLElement && (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA");
+  const isEditable = (el: Element | null): boolean => {
+    if (!el) return false;
+    // Fast path: isContentEditable already reflects editability inherited from an
+    // ancestor, so nested spans inside a contenteditable composer are covered.
+    if (el instanceof HTMLElement && (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
+      return true;
+    }
+    // Backstop: if the text node's immediate parent is NOT an HTMLElement (an <svg> or
+    // custom wrapper the site nests inside its composer), the instanceof check above
+    // short-circuits and never sees the inherited editability. closest() climbs the
+    // ancestors so a non-HTML node can't slip a token into the box the user is typing in.
+    return el.closest('input, textarea, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]') !== null;
+  };
   const rehydrateText = (node: Text): void => {
     const v = node.nodeValue;
     if (!v || !v.includes("[")) return;

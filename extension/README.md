@@ -110,6 +110,13 @@ esbuild and does not require it.
 - **Fail-open.** If the body parser ever throws, the guard lets the original request
   through rather than break your chat (and flips the badge red `!`). That favours
   availability over secrecy — a production build should fail-closed. See `interceptor.ts`.
+- **Settings ride on the DOM — a hostile first-party page could disable the guard.** The
+  bridge writes `data-ss-enabled` / `data-ss-cats` on `<html>`; the MAIN-world interceptor
+  reads them. Any script on a supported site can set `data-ss-enabled="off"` to switch the
+  guard off silently. This is accepted, not overlooked: the interceptor shares the MAIN
+  world with the page, so no channel between them is truly page-opaque — and a page hostile
+  enough to disable the guard can already read what you type straight from its own input
+  box. The guard defends against a site's *normal* egress, not a site actively attacking you.
 - **Format-dependent.** We match each site's known generate endpoint (Gemini
   `StreamGenerate`, ChatGPT `/backend-api/…/conversation`, Claude `/…/completion`). If a
   provider renames its endpoint or restructures the payload, the guard stops acting on

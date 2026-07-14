@@ -35,7 +35,11 @@ const TOKEN_PREFIX: Record<string, string> = {
 export class Session {
   private readonly valueToken = new Map<string, string>();
   private readonly tokenValue = new Map<string, string>();
-  private readonly counters: Record<string, number> = {};
+  // Prototype-free so a counter key can never resolve to an inherited member. Today
+  // the prefix is sanitised to uppercase [A-Z0-9_] (no collision with the lowercase
+  // Object.prototype keys is possible), but this keeps that safe if the prefix logic
+  // ever changes — a corrupted counter would break token/rehydrate parity.
+  private readonly counters: Record<string, number> = Object.create(null);
 
   /** Fired once per newly-minted token (distinct value), with its category only. */
   onMint?: (category: string) => void;
