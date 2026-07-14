@@ -54,6 +54,12 @@
       "js": ["bridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["indicator.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
     }
   ]
 }

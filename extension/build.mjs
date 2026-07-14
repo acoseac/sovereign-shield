@@ -10,6 +10,7 @@ await build({
   entryPoints: {
     interceptor: "src/interceptor.ts", // MAIN world
     bridge: "src/bridge.ts", // ISOLATED world
+    indicator: "src/indicator.ts", // ISOLATED world (Gemini pre-send pill)
     background: "src/background.ts", // service worker
     popup: "src/popup.ts",
     options: "src/options.ts",

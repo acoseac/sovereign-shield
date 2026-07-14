@@ -3,7 +3,7 @@
 // the same identifier gets the same placeholder every time and the reply can be
 // restored. Detection is the parity-gated shield — checksum-validated identifiers
 // only, so clean text passes through untouched.
-import { detectPii } from "../../web/lib/shield";
+import { detectPii } from "../../web/lib/shield.ts";
 
 const TOKEN_PREFIX: Record<string, string> = {
   ch_ahv: "AHV",
