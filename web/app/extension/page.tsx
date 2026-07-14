@@ -107,6 +107,13 @@ export default function Page() {
         </figure>
       </section>
 
+      <aside className="ext-tip">
+        <strong>Using Gemini?</strong> If a pasted message doesn&apos;t send on the first Enter,
+        press it again — or click the send arrow. That is Gemini&apos;s own editor dropping the first
+        keypress before its send button is ready; it happens with the extension removed too. The
+        guard only rewrites the outgoing request, never the send action.
+      </aside>
+
       <section className="ext-tester">
         <h2>Try the detectors</h2>
         <p className="tag">

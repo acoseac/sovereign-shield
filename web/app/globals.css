@@ -1023,6 +1023,20 @@ mark.val {
   color: var(--muted);
   font-size: 13px;
 }
+.ext-tip {
+  margin: 28px 0 0;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--yellow);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ext-tip strong {
+  color: var(--text);
+}
 .ext-tester {
   margin: 8px 0 0;
 }
