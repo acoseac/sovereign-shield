@@ -19,6 +19,10 @@ latency, and it **cannot be talked out of a match**.
 
 [**See it live → shield.ars.md**](https://shield.ars.md) · deterministic, in-browser, no API key.
 
+**In your browser:** the [Sovereign Shield browser extension](https://chromewebstore.google.com/detail/sovereign-shield-%E2%80%94-llm-pi/fbdenbfhigickkdcokpchmklopkfkkbf)
+runs the same redact → restore round-trip *inside* ChatGPT, Gemini and Claude — **now on the
+Chrome Web Store**. 100% local, no account, no API key. Source in [`extension/`](extension/).
+
 ## Install
 
 ```bash

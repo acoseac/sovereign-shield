@@ -12,6 +12,9 @@ national/tax/health IDs across the EU (IT/ES/FR/NL/DE/PL/PT/BE), UK, Brazil, Sou
 China, Canada and India, plus phone and email — so clean text passes through untouched and
 there are no false positives.
 
+**Install** it from the [Chrome Web Store](https://chromewebstore.google.com/detail/sovereign-shield-%E2%80%94-llm-pi/fbdenbfhigickkdcokpchmklopkfkkbf),
+or build it from source ([below](#build--load)).
+
 > **Status: experiment.** The design is grounded in real traffic from each site (see
 > below), but these wire formats are private and change often. Treat this as a working
 > proof of concept, not a hardened product. Test it before you rely on it.

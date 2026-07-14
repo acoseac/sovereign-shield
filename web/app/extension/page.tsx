@@ -23,6 +23,19 @@ export default function Page() {
           the reply, so the conversation still reads normally — <strong>100% local</strong>, no API
           key, no server.
         </p>
+        <div className="ext-cta">
+          <a
+            className="ext-install"
+            href="https://chromewebstore.google.com/detail/sovereign-shield-%E2%80%94-llm-pi/fbdenbfhigickkdcokpchmklopkfkkbf"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Add to Chrome
+          </a>
+          <span className="ext-cta-note">
+            Free on the Chrome Web Store · ChatGPT, Gemini and Claude.
+          </span>
+        </div>
       </header>
 
       <section className="ext-how">
@@ -58,7 +71,7 @@ export default function Page() {
           </div>
         </div>
         <p className="ext-load">
-          It is an experiment, not yet on the Chrome Web Store. Build it from{" "}
+          Prefer to build it yourself? The source is in{" "}
           <a
             href="https://github.com/acoseac/sovereign-shield/tree/main/extension"
             target="_blank"
@@ -66,7 +79,7 @@ export default function Page() {
           >
             <code>extension/</code>
           </a>{" "}
-          and load it unpacked (Developer mode → Load unpacked → <code>extension/dist</code>).
+          — load it unpacked (Developer mode → Load unpacked → <code>extension/dist</code>).
         </p>
       </section>
 
