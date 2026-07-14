@@ -133,6 +133,16 @@ esbuild and does not require it.
 - **Not in CI.** This sub-project has its own `package.json` and is built manually; the
   repo's Python + web pipelines do not touch it yet.
 
+## Troubleshooting
+
+- **Gemini sometimes needs a second Enter.** If a pasted message doesn't send on the first
+  Enter — the text just sits in the composer — press Enter again, or click the send arrow
+  (▲). This is Gemini's own editor dropping the first Enter when it fires before the send
+  handler is wired; it reproduces with this extension **fully removed** (confirmed by an
+  A/B test). The guard only rewrites the outgoing network request and has no code in the
+  keypress/submit path, so it cannot be what swallows the Enter. Pausing about a second
+  after pasting, before hitting Enter, also avoids it.
+
 ## Privacy
 
 The value↔token map lives only in page memory for the life of the tab. It is never
