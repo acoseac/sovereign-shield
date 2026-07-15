@@ -14,7 +14,7 @@ const svg = readFileSync(join(iconsDir, "shield.svg"), "utf8");
 const sizes = [16, 32, 48, 128];
 const variants = {
   "": svg, // active
-  "paused-": svg.replace(/#0E7C66/i, "#9AA0A6"), // greyed
+  "paused-": svg.replace(/#b42318/i, "#9AA0A6"), // greyed (swap the red shield fill)
 };
 
 for (const [prefix, src] of Object.entries(variants)) {

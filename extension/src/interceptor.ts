@@ -105,7 +105,9 @@ function rewriteBody(kind: BodyKind, body: string): string {
   }
   params.set("f.req", JSON.stringify(walk(parsed, allowed)));
   reportCount();
-  return params.toString();
+  // URLSearchParams serialises spaces as "+"; restore "%20" so the rewritten body keeps
+  // the client's original encoding (Google tolerates "+", but stay byte-faithful).
+  return params.toString().replace(/\+/g, "%20");
 }
 
 // Restore real values in the RENDERED DOM, not in the response stream. Gemini's
@@ -241,16 +243,18 @@ async function rewriteFetch(
     // (e.g. a multipart file upload) is passed straight through, so we never read
     // a large or streamed body into a string just to hand it back untouched.
     if (input instanceof Request && input.method.toUpperCase() === "POST") {
-      const ct = input.headers.get("content-type") ?? "";
+      // Content-Type (and auth/CSRF) can be declared on the Request OR on init; merge both
+      // so we neither miss the type check (which would fail open) nor drop init's headers.
+      // init wins on conflict, matching fetch(request, init) semantics.
+      const headers = new Headers(input.headers);
+      if (init?.headers) new Headers(init.headers).forEach((v, k) => headers.set(k, v));
+      const ct = headers.get("content-type") ?? "";
       if (/application\/json|x-www-form-urlencoded/i.test(ct)) {
         const text = await input.clone().text();
         if (text) {
-          // Clone headers explicitly so a string body can't down-grade the original
-          // Content-Type (e.g. application/json -> text/plain -> HTTP 415).
-          const headers = new Headers(input.headers);
-          // Spread init so any options the caller passed alongside the Request survive,
-          // and pin the abort signal so "Stop generating" still cancels the rewritten
-          // request (init's signal wins if present, else the Request's own).
+          // Spread init so caller options survive, keep the merged headers (so init's
+          // Content-Type/auth aren't dropped), and pin the abort signal so "Stop
+          // generating" still cancels the rewritten request.
           return origFetch.call(
             window,
             new Request(input, {

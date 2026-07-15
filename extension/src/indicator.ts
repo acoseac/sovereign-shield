@@ -123,8 +123,7 @@ function requestReposition(): void {
 }
 
 // --- composer binding (no leaked listeners) -------------------------------
-function bindComposer(): void {
-  const found = document.querySelector<HTMLElement>(COMPOSER_SELECTOR);
+function bindComposer(found: HTMLElement | null = document.querySelector<HTMLElement>(COMPOSER_SELECTOR)): void {
   if (found === activeComposer) return;
   if (activeComposer) {
     composerContent?.disconnect();
@@ -153,7 +152,18 @@ async function loadSettings(): Promise<void> {
 function init(): void {
   void loadSettings().then(render);
   bindComposer();
-  // Re-bind when Gemini's SPA swaps the composer in/out; ignore our own pill's mutations.
+  // Bind whichever composer the user focuses — on ChatGPT/Claude, editing an earlier
+  // message spawns a second contenteditable, and the pill should follow the box being
+  // edited rather than the main one at the bottom.
+  window.addEventListener(
+    "focusin",
+    (e) => {
+      if (e.target instanceof HTMLElement && e.target.matches(COMPOSER_SELECTOR)) bindComposer(e.target);
+    },
+    { capture: true },
+  );
+  // Re-bind when the SPA swaps the composer in/out (and hide on destruction); ignore our
+  // own pill's mutations.
   new MutationObserver((muts) => {
     if (muts.every((m) => m.target instanceof Element && m.target.closest(`#${PILL_ID}`))) return;
     if (!activeComposer || !activeComposer.isConnected) bindComposer();
