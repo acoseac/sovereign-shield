@@ -102,8 +102,9 @@ Then in Chrome: `chrome://extensions` → enable **Developer mode** → **Load u
 select `extension/dist`. Open Gemini, ChatGPT or Claude, click the toolbar icon to confirm
 the guard is on, and send a message containing a (synthetic!) identifier.
 
-`npm run typecheck` runs `tsc --noEmit` if you want types checked; the build itself uses
-esbuild and does not require it.
+`npm run typecheck` runs `tsc --noEmit` and `npm test` runs the unit tests (`node --test`
+over the pure detector/summary logic — no test-runner dependency); the build itself uses
+esbuild and needs neither. CI runs typecheck + test + build on every push and PR.
 
 ## Known limits (read before trusting it)
 
@@ -137,9 +138,6 @@ esbuild and does not require it.
   (`<span>[AHV_</span><span>1]</span>`) instead of one growing text node, the halves never
   match and stay redacted. Not observed on the three supported sites (short tokens render
   atomically), so it is noted rather than pre-emptively engineered around.
-- **Not in CI.** This sub-project has its own `package.json` and is built manually; the
-  repo's Python + web pipelines do not touch it yet.
-
 ## Troubleshooting
 
 - **Gemini sometimes needs a second Enter.** If a pasted message doesn't send on the first

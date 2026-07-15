@@ -1,18 +1,20 @@
-// ISOLATED-world content script (Gemini only, for now): a live pre-send indicator that
+// ISOLATED-world content script (Gemini, ChatGPT, Claude): a live pre-send indicator that
 // shows how many identifiers the guard will keep local BEFORE the user hits send, so the
 // otherwise-silent redaction is visible and trusted. Purely additive — it reads the
 // composer text and the current settings, never the network. All counting lives in the
 // pure, unit-tested summarize.ts; this file is just the DOM shell.
 //
 // Caveat (cosmetic): the pill counts the composer text, while the guard rewrites the
-// outgoing request body. They agree for typed text; if Gemini ever augments the payload
+// outgoing request body. They agree for typed text; if the site ever augments the payload
 // they could differ. And a keystroke landing within the ~200ms debounce right before
 // Enter may not tick the pill — the guard still redacts (the XHR rewrite is synchronous).
 import { getSettings, KEYS } from "./storage.ts";
 import { summarize, type Summary } from "./summarize.ts";
 
-// Verified stable across Gemini's empty-state and in-thread composers (a Quill editor).
-// role="textbox" excludes Quill's hidden .ql-clipboard; plaintext-only is future-proofing.
+// One selector for all three sites — verified live that each exposes exactly one match:
+// Gemini's Quill editor, ChatGPT's #prompt-textarea, and Claude's ProseMirror all render
+// the composer as div[contenteditable][role="textbox"]. role="textbox" is what excludes
+// Gemini's hidden .ql-clipboard; plaintext-only is future-proofing.
 const COMPOSER_SELECTOR =
   'div[contenteditable="plaintext-only"][role="textbox"], div[contenteditable="true"][role="textbox"]';
 const PILL_ID = "ss-indicator-pill";

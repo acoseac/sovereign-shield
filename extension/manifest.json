@@ -56,7 +56,12 @@
       "world": "ISOLATED"
     },
     {
-      "matches": ["https://gemini.google.com/*"],
+      "matches": [
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
       "js": ["indicator.js"],
       "run_at": "document_idle",
       "world": "ISOLATED"

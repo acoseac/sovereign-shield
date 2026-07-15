@@ -44,3 +44,23 @@ jobs:
         run: npm run parity
       - name: Build
         run: npm run build
+
+  extension:
+    name: extension (typecheck · test · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v7 # also checks out web/lib/shield.ts, which the extension imports
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24" # runs `node --test` on TS (native stripping) without a flag
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
