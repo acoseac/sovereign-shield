@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sovereign Shield — LLM PII guard",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minimum_chrome_version": "111",
   "description": "Redacts Swiss, EU & international identifiers before ChatGPT/Gemini/Claude, then restores them in the reply — 100% local.",
   "homepage_url": "https://shield.ars.md/extension",

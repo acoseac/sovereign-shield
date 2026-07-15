@@ -10,13 +10,12 @@
 // script (manifest world:"MAIN", CSP-exempt) is the only way to patch the page's
 // real fetch/XHR — you cannot inject a <script> from an isolated world.
 import { Session } from "./tokenize";
-
-type BodyKind = "freq" | "json";
+import { rewriteBody, type BodyKind } from "./rewrite";
 
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "8-review-hardening";
+const BUILD = "9-byte-faithful-freq";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -63,51 +62,14 @@ function allowedCategories(): ReadonlySet<string> | undefined {
   return new Set(raw.split(",").filter(Boolean));
 }
 
-// Walk every STRING in a parsed body and tokenize it; numbers/booleans/structure
-// are left untouched (so ids, timestamps and enums never get corrupted).
-// Structure-agnostic on purpose — no dependency on any provider's exact layout.
-function walk(node: unknown, allowed: ReadonlySet<string> | undefined): unknown {
-  if (node === null) return null;
-  if (typeof node === "string") return session.tokenize(node, allowed);
-  if (Array.isArray(node)) return node.map((n) => walk(n, allowed));
-  if (node && typeof node === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(node)) out[key] = walk(value, allowed);
-    return out;
-  }
-  return node;
-}
-
-// Rewrite a request body string of the given kind. Returns the original body on
-// any parse surprise (fail-open); reports the running count after a real rewrite.
-function rewriteBody(kind: BodyKind, body: string): string {
-  const allowed = allowedCategories();
-  if (kind === "json") {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      return body;
-    }
-    const out = JSON.stringify(walk(parsed, allowed));
-    reportCount();
-    return out;
-  }
-  // "freq": url-encoded  f.req=<json>&at=...&...
-  const params = new URLSearchParams(body);
-  const fReq = params.get("f.req");
-  if (!fReq) return body;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(fReq);
-  } catch {
-    return body;
-  }
-  params.set("f.req", JSON.stringify(walk(parsed, allowed)));
-  reportCount();
-  // URLSearchParams serialises spaces as "+"; restore "%20" so the rewritten body keeps
-  // the client's original encoding (Google tolerates "+", but stay byte-faithful).
-  return params.toString().replace(/\+/g, "%20");
+// Redact the outgoing body (pure logic in rewrite.ts) and, only when something was
+// actually kept local, report the running count to the bridge. A clean prompt or a
+// parse surprise returns the original body byte-for-byte — the guard never mutates
+// a request it didn't need to touch.
+function rewriteBodyForSend(kind: BodyKind, body: string): string {
+  const { body: out, changed } = rewriteBody(kind, body, session, allowedCategories());
+  if (changed) reportCount();
+  return out;
 }
 
 // Restore real values in the RENDERED DOM, not in the response stream. Gemini's
@@ -191,7 +153,7 @@ if (!FETCH_ONLY) {
     const kind = generateKind(xhrUrls.get(this) ?? "");
     if (kind && guardEnabled() && typeof body === "string") {
       try {
-        return origSend.call(this, rewriteBody(kind, body) as XMLHttpRequestBodyInit);
+        return origSend.call(this, rewriteBodyForSend(kind, body) as XMLHttpRequestBodyInit);
       } catch (err) {
         console.warn("[sovereign-shield] XHR passthrough after error:", err);
         failopen();
@@ -235,7 +197,7 @@ async function rewriteFetch(
       return origFetch.call(window, input, {
         ...init,
         method: "POST",
-        body: rewriteBody(kind, init.body),
+        body: rewriteBodyForSend(kind, init.body),
       });
     }
     // Fallback: the body rides on a Request object (POST only — no body on GET).
@@ -261,7 +223,7 @@ async function rewriteFetch(
               ...init,
               method: "POST",
               headers,
-              body: rewriteBody(kind, text),
+              body: rewriteBodyForSend(kind, text),
               signal: init?.signal ?? input.signal,
             }),
           );
