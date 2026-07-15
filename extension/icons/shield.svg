@@ -1,6 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <!-- Brand source for the toolbar icon. gen-icons.mjs rasterises this to PNGs and
-       makes a greyed "paused" variant by swapping the fill colour. -->
-  <path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z" fill="#0E7C66"/>
-  <path d="M42 66 L57 81 L88 46" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+       makes a greyed "paused" variant by swapping the red fill colour. A white/red
+       heraldic shield with a black rim, echoing the 🛡 emoji used in the UI. -->
+  <defs>
+    <clipPath id="shield">
+      <path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#shield)">
+    <rect width="128" height="128" fill="#ffffff"/>
+    <polygon points="128,0 128,128 0,128" fill="#b42318"/>
+  </g>
+  <path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z" fill="none" stroke="#0a0a0a" stroke-width="8" stroke-linejoin="round"/>
 </svg>
