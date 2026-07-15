@@ -90,15 +90,21 @@ host-permission review.
 
 ## Screenshots (required: ≥1, 1280×800 PNG)
 
-Four are ready in `~/Desktop/sovereign-shield-store-screenshots/`, all exactly 1280×800.
+Five are ready in `~/Desktop/sovereign-shield-store-screenshots/`, all exactly 1280×800.
 Upload in this order (the store shows the first as the primary tile):
 
-1. `1-showcase.png` — the /extension showcase hero: what it is, at a glance.
-2. `2-tester.png` — the live identifier tester (detected + "what the model receives").
-3. `3-options.png` — the options UI: all 20 category toggles + the value-free activity log.
-4. `4-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
-   while the reply shows the restored number (the "receipts" shot; slim white bands top/bottom
-   from fitting a wider capture to 1280×800).
+1. `1-gemini.png` — the pre-send pill on Gemini: "🛡️ 2 items (IBAN, Swiss AHV / AVS) will be
+   kept local when you send", above a real prompt. Leads with the headline v0.3.0 feature.
+2. `2-chatgpt.png` — the same pill on ChatGPT (3 items: card, email, AHV).
+3. `3-claude.png` — the same pill on Claude (2 items: AHV, Swiss phone).
+4. `4-options.png` — the options UI: all 20 category toggles + the value-free activity log.
+5. `5-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
+   while the reply shows the restored number (the "receipts" shot).
+
+Tiles 1–3 are designed 1280×800 promo images (exact pill markup/CSS from `indicator.ts`, with
+real detector output); 4–5 are live product captures. The two earlier web-page shots
+(`1-showcase.png`, `2-tester.png`) are archived under `_archived-stale/` — they predated the
+CWS-advertise update and still carried the "not yet on the Chrome Web Store" line.
 
 ---
 
