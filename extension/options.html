@@ -131,6 +131,27 @@
         border-color: var(--brand);
         color: var(--brand);
       }
+      .support {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .support a {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        text-decoration: none;
+        color: var(--brand);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 7px 12px;
+      }
+      .support a:hover {
+        border-color: var(--brand);
+        background: color-mix(in srgb, var(--brand) 8%, transparent);
+      }
     </style>
   </head>
   <body>
@@ -170,6 +191,15 @@
         </p>
         <div id="summary"></div>
         <div id="log" class="loglist"></div>
+      </section>
+
+      <section>
+        <h2>Support</h2>
+        <p class="muted">Questions, bug reports or feedback — we're happy to help.</p>
+        <div class="support">
+          <a href="mailto:support@ars.md">✉️ support@ars.md</a>
+          <a href="https://github.com/acoseac/sovereign-shield/issues" target="_blank" rel="noreferrer noopener">🐛 Report an issue on GitHub</a>
+        </div>
       </section>
     </div>
     <script src="options.js"></script>
