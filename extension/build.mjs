@@ -2,8 +2,9 @@
 // static files (manifest, HTML pages, icons) alongside them. Output goes to dist/ —
 // that folder is what you "Load unpacked" in chrome://extensions.
 import { build } from "esbuild";
-import { copyFileSync, mkdirSync, cpSync } from "node:fs";
+import { copyFileSync, mkdirSync, cpSync, rmSync } from "node:fs";
 
+rmSync("dist", { recursive: true, force: true }); // start clean so removed/renamed files never linger
 mkdirSync("dist", { recursive: true });
 
 await build({
@@ -26,6 +27,8 @@ await build({
 for (const file of ["manifest.json", "popup.html", "options.html"]) {
   copyFileSync(file, `dist/${file}`);
 }
-cpSync("icons", "dist/icons", { recursive: true });
+// Ship only the rasterised PNGs — the source shield.svg isn't referenced by the
+// manifest, so keep it out of the packaged extension.
+cpSync("icons", "dist/icons", { recursive: true, filter: (src) => !src.endsWith(".svg") });
 
 console.log("Built extension -> extension/dist (Load unpacked points here).");
