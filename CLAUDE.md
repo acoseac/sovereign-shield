@@ -61,7 +61,8 @@ first — it is the best map of the live transports.
   rejected the send** (the default model tolerated it, which is why it looked
   intermittent). When redaction *does* happen, swap only the `f.req` value in place.
   Pinned by [`extension/test/rewrite.test.ts`](extension/test/rewrite.test.ts) — do not
-  reintroduce a whole-body re-serialize.
+  reintroduce a whole-body re-serialize. Rationale:
+  [ADR 0002](docs/adr/0002-byte-faithful-request-rewriting.md).
 - **Fail-open** — any parse surprise returns the original body untouched. The guard never
   blocks traffic it cannot handle.
 - **Rehydrate in the DOM, not the stream** — token→value restore runs on painted text
