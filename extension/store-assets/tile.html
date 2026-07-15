@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+  Chrome Web Store screenshot tiles — one 1280x800 tile per site.
+  Load with ?site=gemini | chatgpt | claude (defaults to gemini).
+
+  Designed recreation of the pre-send pill: the .pill markup + CSS below mirror
+  src/indicator.ts, and the prompts/counts are real detector output (run sample
+  text through summarize() in src/summarize.ts to recompute an item count/labels).
+  Rendered to PNG by render.sh. See ../RELEASING.md.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sovereign Shield — Chrome Web Store screenshot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 800px; overflow: hidden; }
+  body {
+    font-family: "Google Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative;
+  }
+  /* per-site background set by JS */
+  .brand {
+    position: absolute; top: 30px; left: 34px;
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: 17px; color: #0f172a; letter-spacing: -0.01em;
+  }
+  .brand svg { width: 26px; height: 26px; }
+  .badge {
+    position: absolute; top: 34px; right: 34px;
+    font-size: 13px; font-weight: 700; color: #475569;
+    background: rgba(255,255,255,.7); border: 1px solid rgba(15,23,42,.08);
+    padding: 6px 14px; border-radius: 999px; backdrop-filter: blur(6px);
+  }
+  .greeting {
+    font-size: 40px; font-weight: 500; color: #1f2937; margin-bottom: 34px;
+    letter-spacing: -0.01em;
+  }
+  .stage { width: 860px; display: flex; flex-direction: column; align-items: flex-start; }
+  /* the pill — exact styling from indicator.ts */
+  .pill {
+    align-self: flex-start; margin: 0 0 -16px 26px; position: relative; z-index: 2;
+    max-width: 90%; white-space: nowrap;
+    padding: 8px 16px; border-radius: 9999px;
+    background: rgba(15,23,42,.85); color: #f8fafc;
+    border: 1px solid rgba(255,255,255,.15);
+    box-shadow: 0 6px 18px rgba(0,0,0,.28);
+    font: 500 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .composer {
+    width: 100%; background: #fff; border-radius: 28px;
+    box-shadow: 0 10px 40px rgba(15,23,42,.12); padding: 26px 28px 20px;
+    border: 1px solid rgba(15,23,42,.05);
+  }
+  .prompt { font-size: 20px; line-height: 1.5; color: #1f2937; }
+  .cbar { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; }
+  .plus { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #e5e7eb; color: #6b7280;
+          display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .send { width: 40px; height: 40px; border-radius: 50%; background: #0f172a; color: #fff;
+          display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .caption { position: absolute; bottom: 40px; font-size: 16px; color: #64748b; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <svg viewBox="0 0 128 128"><defs><clipPath id="s"><path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z"/></clipPath></defs>
+      <g clip-path="url(#s)"><rect width="128" height="128" fill="#fff"/><polygon points="128,0 128,128 0,128" fill="#b42318"/></g>
+      <path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z" fill="none" stroke="#0a0a0a" stroke-width="8" stroke-linejoin="round"/></svg>
+    Sovereign Shield
+  </div>
+  <div class="badge" id="badge"></div>
+  <div class="greeting" id="greeting"></div>
+  <div class="stage">
+    <div class="pill" id="pill"></div>
+    <div class="composer">
+      <div class="prompt" id="prompt"></div>
+      <div class="cbar"><div class="plus">+</div><div class="send">↑</div></div>
+    </div>
+  </div>
+  <div class="caption">See what stays local — before you hit send.</div>
+<script>
+  const T = {
+    gemini: { badge: "Gemini", greeting: "Your move, Arsenie!",
+      bg: "radial-gradient(1200px 700px at 50% 62%, #e8f0fe 0%, #f7fafd 55%, #ffffff 100%)",
+      prompt: "Write a heartfelt breakup letter to my bank. It's not you, it's my IBAN CH93 0076 2011 6238 5295 7 and AHV 756.1234.5678.97 needing space.",
+      pill: "🛡️ 2 items (IBAN, Swiss AHV / AVS) will be kept local when you send" },
+    chatgpt: { badge: "ChatGPT", greeting: "What’s on the agenda today?",
+      bg: "radial-gradient(1200px 700px at 50% 55%, #f7f7f8 0%, #ffffff 70%)",
+      prompt: "My cat filed my taxes again. His AHV is 756.1234.5678.97, refund to hans.muster@bluewin.ch, and don’t ask about the card 4111 1111 1111 1111.",
+      pill: "🛡️ 3 items (Credit card, Email, Swiss AHV / AVS) will be kept local when you send" },
+    claude: { badge: "Claude", greeting: "Coffee and Claude time?",
+      bg: "radial-gradient(1200px 700px at 50% 55%, #f5efe6 0%, #faf7f2 60%, #ffffff 100%)",
+      prompt: "Write a dramatic soap-opera scene where my Swiss phone +41 79 214 88 03 confesses undying love to my AHV 756.1234.5678.97.",
+      pill: "🛡️ 2 items (Swiss AHV / AVS, Swiss phone) will be kept local when you send" },
+  };
+  const site = new URLSearchParams(location.search).get("site") || "gemini";
+  const d = T[site];
+  document.body.style.background = d.bg;
+  document.getElementById("badge").textContent = d.badge;
+  document.getElementById("greeting").textContent = d.greeting;
+  document.getElementById("prompt").textContent = d.prompt;
+  document.getElementById("pill").textContent = d.pill;
+  if (site === "claude") document.getElementById("greeting").style.fontFamily = "Georgia, 'Times New Roman', serif";
+</script>
+</body>
+</html>

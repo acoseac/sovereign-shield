@@ -106,6 +106,10 @@ the guard is on, and send a message containing a (synthetic!) identifier.
 over the pure detector/summary logic — no test-runner dependency); the build itself uses
 esbuild and needs neither. CI runs typecheck + test + build on every push and PR.
 
+To cut a new version (bump → package → tag `extension-v*` → Chrome Web Store) and to
+regenerate the store screenshots and promo tile, see [RELEASING.md](RELEASING.md)
+(the generators live in [`store-assets/`](store-assets/)).
+
 ## Known limits (read before trusting it)
 
 - **Fail-open.** If the body parser ever throws, the guard lets the original request

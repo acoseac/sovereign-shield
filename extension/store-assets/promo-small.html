@@ -1,0 +1,46 @@
+<!doctype html>
+<!--
+  Chrome Web Store "small promo tile" — 440x280.
+  Dark slate so the white/red/black shield reads (it would wash out on a white
+  store card). Rendered to PNG by render.sh. See ../RELEASING.md.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sovereign Shield — small promo tile</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 440px; height: 280px; overflow: hidden; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #f8fafc; text-align: center; position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background:
+      radial-gradient(58% 70% at 50% 40%, rgba(180,35,24,.20) 0%, rgba(180,35,24,0) 62%),
+      radial-gradient(130% 120% at 50% 0%, #1e293b 0%, #0f172a 55%, #0b1220 100%);
+  }
+  .shield { width: 66px; height: 66px; margin-bottom: 16px;
+            filter: drop-shadow(0 5px 12px rgba(0,0,0,.45)); }
+  .name { font-size: 27px; font-weight: 800; letter-spacing: -0.02em; }
+  .tag { font-size: 14px; font-weight: 500; color: #cbd5e1; margin-top: 9px;
+         max-width: 350px; line-height: 1.45; }
+  .sites { margin-top: 17px; display: flex; align-items: center; gap: 9px;
+           font-size: 12.5px; font-weight: 700; color: #93a4bb; letter-spacing: .01em; }
+  .dot { width: 3px; height: 3px; border-radius: 50%; background: #475569; }
+  .local { position: absolute; top: 16px; right: 16px; font-size: 10.5px; font-weight: 800;
+           letter-spacing: .04em; color: #fecaca; background: rgba(180,35,24,.20);
+           border: 1px solid rgba(180,35,24,.55); padding: 4px 10px; border-radius: 999px; }
+</style>
+</head>
+<body>
+  <div class="local">100% LOCAL</div>
+  <svg class="shield" viewBox="0 0 128 128">
+    <defs><clipPath id="s"><path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z"/></clipPath></defs>
+    <g clip-path="url(#s)"><rect width="128" height="128" fill="#fff"/><polygon points="128,0 128,128 0,128" fill="#b42318"/></g>
+    <path d="M64 8 L112 26 L112 62 C112 90 92 110 64 120 C36 110 16 90 16 62 L16 26 Z" fill="none" stroke="#0a0a0a" stroke-width="8" stroke-linejoin="round"/>
+  </svg>
+  <div class="name">Sovereign Shield</div>
+  <div class="tag">Redacts Swiss, EU &amp; international identifiers before you hit send — then restores them in the reply.</div>
+  <div class="sites"><span>ChatGPT</span><span class="dot"></span><span>Gemini</span><span class="dot"></span><span>Claude</span></div>
+</body>
+</html>
