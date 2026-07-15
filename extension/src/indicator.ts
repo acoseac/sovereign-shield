@@ -23,6 +23,7 @@ let enabled = true;
 let allowed: ReadonlySet<string> | undefined; // the guard's enabled category set
 let pill: HTMLElement | null = null;
 let activeComposer: HTMLElement | null = null;
+let composerContent: MutationObserver | undefined;
 let composerResize: ResizeObserver | undefined;
 let wantVisible = false; // the pill has content to show (distinct from clip-hidden)
 let lastRendered = ""; // last pill text, to skip no-op writes (and aria re-announcements)
@@ -124,14 +125,17 @@ function bindComposer(): void {
   const found = document.querySelector<HTMLElement>(COMPOSER_SELECTOR);
   if (found === activeComposer) return;
   if (activeComposer) {
-    activeComposer.removeEventListener("input", scheduleRender);
-    activeComposer.removeEventListener("compositionend", scheduleRender);
+    composerContent?.disconnect();
     composerResize?.disconnect();
   }
   activeComposer = found;
   if (!activeComposer) return hidePill();
-  activeComposer.addEventListener("input", scheduleRender); // fires on typing AND paste
-  activeComposer.addEventListener("compositionend", scheduleRender); // IME/CJK final commit
+  // Drive recompute off the composer's CONTENT, not `input` events: Gemini clears the box
+  // programmatically after send (and delete/cut don't reliably fire `input`), which would
+  // otherwise leave a stale count. Any DOM change → debounced recompute; this also covers
+  // typing, paste and IME. The indicator never mutates the composer, so no feedback loop.
+  composerContent = new MutationObserver(scheduleRender);
+  composerContent.observe(activeComposer, { childList: true, subtree: true, characterData: true });
   composerResize = new ResizeObserver(requestReposition); // composer grows as prompt wraps
   composerResize.observe(activeComposer);
   render();
