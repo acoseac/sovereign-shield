@@ -1,11 +1,3 @@
-> **⚠️ DRAFT — legal information, not legal advice.** Derived from the Apache Individual
-> CLA and the Harmony Agreements, with an explicit *outbound relicensing* grant (Section 2)
-> and Swiss-law adaptations applied from review: a moral-rights non-assertion undertaking
-> (Section 2), an Art. 100 CO liability carve-out (Section 5), and Geneva forum selection
-> plus a successors/assignment clause (Section 7). All placeholders are filled. Before
-> relying on this commercially or accepting signatures under it, have a licensed attorney in
-> the Canton of Geneva give it a final pass — then delete this banner.
-
 # Sovereign Shield — Individual Contributor License Agreement
 
 **Version 1.0**
