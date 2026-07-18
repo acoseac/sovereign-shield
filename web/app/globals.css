@@ -1023,6 +1023,42 @@ mark.val {
   color: var(--muted);
   font-size: 13px;
 }
+/* Home-page extension band (additive; sits between the hero and the demo tabs). */
+.home-ext-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 4px 0 22px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--yellow);
+  border-radius: 10px;
+}
+.home-ext-band-text {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.home-ext-band-text strong {
+  color: var(--text);
+}
+.home-ext-band-cta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.home-ext-band-link {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
 .ext-tip {
   margin: 28px 0 0;
   padding: 12px 16px;
