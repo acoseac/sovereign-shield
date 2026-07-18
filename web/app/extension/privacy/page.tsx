@@ -15,7 +15,7 @@ export default function Page() {
       <header className="header">
         <h1>Privacy policy</h1>
         <p className="tag">
-          Sovereign Shield — LLM PII guard (browser extension). Last updated 11 July 2026.
+          Sovereign Shield — LLM PII guard (browser extension). Last updated 18 July 2026.
         </p>
       </header>
 
@@ -34,6 +34,11 @@ export default function Page() {
           model, replaces any checksum-validated Swiss, EU or international identifier with a
           placeholder <em>before</em> the request leaves your browser, and restores the real value in
           the reply you read. This all happens locally, in the page.
+        </p>
+        <p>
+          Before you send, a small counter above the chat box previews how many identifiers will be
+          kept local. It reads your prompt text entirely within transient page memory — it never
+          touches the network, is never written to disk, and is gone the moment the tab closes.
         </p>
 
         <h2>Data handling</h2>
