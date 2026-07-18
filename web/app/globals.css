@@ -80,6 +80,7 @@ a:hover {
 /* --- nav --- */
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   align-items: center;
   padding: 6px 0 14px;
@@ -101,6 +102,10 @@ a:hover {
   text-decoration-color: var(--yellow);
   text-decoration-thickness: 3px;
   text-underline-offset: 6px;
+}
+/* Right-aligned link back to the parent site (ars.md). */
+.nav-home {
+  margin-left: auto;
 }
 
 /* --- tabs --- */

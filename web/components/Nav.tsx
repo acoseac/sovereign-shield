@@ -22,6 +22,9 @@ export default function Nav({
       <Link className={current === "bench" ? "active" : ""} href="/benchmark">
         Benchmark
       </Link>
+      <a className="nav-home" href="https://www.ars.md/">
+        ← ars.md
+      </a>
     </nav>
   );
 }
