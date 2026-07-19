@@ -10,6 +10,7 @@
 // Enter may not tick the pill — the guard still redacts (the XHR rewrite is synchronous).
 import { getSettings, KEYS } from "./storage.ts";
 import { summarize, type Summary } from "./summarize.ts";
+import { compileRules, type CustomMatcher } from "./custom.ts";
 
 // One selector for all three sites — verified live that each exposes exactly one match:
 // Gemini's Quill editor, ChatGPT's #prompt-textarea, and Claude's ProseMirror all render
@@ -23,6 +24,7 @@ const CLIP_TOP_PX = 56; // hide if the composer scrolls above this (behind Gemin
 
 let enabled = true;
 let allowed: ReadonlySet<string> | undefined; // the guard's enabled category set
+let customMatcher: CustomMatcher | undefined; // compiled user keyword/regex blocklist
 let pill: HTMLElement | null = null;
 let activeComposer: HTMLElement | null = null;
 let composerContent: MutationObserver | undefined;
@@ -94,7 +96,7 @@ function positionPill(): void {
 // --- compute + render -----------------------------------------------------
 function render(): void {
   if (!enabled || !activeComposer?.isConnected) return hidePill();
-  const summary = summarize(activeComposer.innerText, allowed);
+  const summary = summarize(activeComposer.innerText, allowed, customMatcher);
   if (summary.count === 0) return hidePill();
   const text = pillText(summary);
   const p = ensurePill();
@@ -147,6 +149,7 @@ async function loadSettings(): Promise<void> {
   const s = await getSettings();
   enabled = s.enabled;
   allowed = new Set(s.categories); // getSettings() defaults to all categories when unset
+  customMatcher = compileRules(s.custom); // undefined when there are no (valid) rules
 }
 
 function init(): void {
@@ -173,7 +176,10 @@ function init(): void {
   window.addEventListener("scroll", requestReposition, { passive: true, capture: true });
   window.addEventListener("resize", requestReposition, { passive: true });
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && (KEYS.enabled in changes || KEYS.categories in changes)) {
+    if (
+      area === "local" &&
+      (KEYS.enabled in changes || KEYS.categories in changes || KEYS.custom in changes)
+    ) {
       void loadSettings().then(render);
     }
   });

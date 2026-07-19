@@ -53,6 +53,15 @@ export const CATEGORY_LABEL: Record<string, string> = {
   cn_resident: "Resident ID (CN)",
   ca_sin: "SIN (CA)",
   in_aadhaar: "Aadhaar (IN)",
+  private_key: "Private key (PEM)",
+  jwt: "JWT",
+  aws_key: "AWS access key",
+  anthropic_key: "Anthropic API key",
+  openai_key: "OpenAI API key",
+  github_token: "GitHub token",
+  google_api_key: "Google API key",
+  slack_token: "Slack token",
+  stripe_key: "Stripe secret key",
 };
 
 export function responseFor(docId: string, modelId: string): string | null {
@@ -112,6 +121,16 @@ const TOKEN_PREFIX: Record<string, string> = {
   cn_resident: "CNID",
   ca_sin: "SIN",
   in_aadhaar: "AADHAAR",
+  // Secrets / API keys — pure-uppercase-letter prefixes (see core.py _TOKEN_RE).
+  private_key: "PEM",
+  jwt: "JWT",
+  aws_key: "AWS",
+  anthropic_key: "ANTHROPIC",
+  openai_key: "OPENAI",
+  github_token: "GITHUB",
+  google_api_key: "GOOGLE",
+  slack_token: "SLACK",
+  stripe_key: "STRIPE",
 };
 
 /** Live, client-side tokenization of arbitrary text (deterministic; structured

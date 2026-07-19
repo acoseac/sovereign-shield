@@ -25,7 +25,17 @@ export type PiiCategory =
   | "ch_phone"
   | "email"
   | "credit_card"
-  | "dob";
+  | "dob"
+  // Secrets / API keys — regex-only, high-specificity vendor prefixes.
+  | "private_key"
+  | "jwt"
+  | "aws_key"
+  | "anthropic_key"
+  | "openai_key"
+  | "github_token"
+  | "google_api_key"
+  | "slack_token"
+  | "stripe_key";
 
 export interface PiiHit {
   category: PiiCategory;
@@ -335,6 +345,40 @@ const CN_ID_RE = /\b\d{17}[\dXx]\b/g;
 const CA_SIN_RE = /\b\d{3}[ -]?\d{3}[ -]?\d{3}\b/g;
 const IN_AADHAAR_RE = /\b\d{4} ?\d{4} ?\d{4}\b/g;
 
+// --- secret / API-key shapes (regex-only; run FIRST — see DETECTORS) ---
+// Explicit ASCII lookarounds, never \b/\w: JS's ASCII boundaries must match Python's
+// (whose \b/\w are Unicode-aware) byte-for-byte. [\s\S] (never the `s` flag / `.`) so a
+// multi-line PEM spans newlines identically in both engines.
+const PRIVATE_KEY_RE =
+  /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----/g;
+const JWT_RE =
+  /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?![A-Za-z0-9_-])/g;
+const AWS_KEY_RE = /(?<![A-Za-z0-9])(?:AKIA|ASIA)[A-Z0-9]{16}(?![A-Za-z0-9])/g;
+const ANTHROPIC_KEY_RE =
+  /(?<![A-Za-z0-9_-])sk-ant-[a-zA-Z0-9]{4,8}-[A-Za-z0-9_-]{80,120}(?![A-Za-z0-9_-])/g;
+const OPENAI_KEY_RE =
+  /(?<![A-Za-z0-9_-])sk-(?:(?:proj|svcacct|admin)-[A-Za-z0-9_-]{20,}|[A-Za-z0-9]{20,})(?![A-Za-z0-9_-])/g;
+const GITHUB_TOKEN_RE =
+  /(?<![A-Za-z0-9_-])(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{82})(?![A-Za-z0-9_-])/g;
+const GOOGLE_API_KEY_RE = /(?<![A-Za-z0-9_-])AIza[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])/g;
+const SLACK_TOKEN_RE = /(?<![A-Za-z0-9_-])xox[baprs]-[A-Za-z0-9-]{10,}(?![A-Za-z0-9_-])/g;
+// _live_ only — _test_ keys aren't sensitive and matching them would spam dev workflows.
+const STRIPE_KEY_RE = /(?<![A-Za-z0-9_-])(?:sk|rk)_live_[A-Za-z0-9]{24,}(?![A-Za-z0-9_-])/g;
+
+// JWT header validator — mirrors Python _jwt_ok. Decode the segment before the first
+// dot (urlsafe base64) and require a JSON object with an `alg` field.
+function jwtOk(value: string): boolean {
+  const header = value.slice(0, value.indexOf("."));
+  const b64 = header.replaceAll("-", "+").replaceAll("_", "/");
+  const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+  try {
+    const obj = JSON.parse(atob(b64 + pad));
+    return typeof obj === "object" && obj !== null && "alg" in obj;
+  } catch {
+    return false;
+  }
+}
+
 // EU IDs render as a short prefix + last two chars (never the raw value).
 const SUFFIX_MASK: Record<string, [string, (r: string) => string]> = {
   it_cf: ["cf", normRecord],
@@ -372,6 +416,16 @@ function mask(raw: string, category: PiiCategory): string {
     const head = local ? local[0] : "";
     return `${head}***@${domain}`;
   }
+  // Secrets: only the fixed, public discriminator prefix — never a byte of the tail.
+  if (category === "private_key") return "pem:…";
+  if (category === "jwt") return "jwt:…";
+  if (category === "aws_key") return `aws:${raw.slice(0, 4)}…`;
+  if (category === "anthropic_key") return "anthropic:sk-ant-…";
+  if (category === "openai_key") return "openai:sk-…";
+  if (category === "github_token") return `github:${raw.slice(0, raw.indexOf("_") + 1)}…`;
+  if (category === "google_api_key") return "google:AIza…";
+  if (category === "slack_token") return `slack:${raw.slice(0, raw.indexOf("-") + 1)}…`;
+  if (category === "stripe_key") return `stripe:${raw.slice(0, 8)}…`;
   const suffix = SUFFIX_MASK[category];
   if (suffix) return `${suffix[0]}:…${suffix[1](raw).slice(-2)}`;
   return "dob:XXXX-XX-XX";
@@ -379,6 +433,18 @@ function mask(raw: string, category: PiiCategory): string {
 
 type Detector = [PiiCategory, RegExp, ((s: string) => boolean) | null];
 const DETECTORS: Detector[] = [
+  // secrets / API keys — regex-only, run FIRST so a base64/JWT interior can't be
+  // part-claimed by a numeric ID detector below (dropping the overlapping secret span
+  // and leaking the rest of the token).
+  ["private_key", PRIVATE_KEY_RE, null],
+  ["jwt", JWT_RE, jwtOk],
+  ["aws_key", AWS_KEY_RE, null],
+  ["anthropic_key", ANTHROPIC_KEY_RE, null], // before openai_key (both start sk-)
+  ["openai_key", OPENAI_KEY_RE, null],
+  ["github_token", GITHUB_TOKEN_RE, null],
+  ["google_api_key", GOOGLE_API_KEY_RE, null],
+  ["slack_token", SLACK_TOKEN_RE, null],
+  ["stripe_key", STRIPE_KEY_RE, null],
   ["ch_ahv", AHV_RE, ean13Ok],
   ["iban", IBAN_RE, ibanOk],
   ["it_cf", IT_CF_RE, itCfOk],

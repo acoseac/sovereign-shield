@@ -23,6 +23,8 @@ need the raw span for record comparison use the private :func:`_detect_raw`.
 
 from __future__ import annotations
 
+import base64
+import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum
@@ -52,6 +54,18 @@ class PiiCategory(StrEnum):
     CA_SIN = "ca_sin"  # Canadian Social Insurance Number
     IN_AADHAAR = "in_aadhaar"  # Indian Aadhaar
     DOB = "dob"  # date of birth — off by default (high false-positive)
+    # Secrets / API keys — regex-only (no checksum), anchored on high-specificity
+    # vendor prefixes. Deliberately break the "checksum-validated" rule for a curated
+    # low-false-positive set; see docs/adr/0003.
+    PRIVATE_KEY = "private_key"  # PEM private-key block
+    JWT = "jwt"  # JSON Web Token (header validated)
+    AWS_KEY = "aws_key"  # AWS access key id (AKIA/ASIA)
+    ANTHROPIC_KEY = "anthropic_key"  # Anthropic API key (sk-ant-…)
+    OPENAI_KEY = "openai_key"  # OpenAI API key (sk-…)
+    GITHUB_TOKEN = "github_token"  # noqa: S105 — category key, not a credential
+    GOOGLE_API_KEY = "google_api_key"  # Google API key (AIza…)
+    SLACK_TOKEN = "slack_token"  # noqa: S105 — category key, not a credential
+    STRIPE_KEY = "stripe_key"  # Stripe secret key (sk_live_/rk_live_)
 
 
 @dataclass(frozen=True)
@@ -382,6 +396,20 @@ def _norm_record(s: str) -> str:
     return _STRIP_RE.sub("", s).upper()
 
 
+def _jwt_ok(value: str) -> bool:
+    """Validate a JWT by decoding its header (the segment before the first dot) and
+    requiring a JSON object with an ``alg`` field. This is the false-positive filter:
+    three dotted base64url runs are only moderately specific, but only a genuine JOSE
+    header decodes to ``{"alg": …}``, so this makes the JWT detector airtight."""
+    header = value[: value.index(".")]
+    padded = header + "=" * (-len(header) % 4)
+    try:
+        obj = json.loads(base64.urlsafe_b64decode(padded))
+    except Exception:
+        return False
+    return isinstance(obj, dict) and "alg" in obj
+
+
 # --------------------------------------------------------------------------- #
 # shape regexes. Ordered by priority in _detect_raw (specific/validated first).
 # --------------------------------------------------------------------------- #
@@ -422,6 +450,36 @@ _ZA_ID_RE = re.compile(r"\b\d{13}\b")
 _CN_ID_RE = re.compile(r"\b\d{17}[\dXx]\b")  # 18 chars, checksum may be X
 _CA_SIN_RE = re.compile(r"\b\d{3}[ -]?\d{3}[ -]?\d{3}\b")  # 9 digits
 _IN_AADHAAR_RE = re.compile(r"\b\d{4} ?\d{4} ?\d{4}\b")  # 12 digits, 4-4-4
+
+# --------------------------------------------------------------------------- #
+# secret / API-key shapes. Regex-only (no checksum), anchored on high-specificity
+# vendor prefixes with explicit ASCII lookarounds — NEVER \b/\w, whose Unicode
+# awareness in Python would diverge from the ASCII \b/\w in the JS port and break
+# byte-for-byte parity. Run FIRST (see _DETECTORS) so a base64/JWT interior can't be
+# part-claimed by a numeric ID detector, which would drop the overlapping secret and
+# leak the rest of it.
+# --------------------------------------------------------------------------- #
+_PRIVATE_KEY_RE = re.compile(
+    r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"
+    r"[\s\S]+?-----END (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"
+)
+_JWT_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?![A-Za-z0-9_-])"
+)
+_AWS_KEY_RE = re.compile(r"(?<![A-Za-z0-9])(?:AKIA|ASIA)[A-Z0-9]{16}(?![A-Za-z0-9])")
+_ANTHROPIC_KEY_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])sk-ant-[a-zA-Z0-9]{4,8}-[A-Za-z0-9_-]{80,120}(?![A-Za-z0-9_-])"
+)
+_OPENAI_KEY_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])sk-(?:(?:proj|svcacct|admin)-[A-Za-z0-9_-]{20,}|[A-Za-z0-9]{20,})(?![A-Za-z0-9_-])"
+)
+_GITHUB_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{82})(?![A-Za-z0-9_-])"
+)
+_GOOGLE_API_KEY_RE = re.compile(r"(?<![A-Za-z0-9_-])AIza[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])")
+_SLACK_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_-])xox[baprs]-[A-Za-z0-9-]{10,}(?![A-Za-z0-9_-])")
+# _live_ only — _test_ keys aren't sensitive and matching them would spam dev workflows.
+_STRIPE_KEY_RE = re.compile(r"(?<![A-Za-z0-9_-])(?:sk|rk)_live_[A-Za-z0-9]{24,}(?![A-Za-z0-9_-])")
 
 
 def _mask(raw: str, category: PiiCategory) -> str:
@@ -471,11 +529,43 @@ def _mask(raw: str, category: PiiCategory) -> str:
         return f"sin:…{_digits(raw)[-2:]}"
     if category is PiiCategory.IN_AADHAAR:
         return f"aadhaar:…{_digits(raw)[-2:]}"
+    # Secrets: the marker carries only the fixed, public discriminator prefix — never
+    # a byte of the random tail (see test_marker_never_leaks_raw_value).
+    if category is PiiCategory.PRIVATE_KEY:
+        return "pem:…"
+    if category is PiiCategory.JWT:
+        return "jwt:…"
+    if category is PiiCategory.AWS_KEY:
+        return f"aws:{raw[:4]}…"
+    if category is PiiCategory.ANTHROPIC_KEY:
+        return "anthropic:sk-ant-…"
+    if category is PiiCategory.OPENAI_KEY:
+        return "openai:sk-…"
+    if category is PiiCategory.GITHUB_TOKEN:
+        return f"github:{raw[: raw.index('_') + 1]}…"
+    if category is PiiCategory.GOOGLE_API_KEY:
+        return "google:AIza…"
+    if category is PiiCategory.SLACK_TOKEN:
+        return f"slack:{raw[: raw.index('-') + 1]}…"
+    if category is PiiCategory.STRIPE_KEY:
+        return f"stripe:{raw[:8]}…"
     return "dob:XXXX-XX-XX"
 
 
 # (category, compiled regex, validator or None) in priority order.
 _DETECTORS: list[tuple[PiiCategory, re.Pattern[str], object]] = [
+    # secrets / API keys — regex-only, run FIRST so a base64/JWT interior can't be
+    # part-claimed by a numeric ID detector below (which would drop the overlapping
+    # secret span and leak the rest of the token).
+    (PiiCategory.PRIVATE_KEY, _PRIVATE_KEY_RE, None),
+    (PiiCategory.JWT, _JWT_RE, _jwt_ok),
+    (PiiCategory.AWS_KEY, _AWS_KEY_RE, None),
+    (PiiCategory.ANTHROPIC_KEY, _ANTHROPIC_KEY_RE, None),  # before OpenAI (both start sk-)
+    (PiiCategory.OPENAI_KEY, _OPENAI_KEY_RE, None),
+    (PiiCategory.GITHUB_TOKEN, _GITHUB_TOKEN_RE, None),
+    (PiiCategory.GOOGLE_API_KEY, _GOOGLE_API_KEY_RE, None),
+    (PiiCategory.SLACK_TOKEN, _SLACK_TOKEN_RE, None),
+    (PiiCategory.STRIPE_KEY, _STRIPE_KEY_RE, None),
     (PiiCategory.AHV_AVS, _AHV_RE, _ean13_ok),
     (PiiCategory.IBAN, _IBAN_RE, _iban_ok),
     (PiiCategory.IT_CF, _IT_CF_RE, _it_cf_ok),

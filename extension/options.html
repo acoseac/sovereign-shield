@@ -81,6 +81,57 @@
         font-size: 14px;
         cursor: pointer;
       }
+      .subhead {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 18px 0 2px;
+      }
+      .rule {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px 12px;
+        align-items: center;
+        padding: 12px 0;
+        border-top: 1px solid var(--line);
+      }
+      .rule input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      .rule .opts {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .rule .opts label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+      }
+      .rule .opts input[type="text"] {
+        width: 160px;
+      }
+      .rule .err {
+        grid-column: 1 / -1;
+        color: #d33;
+        font-size: 12px;
+        min-height: 0;
+      }
+      .rule .rm {
+        align-self: start;
+      }
       .chips {
         display: flex;
         flex-wrap: wrap;
@@ -174,10 +225,30 @@
       <section>
         <h2>What to block</h2>
         <p class="muted">
-          Only checksum-validated identifiers are ever matched, so there are no false positives.
-          Unchecked types pass through untouched. Names and addresses are out of scope.
+          Identifiers are checksum-validated, so they never false-positive. Unchecked types pass
+          through untouched. Names and addresses are out of scope.
         </p>
         <div id="categories" class="cats"></div>
+        <h3 class="subhead">Secrets &amp; API keys</h3>
+        <p class="muted" style="margin-bottom: 8px">
+          Matched by shape (e.g. <code>AKIA…</code>, <code>sk-…</code>, JWTs, PEM keys). Anchored on
+          high-signal prefixes to keep false positives near zero, but — unlike the identifiers above —
+          these are pattern-matched, not checksum-verified.
+        </p>
+        <div id="secrets" class="cats"></div>
+      </section>
+
+      <section>
+        <div class="row">
+          <h2>Custom rules</h2>
+          <button id="add-rule" class="btn">+ Add rule</button>
+        </div>
+        <p class="muted">
+          Redact your own terms — internal code names, client names, domains. Kept local and
+          restored in the reply, exactly like the built-in types. Plain text by default (whole-word);
+          tick <strong>Regex</strong> for a pattern. Rules never leave your browser.
+        </p>
+        <div id="rules"></div>
       </section>
 
       <section>

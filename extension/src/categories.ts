@@ -3,6 +3,8 @@
 export interface Category {
   key: string;
   label: string;
+  /** UI grouping. Absent = checksum-validated identifier; "secrets" = API key / token. */
+  group?: "secrets";
 }
 
 export const CATEGORIES: readonly Category[] = [
@@ -26,6 +28,18 @@ export const CATEGORIES: readonly Category[] = [
   { key: "cn_resident", label: "Resident ID (CN)" },
   { key: "ca_sin", label: "SIN (CA)" },
   { key: "in_aadhaar", label: "Aadhaar (IN)" },
+  // Secrets / API keys — pattern-matched (no checksum), high-specificity prefixes.
+  { key: "aws_key", label: "AWS access key", group: "secrets" },
+  { key: "openai_key", label: "OpenAI API key", group: "secrets" },
+  { key: "anthropic_key", label: "Anthropic API key", group: "secrets" },
+  { key: "github_token", label: "GitHub token", group: "secrets" },
+  { key: "google_api_key", label: "Google API key", group: "secrets" },
+  { key: "slack_token", label: "Slack token", group: "secrets" },
+  { key: "stripe_key", label: "Stripe secret key", group: "secrets" },
+  { key: "jwt", label: "JWT", group: "secrets" },
+  { key: "private_key", label: "Private key (PEM)", group: "secrets" },
+  // User-defined custom keyword / regex rules (extension-only; see custom.ts).
+  { key: "custom", label: "Custom terms" },
 ];
 
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
