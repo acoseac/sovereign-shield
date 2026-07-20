@@ -123,5 +123,11 @@ npm run package     # → sovereign-shield-<version>.zip for the store
   each push, and a fix can introduce its own problem. Evaluate critically: they are often
   right, but they also assert things that are simply wrong, so verify before applying and
   say which suggestions you rejected and why.
+  - **Sign commits (`git commit -s`) BEFORE opening the PR.** The `dco` job requires a
+    `Signed-off-by:` trailer matching each commit's author; fixing it afterwards means a
+    force-push, and **a force-push mid-review makes CodeRabbit abort** ("head commit changed
+    during the review"). Recover with a `@coderabbitai review` comment.
+  - Gemini Code Assist has a **daily quota** and simply posts a quota warning instead of a
+    review once it's exhausted — don't wait on it in that case.
 - Disjoint changes open as **parallel** PRs against `main`, not stacked.
 - Architecture decisions live in `docs/adr/`.
