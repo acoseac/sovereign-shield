@@ -116,5 +116,12 @@ npm run package     # → sovereign-shield-<version>.zip for the store
 - Branch off `main`, open a PR, **squash-merge**, delete the branch. Land only with CI
   green — jobs are `python (lint · type · test · parity)`, `web (shield parity · build)`,
   `extension (typecheck · test · build)`, plus SonarCloud + Vercel.
+- **Always wait for the review bots before merging.** CodeRabbit and Gemini Code Assist
+  comment on every PR, typically within ~6 minutes of opening it. Give them that window,
+  then read the comments, apply the fixes that hold up, and push. If a round produced many
+  fixes, wait for a **second** round on the new commits before merging — the bots re-review
+  each push, and a fix can introduce its own problem. Evaluate critically: they are often
+  right, but they also assert things that are simply wrong, so verify before applying and
+  say which suggestions you rejected and why.
 - Disjoint changes open as **parallel** PRs against `main`, not stacked.
 - Architecture decisions live in `docs/adr/`.
