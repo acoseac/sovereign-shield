@@ -23,6 +23,38 @@ test("a single checksum-valid AHV → one item, labelled", () => {
   assert.deepEqual(s.categories, ["Swiss AHV / AVS"]);
 });
 
+// `surrogatable` drives the pill's wording. It must never over-claim: with smokescreen on,
+// an AHV/IBAN/secret is still sent as a bracket token, so the pill may not say "stand-ins
+// sent instead" unless every counted value can actually take one.
+test("surrogatable counts only the values that can take a stand-in", () => {
+  assert.equal(summarize(`AHV ${AHV}`, undefined).surrogatable, 0, "AHV is never surrogatable");
+  assert.equal(summarize(`IBAN ${IBAN}`, undefined).surrogatable, 0, "IBAN is never surrogatable");
+
+  const email = summarize(`mail ${EMAIL}`, undefined);
+  assert.equal(email.count, 1);
+  assert.equal(email.surrogatable, 1, "email is surrogatable");
+
+  const mixed = summarize(`AHV ${AHV}, IBAN ${IBAN}, mail ${EMAIL}`, undefined);
+  assert.equal(mixed.count, 3);
+  assert.equal(mixed.surrogatable, 1, "only the email of the three");
+});
+
+test("surrogatable dedups by value, like count", () => {
+  const s = summarize(`${EMAIL} and again ${EMAIL}`, undefined);
+  assert.equal(s.count, 1);
+  assert.equal(s.surrogatable, 1);
+});
+
+test("a custom-rule hit is surrogatable", () => {
+  const matcher = (text: string) => {
+    const i = text.indexOf("Contoso");
+    return i === -1 ? [] : [{ start: i, end: i + 7, label: "client" }];
+  };
+  const s = summarize("Contoso is the client", undefined, matcher);
+  assert.equal(s.count, 1);
+  assert.equal(s.surrogatable, 1);
+});
+
 test("the same value repeated counts once (per-value dedup)", () => {
   const s = summarize(`First ${AHV}, then again ${AHV}.`, undefined);
   assert.equal(s.count, 1);

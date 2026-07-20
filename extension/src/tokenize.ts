@@ -193,14 +193,18 @@ export class Session {
     return `[${prefix}_${ordinal}]`;
   }
 
-  /** Would the user's own blocklist redact this candidate stand-in? Fails open to `false`
-   *  (a throwing matcher must never stop us placing a placeholder). */
+  /** Would the user's own blocklist redact this candidate stand-in? On a throwing matcher
+   *  we answer **true** — "assume it collides" — so the value degrades to a bracket token.
+   *  That is the safe direction: losing a stand-in costs nothing, whereas wrongly keeping
+   *  one would let a later real mention of the user's term through unredacted (tokenize()
+   *  skips anything already in tokenValue). Matches the fail-toward-brackets rule every
+   *  other guard in mintPlaceholder follows. */
   private matchesCustomRule(candidate: string): boolean {
     if (!this.customMatcher) return false;
     try {
       return this.customMatcher(candidate).length > 0;
     } catch {
-      return false;
+      return true;
     }
   }
 

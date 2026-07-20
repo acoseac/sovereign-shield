@@ -22,28 +22,23 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Language:** English
 
 **Detailed description** (keep under the 1,600-char limit — the dashboard shows a live count):
-> Sovereign Shield keeps sensitive data out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces identifiers, API keys and your own custom terms with neutral placeholders, then restores the real values in the reply — so nothing sensitive ever leaves your machine.
+> Sovereign Shield keeps sensitive data out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces identifiers, API keys and your own terms with placeholders, then restores the real values in the reply — so nothing sensitive leaves your machine.
 >
-> Everything runs locally. No account, no API key, no server, no analytics, and no data ever leaves your device.
+> Everything runs locally: no account, no API key, no server, no analytics.
 >
-> Identifiers match deterministically — the regex shape AND the real check digit must agree — so ordinary text is untouched and there are no false positives. Secrets and API keys are matched by their well-known shapes.
+> Identifiers are checksum-validated — shape and check digit must agree — so ordinary text is untouched and there are no false positives. Secrets match well-known shapes.
 >
 > What it detects:
-> • Swiss AHV/AVS, IBAN (worldwide), credit card
-> • Italy Codice fiscale, Spain DNI/NIE, France NIR, Netherlands BSN
-> • Germany Steuer-ID, Poland PESEL, Portugal NIF, Belgium Rijksregisternummer
-> • UK NHS number
-> • Brazil CPF & CNPJ, South Africa ID, China resident ID, Canada SIN, India Aadhaar
+> • Swiss AHV/AVS, IBAN (worldwide), credit card, phone, email
+> • National, tax & health IDs: Italy, Spain, France, Netherlands, Germany, Poland, Portugal, Belgium, UK NHS, Brazil (CPF & CNPJ), South Africa, China, Canada, India
 > • Secrets: AWS, OpenAI, Anthropic, GitHub, Google, Slack & Stripe keys, JWTs, PEM private keys
-> • Your own custom keywords or regexes — code names, client names, internal domains
+> • Your own keywords or regexes — code names, client names, internal domains
 >
-> Smokescreen mode (optional): instead of [EMAIL_1] placeholders, send realistic stand-ins like alice.morgan@example.org. Models write far better email drafts, grammar fixes and rewrites when the prompt reads naturally — and your real values still never leave the page. Applies to emails and your own terms only; IDs, IBANs, cards and secrets always use placeholders, because a valid-looking fake number could belong to a real person.
+> Smokescreen mode (optional): send realistic stand-ins like alice.morgan@example.org instead of [EMAIL_1], so models write better drafts — real values never leave the page. Emails and your own terms only; IDs, cards and secrets always use placeholders.
 >
-> You stay in control: choose which categories to block, add your own rules, and an on-device activity log shows what was kept local — type, time and site only, never the value.
+> You stay in control: choose which categories to block, add your own rules, and an on-device activity log shows what was kept local — type, time and site only, never the value. A live count above the chat box shows what will be kept before you send.
 >
-> Before you send, a live count above the chat box shows what will be kept local.
->
-> The value-to-placeholder map lives only in your tab's memory and is never stored or transmitted. Names and addresses are out of scope.
+> The value-to-placeholder map lives only in your tab's memory, never stored or transmitted. Names and addresses are out of scope.
 >
 > Open source: https://github.com/acoseac/sovereign-shield
 
@@ -96,10 +91,10 @@ Five are ready in `~/Desktop/sovereign-shield-store-screenshots/`, all exactly 1
 Upload in this order (the store shows the first as the primary tile):
 
 1. `1-gemini.png` — the pre-send pill on Gemini: "🛡️ 2 items (IBAN, Swiss AHV / AVS) will be
-   kept local when you send", above a real prompt. Leads with the headline v0.3.0 feature.
+   kept local when you send", above a real prompt. Leads with the headline pre-send feature.
 2. `2-chatgpt.png` — the same pill on ChatGPT (3 items: card, email, AHV).
 3. `3-claude.png` — the same pill on Claude (2 items: AHV, Swiss phone).
-4. `4-options.png` — the options UI: the identifier + "Secrets & API keys" toggles, the custom-rules editor, and the value-free activity log. (Regenerate for 0.4.0 — the layout changed.)
+4. `4-options.png` — the options UI: the identifier + "Secrets & API keys" toggles, the custom-rules editor, and the value-free activity log. (Regenerate for 0.5.0 — smokescreen mode added a section.)
 5. `5-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
    while the reply shows the restored number (the "receipts" shot).
 
