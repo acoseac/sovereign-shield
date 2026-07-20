@@ -70,6 +70,15 @@ first — it is the best map of the live transports.
   length-prefixed; rewriting a chunk desyncs the parser and hangs generation. Composers
   (contenteditable/textarea) are skipped so we never edit what the user is typing.
 - **Guard defaults ON** — if the bridge hasn't set the flag yet, redact anyway (fail-safe).
+  Smokescreen is the exception: it defaults **OFF**, because it changes what the model sees.
+- **Smokescreen stand-ins are re-detectable** — [`extension/src/surrogate.ts`](extension/src/surrogate.ts).
+  `alice.morgan@example.org` *is* a valid email, unlike `[EMAIL_1]`. Two rules follow:
+  never mint a stand-in for a checksum-validated category (a valid fake AHV/IBAN could be a
+  **real** person's number — a category is eligible only if it has a vendored pool), and
+  never re-tokenize a value already in `tokenValue` (re-sent history and pasted-back replies
+  would otherwise mint a *second* stand-in and break rehydration). The DOM rehydrator's fast
+  path must ask `session.mayNeedRehydration()`, never test for `"["` — stand-ins have no
+  bracket. Rationale: [ADR 0004](docs/adr/0004-smokescreen-surrogates.md).
 
 **Debugging a reload:** `interceptor.ts` stamps `document.documentElement.dataset.ssBuild`.
 MV3 installs the MAIN-world patch at `document_start`, so **open tabs keep the old code

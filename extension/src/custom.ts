@@ -65,7 +65,9 @@ interface CompiledRule {
   re: RegExp;
 }
 
-function escapeRegExp(s: string): string {
+/** Exported so the smokescreen rehydrator (tokenize.ts) fences its surrogate alternation
+ *  with the same escaping this module uses for literal rules. */
+export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 

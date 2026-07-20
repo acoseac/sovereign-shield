@@ -16,12 +16,19 @@ import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "9-byte-faithful-freq";
+const BUILD = "10-smokescreen";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
 function guardEnabled(): boolean {
   return document.documentElement.dataset.ssEnabled !== "off";
+}
+
+// Smokescreen: swap real values for realistic stand-ins instead of [EMAIL_1] placeholders.
+// Default OFF — unlike the guard itself, this changes what the model actually sees, so it
+// only turns on once the bridge has explicitly said the user asked for it.
+function smokescreenEnabled(): boolean {
+  return document.documentElement.dataset.ssSmoke === "on";
 }
 
 function reportCount(): void {
@@ -91,6 +98,7 @@ function currentCustomMatcher(): CustomMatcher | undefined {
 // a request it didn't need to touch.
 function rewriteBodyForSend(kind: BodyKind, body: string): string {
   session.customMatcher = currentCustomMatcher();
+  session.smokescreen = smokescreenEnabled();
   const { body: out, changed } = rewriteBody(kind, body, session, allowedCategories());
   if (changed) reportCount();
   return out;
@@ -118,7 +126,10 @@ function installDomRehydrator(): void {
   };
   const rehydrateText = (node: Text): void => {
     const v = node.nodeValue;
-    if (!v || !v.includes("[")) return;
+    // Ask the session, don't test for "[" here: smokescreen surrogates are realistic
+    // strings with no bracket, so a literal marker check would short-circuit before
+    // rehydrate() ever ran and every surrogate would stay on screen unrestored.
+    if (!v || !session.mayNeedRehydration(v)) return;
     if (isEditable(node.parentElement)) return; // never touch composers
     const next = session.rehydrate(v);
     if (next !== v) node.nodeValue = next;

@@ -37,6 +37,8 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 > • Secrets: AWS, OpenAI, Anthropic, GitHub, Google, Slack & Stripe keys, JWTs, PEM private keys
 > • Your own custom keywords or regexes — code names, client names, internal domains
 >
+> Smokescreen mode (optional): instead of [EMAIL_1] placeholders, send realistic stand-ins like alice.morgan@example.org. Models write far better email drafts, grammar fixes and rewrites when the prompt reads naturally — and your real values still never leave the page. Applies to emails and your own terms only; IDs, IBANs, cards and secrets always use placeholders, because a valid-looking fake number could belong to a real person.
+>
 > You stay in control: choose which categories to block, add your own rules, and an on-device activity log shows what was kept local — type, time and site only, never the value.
 >
 > Before you send, a live count above the chat box shows what will be kept local.
@@ -58,7 +60,7 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
   The extension must read the outgoing chat request on these sites and rewrite it to replace
   identifiers with placeholders before it is sent, and restore the real values in the rendered
   reply. It runs only on these four sites; it needs no other host access.
-- **`storage`:** Stores the on/off setting, the per-category toggles, and the value-free activity
+- **`storage`:** Stores the on/off setting, the per-category toggles, smokescreen mode, and the value-free activity
   log (type + time + site) on the user's device. Nothing is transmitted.
 - **No remote code:** all logic is bundled in the package; the extension loads no external scripts.
 

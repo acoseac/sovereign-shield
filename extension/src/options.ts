@@ -11,6 +11,7 @@ const byId = (id: string): HTMLElement => {
 };
 
 const enabledEl = byId("enabled") as HTMLInputElement;
+const smokescreenEl = byId("smokescreen") as HTMLInputElement;
 
 // "custom" has no checkbox here — it is driven by whether rules exist (below), and is kept
 // enabled in the category set so its redaction events aren't dropped by the bridge/background.
@@ -34,6 +35,7 @@ function buildGrid(box: HTMLElement, cats: Category[], checked: Set<string>): vo
 async function renderSettings(): Promise<void> {
   const s = await getSettings();
   enabledEl.checked = s.enabled;
+  smokescreenEl.checked = s.smokescreen;
   const checked = new Set(s.categories);
   const idBox = byId("categories");
   if (idBox.childElementCount === 0) {
@@ -176,6 +178,10 @@ enabledEl.addEventListener("change", () => {
   chrome.storage.local.set({ [KEYS.enabled]: enabledEl.checked }).catch(() => undefined);
 });
 
+smokescreenEl.addEventListener("change", () => {
+  chrome.storage.local.set({ [KEYS.smokescreen]: smokescreenEl.checked }).catch(() => undefined);
+});
+
 function fmtTime(t: number): string {
   return new Date(t).toLocaleString();
 }
@@ -245,7 +251,9 @@ byId("clear").addEventListener("click", () => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (KEYS.log in changes) void renderLog();
-  if (KEYS.enabled in changes || KEYS.categories in changes) void renderSettings();
+  if (KEYS.enabled in changes || KEYS.categories in changes || KEYS.smokescreen in changes) {
+    void renderSettings();
+  }
 });
 
 void renderSettings();

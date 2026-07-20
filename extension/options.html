@@ -223,6 +223,33 @@
       </section>
 
       <section>
+        <div class="row">
+          <div>
+            <h2>Smokescreen mode</h2>
+            <p class="muted" style="margin-bottom: 0">
+              Send realistic stand-ins instead of <code>[EMAIL_1]</code> placeholders — e.g. your
+              address becomes <code>alice.morgan@example.org</code>. Models write much better email
+              drafts, grammar fixes and formatting when the prompt reads naturally. The real values
+              still never leave this page, and are restored in the reply as usual.
+            </p>
+          </div>
+          <!-- Pinned to the top: this row's text is several lines tall, so the default
+               centre alignment would strand the checkbox mid-paragraph. -->
+          <input
+            type="checkbox"
+            id="smokescreen"
+            aria-label="Smokescreen mode"
+            style="align-self: flex-start; margin-top: 4px"
+          />
+        </div>
+        <p class="muted" style="margin: 10px 0 0">
+          Applies to <strong>emails and your custom terms</strong> only. IDs, IBANs, cards and
+          secrets always use bracket placeholders: a checksum-valid fake AHV or IBAN could be a real
+          person's number, so we never invent one.
+        </p>
+      </section>
+
+      <section>
         <h2>What to block</h2>
         <p class="muted">
           Identifiers are checksum-validated, so they never false-positive. Unchecked types pass

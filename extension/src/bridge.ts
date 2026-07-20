@@ -58,6 +58,9 @@ async function applySettings(): Promise<void> {
   // JSON, not comma-joined: custom patterns can contain commas. The MAIN-world guard
   // JSON.parses this in a try/catch and falls back to no custom rules on any surprise.
   root.dataset.ssCustom = JSON.stringify(s.custom);
+  // Opt-in, so the guard reads "on" as the only truthy value (a missing attribute must
+  // mean brackets, not stand-ins).
+  root.dataset.ssSmoke = s.smokescreen ? "on" : "off";
 }
 
 applySettings().catch(() => undefined);
@@ -65,7 +68,10 @@ applySettings().catch(() => undefined);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (
     area === "local" &&
-    (KEYS.enabled in changes || KEYS.categories in changes || KEYS.custom in changes)
+    (KEYS.enabled in changes ||
+      KEYS.categories in changes ||
+      KEYS.custom in changes ||
+      KEYS.smokescreen in changes)
   ) {
     applySettings().catch(() => undefined);
   }
