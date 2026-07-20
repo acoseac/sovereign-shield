@@ -116,18 +116,29 @@ npm run package     # → sovereign-shield-<version>.zip for the store
 - Branch off `main`, open a PR, **squash-merge**, delete the branch. Land only with CI
   green — jobs are `python (lint · type · test · parity)`, `web (shield parity · build)`,
   `extension (typecheck · test · build)`, plus SonarCloud + Vercel.
-- **Always wait for the review bots before merging.** CodeRabbit and Gemini Code Assist
-  comment on every PR, typically within ~6 minutes of opening it. Give them that window,
-  then read the comments, apply the fixes that hold up, and push. If a round produced many
-  fixes, wait for a **second** round on the new commits before merging — the bots re-review
-  each push, and a fix can introduce its own problem. Evaluate critically: they are often
-  right, but they also assert things that are simply wrong, so verify before applying and
-  say which suggestions you rejected and why.
+- **Wait for the review bots before merging — but don't block on them.** CodeRabbit and
+  Gemini Code Assist review each PR, often within minutes. Give them a window, then apply
+  the fixes that hold up and push; if a round produced many fixes, wait for a **second**
+  round before merging, since the bots re-review each push and a fix can introduce its own
+  problem. Evaluate critically — they are frequently right but also assert things that are
+  verifiably wrong, so check before applying and say which suggestions you rejected and why.
+  - **Both bots hit quotas on this account, routinely.** Gemini Code Assist has a daily
+    quota; CodeRabbit applies *adaptive* Fair-Usage limits with ~51-minute cooldowns that
+    repeat. On PR #50 neither produced a review across ~80 minutes and four attempts, then
+    CodeRabbit's landed 7 minutes after the merge — carrying three real findings, one of
+    them user-facing. So: **check once, and if both are quota-blocked, say so and ask
+    whether to merge on CI alone or hold.** Don't burn a session retrying. If you do merge
+    without review, check back afterwards and fix forward.
+  - **Read CodeRabbit's walkthrough comment body, not the comment list.** It *edits that one
+    comment in place*, so a finished review, a failure, or a rate-limit notice never shows up
+    as a new comment and `gh pr view --json comments` looks unchanged. Fetch it with
+    `gh api repos/OWNER/REPO/issues/comments/<id>` (note `issues/comments/<id>` — the
+    `issues/<pr>/comments/<id>` form 404s) and look for "Actionable comments posted" or
+    "Review limit reached".
   - **Sign commits (`git commit -s`) BEFORE opening the PR.** The `dco` job requires a
     `Signed-off-by:` trailer matching each commit's author; fixing it afterwards means a
     force-push, and **a force-push mid-review makes CodeRabbit abort** ("head commit changed
-    during the review"). Recover with a `@coderabbitai review` comment.
-  - Gemini Code Assist has a **daily quota** and simply posts a quota warning instead of a
-    review once it's exhausted — don't wait on it in that case.
+    during the review"). `@coderabbitai review` will *not* recover it — CodeRabbit is
+    incremental and considers those commits reviewed. Use `@coderabbitai full review`.
 - Disjoint changes open as **parallel** PRs against `main`, not stacked.
 - Architecture decisions live in `docs/adr/`.
