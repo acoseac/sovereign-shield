@@ -240,6 +240,19 @@ test("a stand-in the user's own blocklist would match is never minted", () => {
   assert.ok(!later.includes(collides), "the user's own term must not leak");
 });
 
+test("a throwing custom matcher degrades to a bracket token, not a stand-in", () => {
+  // matchesCustomRule must fail toward brackets like every other guard in mintPlaceholder:
+  // if we cannot tell whether the candidate collides with a user rule, keeping it risks
+  // letting a later real mention of their term through unredacted.
+  const s = smoke();
+  s.customMatcher = () => {
+    throw new Error("boom");
+  };
+  const out = s.tokenize(`mail ${EMAIL}`);
+  assert.equal(out, "mail [EMAIL_1]", "must not mint a stand-in when the matcher is unusable");
+  assert.equal(s.rehydrate(out), `mail ${EMAIL}`);
+});
+
 // --- Session: caps ---------------------------------------------------------
 
 test("past MAX_SURROGATES new values fall back to bracket tokens and still rehydrate", () => {

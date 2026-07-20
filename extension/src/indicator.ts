@@ -76,9 +76,19 @@ function hidePill(): void {
   if (pill) pill.style.visibility = "hidden";
 }
 
+// Never promise stand-ins for values that will actually be sent as bracket tokens: with
+// smokescreen on, an AHV/IBAN/secret still gets [AHV_1] because minting a checksum-valid
+// fake could collide with a real person's number. So the copy tracks how many of the
+// detected values are genuinely surrogate-eligible — all, some, or none.
 function pillText(s: Summary): string {
   const noun = s.count === 1 ? "item" : "items";
-  const how = smokescreen ? "kept local (stand-ins sent instead)" : "kept local";
+  let how = "kept local";
+  if (smokescreen && s.surrogatable > 0) {
+    how =
+      s.surrogatable === s.count
+        ? "kept local (stand-ins sent instead)"
+        : "kept local (stand-ins where supported)";
+  }
   return `🛡️ ${s.count} ${noun} (${s.categories.join(", ")}) will be ${how} when you send`;
 }
 
