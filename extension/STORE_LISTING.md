@@ -16,17 +16,17 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Name** (from manifest): `Sovereign Shield — LLM PII guard`
 
 **Summary** (≤132 chars):
-> Redacts Swiss, EU & international identifiers before ChatGPT/Gemini/Claude, then restores them in the reply — 100% local.
+> Redacts identifiers, API keys & your own terms before ChatGPT/Gemini/Claude, then restores them in the reply — 100% local.
 
 **Category:** Productivity
 **Language:** English
 
-**Detailed description** (1,584 characters — under the 1,600 limit):
-> Sovereign Shield keeps Swiss, EU and international identifiers out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces any checksum-validated identifier with a neutral placeholder, then restores the real value in the reply — so the conversation reads normally while the sensitive number never leaves your machine.
+**Detailed description** (keep under the 1,600-char limit — the dashboard shows a live count):
+> Sovereign Shield keeps sensitive data out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces identifiers, API keys and your own custom terms with neutral placeholders, then restores the real values in the reply — so nothing sensitive ever leaves your machine.
 >
 > Everything runs locally. No account, no API key, no server, no analytics, and no data ever leaves your device.
 >
-> Detection is deterministic: an identifier matches only when its regex shape AND its real check digit agree, so ordinary text is never touched and there are no false positives.
+> Identifiers match deterministically — the regex shape AND the real check digit must agree — so ordinary text is untouched and there are no false positives. Secrets and API keys are matched by their well-known shapes.
 >
 > What it detects:
 > • Swiss AHV/AVS, IBAN (worldwide), credit card
@@ -34,14 +34,14 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 > • Germany Steuer-ID, Poland PESEL, Portugal NIF, Belgium Rijksregisternummer
 > • UK NHS number
 > • Brazil CPF & CNPJ, South Africa ID, China resident ID, Canada SIN, India Aadhaar
+> • Secrets: AWS, OpenAI, Anthropic, GitHub, Google, Slack & Stripe keys, JWTs, PEM private keys
+> • Your own custom keywords or regexes — code names, client names, internal domains
 >
-> You stay in control: choose which categories to block, and an on-device activity log shows what was kept local — type, time and site only, never the value.
+> You stay in control: choose which categories to block, add your own rules, and an on-device activity log shows what was kept local — type, time and site only, never the value.
 >
 > Before you send, a live count above the chat box shows what will be kept local.
 >
-> The value-to-placeholder map lives only in your tab's memory and is never stored or transmitted. Structured identifiers only — names and addresses are out of scope.
->
-> Tip: on Gemini, if a message doesn't send on the first Enter right after pasting, just press Enter again — that's Gemini's own editor, not the extension.
+> The value-to-placeholder map lives only in your tab's memory and is never stored or transmitted. Names and addresses are out of scope.
 >
 > Open source: https://github.com/acoseac/sovereign-shield
 
@@ -97,7 +97,7 @@ Upload in this order (the store shows the first as the primary tile):
    kept local when you send", above a real prompt. Leads with the headline v0.3.0 feature.
 2. `2-chatgpt.png` — the same pill on ChatGPT (3 items: card, email, AHV).
 3. `3-claude.png` — the same pill on Claude (2 items: AHV, Swiss phone).
-4. `4-options.png` — the options UI: all 20 category toggles + the value-free activity log.
+4. `4-options.png` — the options UI: the identifier + "Secrets & API keys" toggles, the custom-rules editor, and the value-free activity log. (Regenerate for 0.4.0 — the layout changed.)
 5. `5-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
    while the reply shows the restored number (the "receipts" shot).
 

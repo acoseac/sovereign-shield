@@ -10,6 +10,7 @@ from sovereign_shield.pii import (
     _iban_mod97_ok,
     _iban_ok,
     _it_cf_ok,
+    _jwt_ok,
     _luhn_ok,
     _nl_bsn_ok,
     _norm_record,
@@ -207,3 +208,81 @@ def test_pack_separator_formatted() -> None:
     assert {h.category for h in detect_pii("NHS 943 476 5919")} == {PiiCategory.UK_NHS}
     assert {h.category for h in detect_pii("CNPJ 11.222.333/0001-81")} == {PiiCategory.BR_CNPJ}
     assert {h.category for h in detect_pii("BE 85.07.30-033.28")} == {PiiCategory.BE_NRN}
+
+
+# --------------------------------------------------------------------------- #
+# secrets / API keys — regex-only detectors (no checksum). All values synthetic;
+# length-exact tails built with `* n` so a miscount can't weaken a test.
+# --------------------------------------------------------------------------- #
+JWT_HS256 = (
+    "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+)
+PEM_EC = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIB" + "A" * 40 + "\n-----END EC PRIVATE KEY-----"
+
+SECRETS_VALID: dict[PiiCategory, str] = {
+    PiiCategory.AWS_KEY: "AKIAIOSFODNN7EXAMPLE",
+    PiiCategory.GITHUB_TOKEN: "ghp_" + "A" * 36,
+    PiiCategory.ANTHROPIC_KEY: "sk-ant-api03-" + "A" * 95,
+    PiiCategory.OPENAI_KEY: "sk-svcacct-" + "A" * 40,
+    PiiCategory.GOOGLE_API_KEY: "AIza" + "A" * 35,
+    PiiCategory.SLACK_TOKEN: "xoxb-" + "1234567890abcdef",
+    PiiCategory.STRIPE_KEY: "sk_live_" + "A" * 24,
+    PiiCategory.JWT: JWT_HS256,
+    PiiCategory.PRIVATE_KEY: PEM_EC,
+}
+
+
+def test_secret_each_valid_detected_as_its_category() -> None:
+    for category, value in SECRETS_VALID.items():
+        assert {h.category for h in detect_pii(value)} == {category}, category
+
+
+def test_secret_markers_never_leak_raw() -> None:
+    # The marker carries only the fixed public prefix — never a byte of the random tail.
+    for value in SECRETS_VALID.values():
+        tail = value[-16:]
+        for h in detect_pii(value):
+            assert tail not in h.marker
+
+
+def test_anthropic_precedes_openai() -> None:
+    # Both start "sk-"; sk-ant-… must resolve to anthropic_key, never openai_key.
+    for value in ("sk-ant-api03-" + "A" * 95, "sk-ant-oat01-" + "B" * 100):
+        assert {h.category for h in detect_pii(value)} == {PiiCategory.ANTHROPIC_KEY}
+
+
+def test_openai_legacy_and_service_account() -> None:
+    assert {h.category for h in detect_pii("sk-" + "A" * 48)} == {PiiCategory.OPENAI_KEY}
+    assert {h.category for h in detect_pii("sk-svcacct-" + "A" * 40)} == {PiiCategory.OPENAI_KEY}
+
+
+def test_stripe_underscore_not_confused_with_openai() -> None:
+    # sk_live_ (underscore) is Stripe; sk- (dash) is OpenAI — the two never collide.
+    assert {h.category for h in detect_pii("sk_live_" + "A" * 24)} == {PiiCategory.STRIPE_KEY}
+
+
+def test_jwt_header_validated() -> None:
+    assert _jwt_ok(JWT_HS256) is True
+    # alg:none still declares an alg → a real (if unsigned) JWT.
+    assert _jwt_ok("eyJhbGciOiJub25lIn0.eyJzdWIiOiJhbm9uIn0." + "A" * 20) is True
+    # header decodes to JSON without an alg key → rejected.
+    assert _jwt_ok("eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxIn0." + "A" * 16) is False
+    # so a JWT-shaped string whose header isn't {"alg": …} is never flagged.
+    assert detect_pii("eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxIn0." + "A" * 16) == []
+
+
+def test_jwt_wins_over_embedded_numeric_id() -> None:
+    # A valid ZA ID (9001015009086) inside the payload must NOT be split out as za_id:
+    # the JWT claims the whole span first, so the rest of the token never leaks.
+    token = "eyJhbGciOiJIUzI1NiJ9.eyJ-9001015009086-abcdefghij." + "A" * 16
+    assert [h.category for h in detect_pii(token)] == [PiiCategory.JWT]
+
+
+def test_secret_too_short_not_flagged() -> None:
+    assert detect_pii("AKIA" + "A" * 12) == []  # needs 16 chars after AKIA
+    assert detect_pii("sk-shorttoken") == []
+
+
+def test_secret_and_pii_co_occur() -> None:
+    hits = detect_pii("key AKIAIOSFODNN7EXAMPLE and AHV 756.9217.0769.85")
+    assert [h.category for h in hits] == [PiiCategory.AWS_KEY, PiiCategory.AHV_AVS]

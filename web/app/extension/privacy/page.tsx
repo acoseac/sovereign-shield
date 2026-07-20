@@ -31,9 +31,9 @@ export default function Page() {
         <p>
           On <code>gemini.google.com</code>, <code>chatgpt.com</code>, <code>chat.openai.com</code>{" "}
           and <code>claude.ai</code>, it inspects the request the page is about to send to its
-          model, replaces any checksum-validated Swiss, EU or international identifier with a
-          placeholder <em>before</em> the request leaves your browser, and restores the real value in
-          the reply you read. This all happens locally, in the page.
+          model, replaces any checksum-validated identifier, secret/API key, or custom term you
+          configure with a placeholder <em>before</em> the request leaves your browser, and restores
+          the real value in the reply you read. This all happens locally, in the page.
         </p>
         <p>
           Before you send, a small counter above the chat box previews how many identifiers will be
@@ -87,9 +87,10 @@ export default function Page() {
 
         <h2>Scope</h2>
         <p>
-          The extension detects structured, checksum-validated identifiers only. It does not attempt
-          to detect names or addresses. It is an independent open-source project and is not
-          affiliated with Google, OpenAI or Anthropic.
+          The extension detects checksum-validated identifiers, common secret and API-key formats,
+          and any custom keywords or patterns you configure. It does not attempt to detect names or
+          addresses. It is an independent open-source project and is not affiliated with Google,
+          OpenAI or Anthropic.
         </p>
 
         <h2>Contact</h2>

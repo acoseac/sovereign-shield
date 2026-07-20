@@ -1,7 +1,8 @@
 // Options page: master on/off, per-category block toggles, and the activity log
 // (type + time + site only). Live-updates on storage changes.
-import { CATEGORIES, CATEGORY_LABEL } from "./categories";
+import { CATEGORIES, type Category, CATEGORY_LABEL } from "./categories";
 import { KEYS, LOG_CAP, getSettings, readLog } from "./storage";
+import { lintRegex, MAX_LABEL, MAX_PATTERN, MAX_RULES, type CustomRule } from "./custom";
 
 const byId = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -11,40 +12,165 @@ const byId = (id: string): HTMLElement => {
 
 const enabledEl = byId("enabled") as HTMLInputElement;
 
+// "custom" has no checkbox here — it is driven by whether rules exist (below), and is kept
+// enabled in the category set so its redaction events aren't dropped by the bridge/background.
+const ID_CATS = CATEGORIES.filter((c) => c.group !== "secrets" && c.key !== "custom");
+const SECRET_CATS = CATEGORIES.filter((c) => c.group === "secrets");
+
+function buildGrid(box: HTMLElement, cats: Category[], checked: Set<string>): void {
+  for (const c of cats) {
+    const label = document.createElement("label");
+    label.className = "cat";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = `cat-${c.key}`;
+    cb.checked = checked.has(c.key);
+    cb.addEventListener("change", saveCategories);
+    label.append(cb, document.createTextNode(c.label));
+    box.append(label);
+  }
+}
+
 async function renderSettings(): Promise<void> {
   const s = await getSettings();
   enabledEl.checked = s.enabled;
-
-  const box = byId("categories");
-  if (box.childElementCount === 0) {
-    // First render: build the checkbox list once.
-    for (const c of CATEGORIES) {
-      const label = document.createElement("label");
-      label.className = "cat";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.id = `cat-${c.key}`;
-      cb.checked = s.categories.includes(c.key);
-      cb.addEventListener("change", saveCategories);
-      label.append(cb, document.createTextNode(c.label));
-      box.append(label);
-    }
+  const checked = new Set(s.categories);
+  const idBox = byId("categories");
+  if (idBox.childElementCount === 0) {
+    // First render: build the two checkbox grids once.
+    buildGrid(idBox, ID_CATS, checked);
+    buildGrid(byId("secrets"), SECRET_CATS, checked);
     return;
   }
   // Live update (a storage change echoes back here): only sync the checked state, so
   // toggling a box mid-keyboard-navigation doesn't blow away the list and lose focus.
-  for (const c of CATEGORIES) {
+  for (const c of [...ID_CATS, ...SECRET_CATS]) {
     const cb = document.getElementById(`cat-${c.key}`) as HTMLInputElement | null;
-    if (cb) cb.checked = s.categories.includes(c.key);
+    if (cb) cb.checked = checked.has(c.key);
   }
 }
 
 async function saveCategories(): Promise<void> {
-  const enabled = CATEGORIES.filter(
-    (c) => (document.getElementById(`cat-${c.key}`) as HTMLInputElement | null)?.checked,
-  ).map((c) => c.key);
+  const enabled = [...ID_CATS, ...SECRET_CATS]
+    .filter((c) => (document.getElementById(`cat-${c.key}`) as HTMLInputElement | null)?.checked)
+    .map((c) => c.key);
+  enabled.push("custom"); // no checkbox — gated by rule existence, kept in the allowed set
   await chrome.storage.local.set({ [KEYS.categories]: enabled });
 }
+
+// --- custom rules editor --------------------------------------------------
+// The editor drives a local `draft`; edits mutate it in place (so focus survives) and
+// persist only the valid rules. An invalid/unsafe regex is shown inline and NEVER written to
+// storage, so it can't reach the guard's send path. Loaded once; not re-rendered on storage
+// echoes (this options page is the only editor of custom rules).
+let draft: CustomRule[] = [];
+
+function ruleError(r: CustomRule): string | null {
+  const pattern = r.pattern.trim();
+  if (!pattern) return null; // empty draft row — not an error, just not saved
+  if (pattern.length > MAX_PATTERN) return `Too long (max ${MAX_PATTERN} chars).`;
+  return r.isRegex ? lintRegex(pattern) : null;
+}
+
+async function persistRules(): Promise<void> {
+  const valid = draft.filter((r) => r.pattern.trim() && !ruleError(r));
+  await chrome.storage.local.set({ [KEYS.custom]: valid });
+}
+
+function optCheckbox(text: string, checked: boolean, onChange: (v: boolean) => void): HTMLLabelElement {
+  const label = document.createElement("label");
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = checked;
+  cb.addEventListener("change", () => onChange(cb.checked));
+  label.append(cb, document.createTextNode(` ${text}`));
+  return label;
+}
+
+function ruleRow(rule: CustomRule, index: number): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "rule";
+  const pat = document.createElement("input");
+  pat.type = "text";
+  pat.value = rule.pattern;
+  pat.maxLength = MAX_PATTERN;
+  pat.setAttribute("aria-label", "Pattern");
+  const rm = document.createElement("button");
+  rm.className = "btn rm";
+  rm.textContent = "Remove";
+  const opts = document.createElement("div");
+  opts.className = "opts";
+  const label = document.createElement("input");
+  label.type = "text";
+  label.value = rule.label ?? "";
+  label.placeholder = "label (optional)";
+  label.maxLength = MAX_LABEL;
+  label.setAttribute("aria-label", "Label");
+  const err = document.createElement("div");
+  err.className = "err";
+
+  function refresh(): void {
+    pat.placeholder = rule.isRegex ? "regular expression" : "text to redact (e.g. Project-Apollo)";
+    (ww.firstElementChild as HTMLInputElement).disabled = rule.isRegex; // whole-word: literal only
+    err.textContent = ruleError(rule) ?? "";
+  }
+  function sync(): void {
+    rule.pattern = pat.value;
+    rule.label = label.value.trim() || undefined;
+    refresh();
+    void persistRules();
+  }
+  const rx = optCheckbox("Regex", rule.isRegex, (v) => {
+    rule.isRegex = v;
+    sync();
+  });
+  const cs = optCheckbox("Case-sensitive", rule.caseSensitive === true, (v) => {
+    rule.caseSensitive = v;
+    sync();
+  });
+  const ww = optCheckbox("Whole word", rule.wholeWord !== false, (v) => {
+    rule.wholeWord = v;
+    sync();
+  });
+  pat.addEventListener("input", sync);
+  label.addEventListener("input", sync);
+  rm.addEventListener("click", () => {
+    draft.splice(index, 1);
+    renderRules();
+    void persistRules();
+  });
+
+  opts.append(rx, cs, ww, label);
+  row.append(pat, rm, opts, err);
+  refresh();
+  return row;
+}
+
+function renderRules(): void {
+  const box = byId("rules");
+  box.replaceChildren();
+  if (draft.length === 0) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.style.margin = "8px 0 0";
+    p.textContent = "No custom rules yet.";
+    box.append(p);
+    return;
+  }
+  draft.forEach((rule, i) => box.append(ruleRow(rule, i)));
+}
+
+async function loadRules(): Promise<void> {
+  draft = (await getSettings()).custom.map((r) => ({ ...r }));
+  renderRules();
+}
+
+byId("add-rule").addEventListener("click", () => {
+  if (draft.length >= MAX_RULES) return;
+  draft.push({ pattern: "", isRegex: false, wholeWord: true });
+  renderRules();
+  byId("rules").querySelector<HTMLInputElement>(".rule:last-child input[type=text]")?.focus();
+});
 
 enabledEl.addEventListener("change", () => {
   chrome.storage.local.set({ [KEYS.enabled]: enabledEl.checked }).catch(() => undefined);
@@ -124,3 +250,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 void renderSettings();
 void renderLog();
+void loadRules();

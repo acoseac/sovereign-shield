@@ -1557,5 +1557,412 @@
         "uk_nhs"
       ]
     }
+  },
+  {
+    "input": "AKIAIOSFODNN7EXAMPLE",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "aws_key",
+        "marker": "aws:AKIA\u2026",
+        "start": 0,
+        "end": 20
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "aws_key",
+      "categories": [
+        "aws_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "aws_key",
+      "categories": [
+        "aws_key"
+      ]
+    }
+  },
+  {
+    "input": "ghp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "github_token",
+        "marker": "github:ghp_\u2026",
+        "start": 0,
+        "end": 40
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "github_token",
+      "categories": [
+        "github_token"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "github_token",
+      "categories": [
+        "github_token"
+      ]
+    }
+  },
+  {
+    "input": "sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "anthropic_key",
+        "marker": "anthropic:sk-ant-\u2026",
+        "start": 0,
+        "end": 108
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "anthropic_key",
+      "categories": [
+        "anthropic_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "anthropic_key",
+      "categories": [
+        "anthropic_key"
+      ]
+    }
+  },
+  {
+    "input": "sk-ant-oat01-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "anthropic_key",
+        "marker": "anthropic:sk-ant-\u2026",
+        "start": 0,
+        "end": 113
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "anthropic_key",
+      "categories": [
+        "anthropic_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "anthropic_key",
+      "categories": [
+        "anthropic_key"
+      ]
+    }
+  },
+  {
+    "input": "sk-svcacct-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "openai_key",
+        "marker": "openai:sk-\u2026",
+        "start": 0,
+        "end": 51
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "openai_key",
+      "categories": [
+        "openai_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "openai_key",
+      "categories": [
+        "openai_key"
+      ]
+    }
+  },
+  {
+    "input": "sk-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "openai_key",
+        "marker": "openai:sk-\u2026",
+        "start": 0,
+        "end": 51
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "openai_key",
+      "categories": [
+        "openai_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "openai_key",
+      "categories": [
+        "openai_key"
+      ]
+    }
+  },
+  {
+    "input": "AIzaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "google_api_key",
+        "marker": "google:AIza\u2026",
+        "start": 0,
+        "end": 39
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "google_api_key",
+      "categories": [
+        "google_api_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "google_api_key",
+      "categories": [
+        "google_api_key"
+      ]
+    }
+  },
+  {
+    "input": "xoxb-1234567890abcdef",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "slack_token",
+        "marker": "slack:xoxb-\u2026",
+        "start": 0,
+        "end": 21
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "slack_token",
+      "categories": [
+        "slack_token"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "slack_token",
+      "categories": [
+        "slack_token"
+      ]
+    }
+  },
+  {
+    "input": "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n-----END EC PRIVATE KEY-----",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "private_key",
+        "marker": "pem:\u2026",
+        "start": 0,
+        "end": 110
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "private_key",
+      "categories": [
+        "private_key"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "private_key",
+      "categories": [
+        "private_key"
+      ]
+    }
+  },
+  {
+    "input": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "jwt",
+        "marker": "jwt:\u2026",
+        "start": 0,
+        "end": 92
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "jwt",
+      "categories": [
+        "jwt"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "jwt",
+      "categories": [
+        "jwt"
+      ]
+    }
+  },
+  {
+    "input": "eyJhbGciOiJub25lIn0.eyJzdWIiOiJhbm9uIn0.AAAAAAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "jwt",
+        "marker": "jwt:\u2026",
+        "start": 0,
+        "end": 60
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "jwt",
+      "categories": [
+        "jwt"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "jwt",
+      "categories": [
+        "jwt"
+      ]
+    }
+  },
+  {
+    "input": "eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxIn0.AAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "eyJhbGciOiJIUzI1NiJ9.eyJ-9001015009086-abcdefghij.AAAAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "jwt",
+        "marker": "jwt:\u2026",
+        "start": 0,
+        "end": 66
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "jwt",
+      "categories": [
+        "jwt"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "jwt",
+      "categories": [
+        "jwt"
+      ]
+    }
+  },
+  {
+    "input": "key AKIAIOSFODNN7EXAMPLE and AHV 756.9217.0769.85",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "aws_key",
+        "marker": "aws:AKIA\u2026",
+        "start": 4,
+        "end": 24
+      },
+      {
+        "category": "ch_ahv",
+        "marker": "756.XXXX.XXXX.85",
+        "start": 33,
+        "end": 49
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "aws_key,ch_ahv",
+      "categories": [
+        "aws_key",
+        "ch_ahv"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "aws_key,ch_ahv",
+      "categories": [
+        "aws_key",
+        "ch_ahv"
+      ]
+    }
+  },
+  {
+    "input": "AKIAAAAAAAAAAAAA",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "sk-shorttoken",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
   }
 ]

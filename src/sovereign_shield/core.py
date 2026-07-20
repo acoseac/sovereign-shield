@@ -69,6 +69,17 @@ _TOKEN_PREFIX: dict[str, str] = {
     "cn_resident": "CNID",
     "ca_sin": "SIN",
     "in_aadhaar": "AADHAAR",
+    # Secrets / API keys. Prefixes are pure uppercase letters so _TOKEN_RE
+    # (\[[A-Z]+_\d+\]) still recognises the minted tokens as leftovers.
+    "private_key": "PEM",
+    "jwt": "JWT",
+    "aws_key": "AWS",
+    "anthropic_key": "ANTHROPIC",
+    "openai_key": "OPENAI",
+    "github_token": "GITHUB",
+    "google_api_key": "GOOGLE",
+    "slack_token": "SLACK",
+    "stripe_key": "STRIPE",
 }
 
 # Human labels for a data-protection (DPO) audit line.
@@ -95,6 +106,15 @@ CATEGORY_LABELS: dict[str, str] = {
     "cn_resident": "Resident ID (CN)",
     "ca_sin": "SIN (CA)",
     "in_aadhaar": "Aadhaar (IN)",
+    "private_key": "Private key (PEM)",
+    "jwt": "JWT",
+    "aws_key": "AWS access key",
+    "anthropic_key": "Anthropic API key",
+    "openai_key": "OpenAI API key",
+    "github_token": "GitHub token",
+    "google_api_key": "Google API key",
+    "slack_token": "Slack token",
+    "stripe_key": "Stripe secret key",
 }
 
 # Placeholder shape, e.g. [AHV_1] — used to spot tokens a model mangled or invented.

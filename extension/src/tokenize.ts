@@ -4,6 +4,7 @@
 // restored. Detection is the parity-gated shield — checksum-validated identifiers
 // only, so clean text passes through untouched.
 import { detectPii } from "../../web/lib/shield.ts";
+import { acceptCustomHits, type CustomMatcher } from "./custom.ts";
 
 const TOKEN_PREFIX: Record<string, string> = {
   ch_ahv: "AHV",
@@ -26,6 +27,18 @@ const TOKEN_PREFIX: Record<string, string> = {
   cn_resident: "CNID",
   ca_sin: "SIN",
   in_aadhaar: "AADHAAR",
+  // Secrets / API keys.
+  private_key: "PEM",
+  jwt: "JWT",
+  aws_key: "AWS",
+  anthropic_key: "ANTHROPIC",
+  openai_key: "OPENAI",
+  github_token: "GITHUB",
+  google_api_key: "GOOGLE",
+  slack_token: "SLACK",
+  stripe_key: "STRIPE",
+  // User-defined custom rules.
+  custom: "CUSTOM",
 };
 
 /**
@@ -45,16 +58,44 @@ export class Session {
   onMint?: (category: string) => void;
 
   /**
-   * Replace every checksum-valid identifier in `text` with a stable placeholder.
-   * If `allowed` is given, only those categories are tokenized; the rest pass through.
+   * Optional user keyword/regex blocklist, run alongside the built-in detectors. Set by
+   * the interceptor/indicator from settings. Custom matches lose to built-in PII on overlap
+   * and fail open — they can never block a send or shadow a real identifier.
+   */
+  customMatcher?: CustomMatcher;
+
+  /**
+   * Merge built-in PII hits (filtered by `allowed`) with custom-blocklist hits. Built-in
+   * hits are already non-overlapping; custom hits that overlap a built-in span (or an
+   * earlier custom hit) are dropped, so the result is a flat non-overlapping list.
+   */
+  private detect(
+    text: string,
+    allowed?: ReadonlySet<string>,
+  ): Array<{ start: number; end: number; category: string }> {
+    const builtin = detectPii(text).filter((h) => !allowed || allowed.has(h.category));
+    const hits = builtin.map((h) => ({ start: h.start, end: h.end, category: h.category as string }));
+    if (this.customMatcher && (!allowed || allowed.has("custom"))) {
+      const spans = builtin.map((h) => [h.start, h.end] as [number, number]);
+      for (const c of acceptCustomHits(text, spans, this.customMatcher)) {
+        hits.push({ start: c.start, end: c.end, category: "custom" });
+      }
+    }
+    return hits;
+  }
+
+  /**
+   * Replace every checksum-valid identifier (and any custom-blocklist match) in `text`
+   * with a stable placeholder. If `allowed` is given, only those categories are tokenized;
+   * the rest pass through. Returns the SAME string reference when nothing is redacted, so
+   * callers can detect "unchanged" by identity (the byte-faithful rewrite contract).
    */
   tokenize(text: string, allowed?: ReadonlySet<string>): string {
-    const hits = detectPii(text);
+    const hits = this.detect(text, allowed);
     if (hits.length === 0) return text;
     // Replace back-to-front so earlier offsets stay valid as we splice.
     let out = text;
-    for (const h of [...hits].sort((a, b) => b.start - a.start)) {
-      if (allowed && !allowed.has(h.category)) continue;
+    for (const h of hits.sort((a, b) => b.start - a.start)) {
       const value = text.slice(h.start, h.end);
       let token = this.valueToken.get(value);
       if (!token) {

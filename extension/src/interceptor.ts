@@ -11,6 +11,7 @@
 // real fetch/XHR — you cannot inject a <script> from an isolated world.
 import { Session } from "./tokenize";
 import { rewriteBody, type BodyKind } from "./rewrite";
+import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
 
 const session = new Session();
 
@@ -62,11 +63,34 @@ function allowedCategories(): ReadonlySet<string> | undefined {
   return new Set(raw.split(",").filter(Boolean));
 }
 
+// User keyword/regex blocklist (bridge writes data-ss-custom as JSON — NOT comma-joined,
+// since patterns can contain commas). Compiled once and cached by the raw attribute string,
+// so we never recompile per send. Any parse/compile surprise falls back to "no custom rules"
+// — custom matching must never break the built-in guard or block a send.
+let customRaw = "";
+let customMatcher: CustomMatcher | undefined;
+function currentCustomMatcher(): CustomMatcher | undefined {
+  const raw = document.documentElement.dataset.ssCustom ?? "";
+  if (raw !== customRaw) {
+    customRaw = raw;
+    let rules: CustomRule[] = [];
+    try {
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) rules = parsed as CustomRule[];
+    } catch {
+      rules = [];
+    }
+    customMatcher = compileRules(rules);
+  }
+  return customMatcher;
+}
+
 // Redact the outgoing body (pure logic in rewrite.ts) and, only when something was
 // actually kept local, report the running count to the bridge. A clean prompt or a
 // parse surprise returns the original body byte-for-byte — the guard never mutates
 // a request it didn't need to touch.
 function rewriteBodyForSend(kind: BodyKind, body: string): string {
+  session.customMatcher = currentCustomMatcher();
   const { body: out, changed } = rewriteBody(kind, body, session, allowedCategories());
   if (changed) reportCount();
   return out;

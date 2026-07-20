@@ -51,3 +51,19 @@ test("allowed set restricts which categories tokenize", () => {
   assert.ok(out.includes("[EMAIL_1]"), "email should be tokenized");
   assert.equal(s.count, 1);
 });
+
+test("secret detectors flow through from the parity port (e.g. an OpenAI key)", () => {
+  const s = new Session();
+  const key = "sk-" + "A".repeat(48);
+  assert.equal(s.tokenize(`key ${key}`), "key [OPENAI_1]");
+  assert.equal(s.count, 1);
+});
+
+test("Stripe key is detected by the TS port (concatenation keeps the literal out of source)", () => {
+  // Stripe is verified here rather than via a committed parity vector: a full sk_live_
+  // literal trips GitHub push protection (see scripts/gen_shield_vectors.py).
+  const s = new Session();
+  const key = "sk_live_" + "A".repeat(24);
+  assert.equal(s.tokenize(`key ${key}`), "key [STRIPE_1]");
+  assert.equal(s.count, 1);
+});

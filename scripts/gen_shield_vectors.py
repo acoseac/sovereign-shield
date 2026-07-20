@@ -85,6 +85,31 @@ INPUTS = [
     "2341 2341 2346",  # IN Aadhaar (spaced)
     "234123412346",  # IN Aadhaar (bare)
     "NHS 943 476 5919, CPF 111.444.777-35, PESEL 90051512340, Aadhaar 2341 2341 2346",
+    # secrets / API keys (all synthetic; NOT real credentials). Length-exact tails are
+    # built with `* n` so the vectors can't silently drift on a hand-miscount.
+    "AKIAIOSFODNN7EXAMPLE",  # AWS access key id (canonical AWS example value)
+    "ghp_" + "A" * 36,  # GitHub personal access token
+    "sk-ant-api03-" + "A" * 95,  # Anthropic API key
+    "sk-ant-oat01-" + "B" * 100,  # Anthropic OAuth token (generalized middle segment)
+    "sk-svcacct-" + "A" * 40,  # OpenAI service-account key
+    "sk-" + "A" * 48,  # OpenAI legacy key
+    "AIza" + "A" * 35,  # Google API key
+    "xoxb-" + "1234567890abcdef",  # Slack bot token
+    # NOTE: Stripe (sk_live_…) is deliberately NOT a committed vector. A full sk_live_
+    # literal in this generated JSON trips GitHub push protection even though the value is
+    # synthetic (GitHub's Stripe matcher has no entropy/checksum gate, unlike the ghp_/AIza/…
+    # ones). The detector still ships and is covered — via string concatenation, which never
+    # materializes the literal — in tests/test_pii.py (Python) and session.test.ts (TS port).
+    "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIB" + "A" * 40 + "\n-----END EC PRIVATE KEY-----",
+    "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",  # JWT (HS256)
+    "eyJhbGciOiJub25lIn0.eyJzdWIiOiJhbm9uIn0."
+    + "A" * 20,  # JWT alg:none → header has an alg key, detected
+    "eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxIn0." + "A" * 16,  # JWT-shaped but header lacks alg → rejected
+    "eyJhbGciOiJIUzI1NiJ9.eyJ-9001015009086-abcdefghij."
+    + "A" * 16,  # payload embeds a valid ZA ID → one jwt hit, not za_id
+    "key AKIAIOSFODNN7EXAMPLE and AHV 756.9217.0769.85",  # secret + PII co-occur → AWS + AHV
+    "AKIA" + "A" * 12,  # too short (needs 16 after AKIA) → no hit
+    "sk-shorttoken",  # too short → no hit
 ]
 
 

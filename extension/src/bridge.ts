@@ -55,12 +55,18 @@ async function applySettings(): Promise<void> {
   const root = document.documentElement;
   root.dataset.ssEnabled = s.enabled ? "on" : "off";
   root.dataset.ssCats = s.categories.join(",");
+  // JSON, not comma-joined: custom patterns can contain commas. The MAIN-world guard
+  // JSON.parses this in a try/catch and falls back to no custom rules on any surprise.
+  root.dataset.ssCustom = JSON.stringify(s.custom);
 }
 
 applySettings().catch(() => undefined);
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && (KEYS.enabled in changes || KEYS.categories in changes)) {
+  if (
+    area === "local" &&
+    (KEYS.enabled in changes || KEYS.categories in changes || KEYS.custom in changes)
+  ) {
     applySettings().catch(() => undefined);
   }
 });

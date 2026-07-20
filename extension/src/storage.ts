@@ -5,10 +5,12 @@
 // Privacy: the activity log stores category + time + host ONLY. No values, not
 // even masked. The value<->token map lives in page memory and is never persisted.
 import { ALL_CATEGORY_KEYS } from "./categories";
+import type { CustomRule } from "./custom";
 
 export const KEYS = {
   enabled: "ssEnabled", // boolean, default true
   categories: "ssCats", // string[] of enabled category keys
+  custom: "ssCustom", // CustomRule[] — user keyword/regex blocklist
   log: "ssLog", // LogEntry[]
 } as const;
 
@@ -23,13 +25,15 @@ export interface LogEntry {
 export interface Settings {
   enabled: boolean;
   categories: string[]; // enabled category keys
+  custom: CustomRule[]; // user keyword/regex blocklist (empty by default)
 }
 
 export async function getSettings(): Promise<Settings> {
-  const v = await chrome.storage.local.get([KEYS.enabled, KEYS.categories]);
+  const v = await chrome.storage.local.get([KEYS.enabled, KEYS.categories, KEYS.custom]);
   return {
     enabled: v[KEYS.enabled] !== false, // default ON
     categories: Array.isArray(v[KEYS.categories]) ? v[KEYS.categories] : [...ALL_CATEGORY_KEYS],
+    custom: Array.isArray(v[KEYS.custom]) ? (v[KEYS.custom] as CustomRule[]) : [],
   };
 }
 
