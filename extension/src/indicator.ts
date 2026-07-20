@@ -23,6 +23,7 @@ const DEBOUNCE_MS = 200;
 const CLIP_TOP_PX = 56; // hide if the composer scrolls above this (behind Gemini's header)
 
 let enabled = true;
+let smokescreen = false; // stand-ins instead of [TOKEN_1] placeholders (affects pill copy only)
 let allowed: ReadonlySet<string> | undefined; // the guard's enabled category set
 let customMatcher: CustomMatcher | undefined; // compiled user keyword/regex blocklist
 let pill: HTMLElement | null = null;
@@ -77,7 +78,8 @@ function hidePill(): void {
 
 function pillText(s: Summary): string {
   const noun = s.count === 1 ? "item" : "items";
-  return `🛡️ ${s.count} ${noun} (${s.categories.join(", ")}) will be kept local when you send`;
+  const how = smokescreen ? "kept local (stand-ins sent instead)" : "kept local";
+  return `🛡️ ${s.count} ${noun} (${s.categories.join(", ")}) will be ${how} when you send`;
 }
 
 function positionPill(): void {
@@ -148,6 +150,7 @@ function bindComposer(found: HTMLElement | null = document.querySelector<HTMLEle
 async function loadSettings(): Promise<void> {
   const s = await getSettings();
   enabled = s.enabled;
+  smokescreen = s.smokescreen;
   allowed = new Set(s.categories); // getSettings() defaults to all categories when unset
   customMatcher = compileRules(s.custom); // undefined when there are no (valid) rules
 }
@@ -178,7 +181,10 @@ function init(): void {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (
       area === "local" &&
-      (KEYS.enabled in changes || KEYS.categories in changes || KEYS.custom in changes)
+      (KEYS.enabled in changes ||
+        KEYS.categories in changes ||
+        KEYS.custom in changes ||
+        KEYS.smokescreen in changes)
     ) {
       void loadSettings().then(render);
     }

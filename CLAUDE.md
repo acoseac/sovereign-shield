@@ -70,6 +70,15 @@ first — it is the best map of the live transports.
   length-prefixed; rewriting a chunk desyncs the parser and hangs generation. Composers
   (contenteditable/textarea) are skipped so we never edit what the user is typing.
 - **Guard defaults ON** — if the bridge hasn't set the flag yet, redact anyway (fail-safe).
+  Smokescreen is the exception: it defaults **OFF**, because it changes what the model sees.
+- **Smokescreen stand-ins are re-detectable** — [`extension/src/surrogate.ts`](extension/src/surrogate.ts).
+  `alice.morgan@example.org` *is* a valid email, unlike `[EMAIL_1]`. Two rules follow:
+  never mint a stand-in for a checksum-validated category (a valid fake AHV/IBAN could be a
+  **real** person's number — a category is eligible only if it has a vendored pool), and
+  never re-tokenize a value already in `tokenValue` (re-sent history and pasted-back replies
+  would otherwise mint a *second* stand-in and break rehydration). The DOM rehydrator's fast
+  path must ask `session.mayNeedRehydration()`, never test for `"["` — stand-ins have no
+  bracket. Rationale: [ADR 0004](docs/adr/0004-smokescreen-surrogates.md).
 
 **Debugging a reload:** `interceptor.ts` stamps `document.documentElement.dataset.ssBuild`.
 MV3 installs the MAIN-world patch at `document_start`, so **open tabs keep the old code
@@ -107,5 +116,18 @@ npm run package     # → sovereign-shield-<version>.zip for the store
 - Branch off `main`, open a PR, **squash-merge**, delete the branch. Land only with CI
   green — jobs are `python (lint · type · test · parity)`, `web (shield parity · build)`,
   `extension (typecheck · test · build)`, plus SonarCloud + Vercel.
+- **Always wait for the review bots before merging.** CodeRabbit and Gemini Code Assist
+  comment on every PR, typically within ~6 minutes of opening it. Give them that window,
+  then read the comments, apply the fixes that hold up, and push. If a round produced many
+  fixes, wait for a **second** round on the new commits before merging — the bots re-review
+  each push, and a fix can introduce its own problem. Evaluate critically: they are often
+  right, but they also assert things that are simply wrong, so verify before applying and
+  say which suggestions you rejected and why.
+  - **Sign commits (`git commit -s`) BEFORE opening the PR.** The `dco` job requires a
+    `Signed-off-by:` trailer matching each commit's author; fixing it afterwards means a
+    force-push, and **a force-push mid-review makes CodeRabbit abort** ("head commit changed
+    during the review"). Recover with a `@coderabbitai review` comment.
+  - Gemini Code Assist has a **daily quota** and simply posts a quota warning instead of a
+    review once it's exhausted — don't wait on it in that case.
 - Disjoint changes open as **parallel** PRs against `main`, not stacked.
 - Architecture decisions live in `docs/adr/`.

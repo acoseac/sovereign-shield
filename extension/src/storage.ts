@@ -11,6 +11,7 @@ export const KEYS = {
   enabled: "ssEnabled", // boolean, default true
   categories: "ssCats", // string[] of enabled category keys
   custom: "ssCustom", // CustomRule[] — user keyword/regex blocklist
+  smokescreen: "ssSmokescreen", // boolean, default FALSE — see Settings below
   log: "ssLog", // LogEntry[]
 } as const;
 
@@ -26,14 +27,24 @@ export interface Settings {
   enabled: boolean;
   categories: string[]; // enabled category keys
   custom: CustomRule[]; // user keyword/regex blocklist (empty by default)
+  /** Swap real values for realistic stand-ins instead of [EMAIL_1] placeholders.
+   *  Default FALSE — unlike `enabled`, which fails safe by defaulting ON, this one changes
+   *  what the model actually sees, so it stays off until the user opts in. */
+  smokescreen: boolean;
 }
 
 export async function getSettings(): Promise<Settings> {
-  const v = await chrome.storage.local.get([KEYS.enabled, KEYS.categories, KEYS.custom]);
+  const v = await chrome.storage.local.get([
+    KEYS.enabled,
+    KEYS.categories,
+    KEYS.custom,
+    KEYS.smokescreen,
+  ]);
   return {
     enabled: v[KEYS.enabled] !== false, // default ON
     categories: Array.isArray(v[KEYS.categories]) ? v[KEYS.categories] : [...ALL_CATEGORY_KEYS],
     custom: Array.isArray(v[KEYS.custom]) ? (v[KEYS.custom] as CustomRule[]) : [],
+    smokescreen: v[KEYS.smokescreen] === true, // default OFF
   };
 }
 

@@ -88,6 +88,31 @@ depend on any provider's exact field layout and survives their reshuffles.
 - **Popup** (click the icon) — on/off toggle, the live count, and a link to the full page.
 - **Options page** (the popup link, or `chrome://extensions` → Details → Extension options) — choose which categories to block, and view the activity log.
 - **Activity log** — records **type + time + site only, never the value** (not even masked). A rolling window of the last 200 events with a one-click Clear. The value↔placeholder map stays in page memory and is never written to disk, so the "nothing sensitive is persisted" promise holds.
+- **Smokescreen mode** (opt-in, off by default) — see below.
+
+## Smokescreen mode
+
+Models get noticeably worse at *generative* work — draft this email, fix the grammar,
+reformat this — when the prompt is full of `[EMAIL_1]`. They address the placeholder, or
+write copy that reads wrong once the real value comes back. Smokescreen sends a realistic
+stand-in instead:
+
+```
+you type:   "Reply to hans.muster@bluewin.ch about the invoice"
+sent:       "Reply to alice.morgan@example.org about the invoice"   ← reads naturally
+you see:    "...I've drafted a reply to hans.muster@bluewin.ch..."   ← restored as usual
+```
+
+**It applies to emails and your custom terms only.** IDs, IBANs, cards and secrets always
+use bracket placeholders, and always will: a checksum-*valid* fake AHV or IBAN could be a
+real person's actual number, so the guard never invents one. Stand-in addresses use only
+[RFC 2606](https://www.rfc-editor.org/rfc/rfc2606) reserved domains (`example.org`), which
+cannot route mail.
+
+Two honest caveats. Restoration matches the stand-in literally (word-boundary fenced, and
+case-insensitively, so re-casing survives) — if the model *reformats* it, the text keeps the
+harmless stand-in instead of the real value. And a transcript no longer announces that
+redaction happened the way `[EMAIL_1]` did; the pre-send pill says so instead.
 - **Icons** — generated from `icons/shield.svg` via `npm run icons`; a greyed variant shows when the guard is off.
 
 ## Build & load
