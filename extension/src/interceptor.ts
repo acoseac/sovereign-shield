@@ -295,8 +295,31 @@ async function rewriteFetch(
   } catch (err) {
     console.warn("[sovereign-shield] fetch passthrough after error:", err);
     failopen();
+    return origFetch.call(window, input, init); // returns here, so the check below can't double-report
+  }
+  // Reaching this line means we recognised a generate endpoint and did NOT inspect its body:
+  // a non-string init.body (Blob/FormData/URLSearchParams), a Request carrying a content type
+  // we don't buffer, or a non-POST. Falling through silently is the same defect the XHR path
+  // just fixed — the prompt goes out in the clear and nothing says so — and it matters more
+  // here, because ChatGPT and Claude are both fetch-only.
+  //
+  // Gated on a body actually being present: a GET or a bodyless POST to a matching URL has
+  // nothing to inspect, and warning about those would cry wolf until the warning meant nothing.
+  if (requestHasBody(input, init)) {
+    console.warn(`[sovereign-shield] uninspected ${kind} fetch body`);
+    failopen();
   }
   return origFetch.call(window, input, init);
+}
+
+/** Does this fetch carry a body at all? Reading `Request.body` does not consume it. */
+function requestHasBody(input: RequestInfo | URL, init?: RequestInit): boolean {
+  try {
+    if (init && init.body != null) return true;
+    return input instanceof Request && input.body !== null;
+  } catch {
+    return false; // never let the check itself break a send
+  }
 }
 
 // Report each newly-redacted identifier to the bridge (ISOLATED world) for the
