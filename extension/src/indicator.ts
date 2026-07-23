@@ -168,9 +168,13 @@ function noteIntent(): void {
 
 /** Watch the composer's text for the non-empty -> empty transition. Called undebounced from
  *  the content observer: the drain has to be timestamped against the keypress that caused it,
- *  and a 200ms debounce would blur that. */
+ *  and a 200ms debounce would blur that.
+ *
+ *  textContent, NOT innerText: this runs on every keystroke, and innerText forces a synchronous
+ *  layout reflow — which is exactly why the pill's own recompute is debounced behind it.
+ *  textContent needs no layout, and "is it empty" is a question it answers just as well. */
 function noteComposerContent(): void {
-  const text = activeComposer?.innerText.trim() ?? "";
+  const text = activeComposer?.textContent?.trim() ?? "";
   const drained = lastComposerText !== "" && text === "";
   lastComposerText = text;
   if (drained && enabled) armCanary();
@@ -225,7 +229,8 @@ function bindComposer(found: HTMLElement | null = document.querySelector<HTMLEle
     scheduleRender();
   });
   composerContent.observe(activeComposer, { childList: true, subtree: true, characterData: true });
-  lastComposerText = activeComposer.innerText.trim(); // seed, so re-binding isn't read as a drain
+  // Seed, so re-binding isn't read as a drain. textContent to match noteComposerContent.
+  lastComposerText = activeComposer.textContent?.trim() ?? "";
   composerResize = new ResizeObserver(requestReposition); // composer grows as prompt wraps
   composerResize.observe(activeComposer);
   render();
@@ -270,8 +275,18 @@ function init(): void {
   window.addEventListener(
     "keydown",
     (e) => {
-      if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
-      if (e.target instanceof Node && activeComposer?.contains(e.target)) noteIntent();
+      if (e.isComposing) return;
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      // Enter in the composer itself.
+      if (e.key === "Enter" && !e.shiftKey && activeComposer?.contains(target)) return noteIntent();
+      // Enter/Space on a focused send button. A keyboard user who tabs to Send never types in
+      // the composer at all, so without this the canary would systematically never fire for
+      // them — a blind spot, not the random miss the design tolerates.
+      if ((e.key === "Enter" || e.key === " ") && target instanceof Element) {
+        const button = target.closest('button, [role="button"]');
+        if (button && composerScope()?.contains(button)) noteIntent();
+      }
     },
     { passive: true, capture: true },
   );
