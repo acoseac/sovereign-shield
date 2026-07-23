@@ -12,11 +12,12 @@
 import { Session } from "./tokenize";
 import { rewriteBody, type BodyKind } from "./rewrite";
 import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
+import { installClipboardRehydrator } from "./clipboard";
 
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "10-smokescreen";
+const BUILD = "11-clipboard";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -110,6 +111,9 @@ function rewriteBodyForSend(kind: BodyKind, body: string): string {
 // generation. We let every provider's stream parse untouched and swap token->value
 // in the text nodes they paint. rehydrate is idempotent, so the mutation our own
 // write triggers converges in one no-op pass. Editable regions (composers) skipped.
+//
+// This covers what is PAINTED only. The sites' Copy buttons serve their own markdown
+// source, which never passes through here — see clipboard.ts.
 function installDomRehydrator(): void {
   const isEditable = (el: Element | null): boolean => {
     if (!el) return false;
@@ -283,6 +287,7 @@ session.onMint = (category) => {
 };
 
 installDomRehydrator();
+installClipboardRehydrator(session);
 console.debug(
   `[sovereign-shield] guard installed on ${HOST} (${XHR_ONLY ? "xhr" : FETCH_ONLY ? "fetch" : "xhr+fetch"}) build ${BUILD}.`,
 );
