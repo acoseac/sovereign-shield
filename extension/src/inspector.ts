@@ -24,6 +24,7 @@
 import { CATEGORY_LABEL } from "./categories.ts";
 import { findComposer } from "./composer.ts";
 import type { CustomMatcher } from "./custom.ts";
+import { Z_PANEL } from "./layers.ts";
 import type { Preview, Session } from "./tokenize.ts";
 
 const PANEL_ID = "ss-inspector";
@@ -78,6 +79,9 @@ export class Inspector {
    *  from real values, and there is no reason to write those anywhere the page can read them
    *  more conveniently than it already can. */
   private signature = "";
+  /** Cache behind the innerText read in renderPreview — see there for why. */
+  private lastTextContent = "";
+  private lastInnerText = "";
   private readonly session: Session;
   private readonly ctx: InspectorContext;
 
@@ -129,7 +133,7 @@ export class Inspector {
   private build(): void {
     const panel = el(
       "div",
-      "position:fixed;top:0;right:0;height:100vh;width:min(460px,94vw);z-index:2147483645;" +
+      `position:fixed;top:0;right:0;height:100vh;width:min(460px,94vw);z-index:${Z_PANEL};` +
         `box-sizing:border-box;display:flex;flex-direction:column;background:${BG};color:${FG};` +
         `border-left:1px solid ${LINE};box-shadow:-8px 0 28px rgba(0,0,0,.35);font:13px/1.5 ${SANS}`,
     );
@@ -227,10 +231,17 @@ export class Inspector {
 
   private renderPreview(): { node: HTMLElement; signature: string } {
     const composer = findComposer();
-    // innerText, not textContent: it reflects the visual line breaks, which is what summarize
-    // and the guard see. It forces a layout, but only while the panel is open and only at the
-    // refresh tick — and detection below is skipped entirely when the text has not changed.
-    const original = composer?.innerText ?? "";
+    // innerText, not textContent, because it reflects the visual line breaks — which is what
+    // summarize and the guard see. But innerText forces a synchronous layout, and this runs on
+    // a timer, so it would thrash layout four times a second even with the user completely
+    // idle. textContent is free and changes whenever the text does, so it gates the expensive
+    // read: no edit, no reflow.
+    const textContent = composer?.textContent ?? "";
+    if (textContent !== this.lastTextContent) {
+      this.lastTextContent = textContent;
+      this.lastInnerText = composer?.innerText ?? "";
+    }
+    const original = this.lastInnerText;
     const smoke = this.ctx.smokescreen();
     const key = `p:${smoke}:${original}`;
     // Detection over a long prompt four times a second is real work for no gain when the user

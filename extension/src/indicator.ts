@@ -12,6 +12,7 @@ import { getSettings, KEYS } from "./storage.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
 import { COMPOSER_SELECTOR } from "./composer.ts";
+import { Z_PILL } from "./layers.ts";
 
 const PILL_ID = "ss-indicator-pill";
 const DEBOUNCE_MS = 200;
@@ -40,11 +41,11 @@ function ensurePill(): HTMLElement {
   pill.setAttribute("aria-live", "polite");
   // Self-contained translucent-dark chip: legible on Gemini's light AND dark surfaces
   // without depending on its (undocumented) CSS variables. pointer-events:none so it
-  // never intercepts clicks meant for the page; z-index just under the stale banner.
+  // never intercepts clicks meant for the page; layers.ts owns where it sits in the stack.
   pill.style.cssText = [
     "position:fixed",
     "left:0;top:0",
-    "z-index:2147483646",
+    `z-index:${Z_PILL}`,
     "visibility:hidden",
     "pointer-events:none",
     "box-sizing:border-box",
