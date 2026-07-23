@@ -128,9 +128,9 @@ export class Session {
    *  Session-only and never persisted: writing it to chrome.storage would put a real PII
    *  value on disk, which is the one thing storage.ts promises never happens. */
   private readonly allowlist = new Set<string>();
-  /** Values whose stand-in has been recycled — the only ones that map from more than one
-   *  placeholder. Lets forget() skip a reverse scan of `tokenValue` in the normal case. */
-  private readonly recycled = new Set<string>();
+  /** value → the stand-ins it USED to have, kept restorable by recycleSurrogate. Indexed this
+   *  way so forget() can drop them directly instead of scanning `tokenValue` for the value. */
+  private readonly retired = new Map<string, Set<string>>();
   // Prototype-free so a counter key can never resolve to an inherited member. Today
   // the prefix is sanitised to uppercase [A-Z0-9_] (no collision with the lowercase
   // Object.prototype keys is possible), but this keeps that safe if the prefix logic
@@ -289,6 +289,19 @@ export class Session {
     return { text: out, spans };
   }
 
+  /** Could ANY stand-in be minted right now, whatever the value? The session-level half of
+   *  candidateSurrogate's checks, split out so recycleSurrogate can bail before burning
+   *  ordinals on attempts that are guaranteed to fail — and split out rather than restated,
+   *  so the two can never drift about what "safe to mint" means. */
+  private canMintSurrogate(liveCount: number): boolean {
+    return (
+      this.smokescreen &&
+      !this.surrogatesBroken &&
+      liveCount < MAX_SURROGATES &&
+      supportsLookbehind()
+    );
+  }
+
   /**
    * The stand-in this `(category, ordinal)` would take, or **null when it must fall back to a
    * bracket token**. Every guard fails that way, because degrading to a bracket costs nothing
@@ -305,9 +318,8 @@ export class Session {
     alsoTaken: ReadonlySet<string>,
     liveCount: number,
   ): string | null {
-    if (!this.smokescreen || this.surrogatesBroken) return null;
-    if (liveCount >= MAX_SURROGATES) return null;
-    if (!surrogateEligible(category) || !supportsLookbehind()) return null;
+    if (!this.canMintSurrogate(liveCount)) return null;
+    if (!surrogateEligible(category)) return null;
     const surrogate = mintSurrogate(category, ordinal);
     if (!surrogate) return null;
     // Two collisions to refuse, both of which would silently break the guard:
@@ -383,13 +395,14 @@ export class Session {
     if (token === undefined) return false;
     this.valueToken.delete(value);
     this.dropPlaceholder(token);
-    // Only a recycled value maps from more than one placeholder, so the reverse scan is gated
-    // on that set rather than run every time. eviction calls this from the synchronous send
-    // path, and an O(map) walk per mint at the cap is not a cost worth paying for a rare case.
-    if (this.recycled.delete(value)) {
-      for (const [retired, mapped] of [...this.tokenValue]) {
-        if (mapped === value) this.dropPlaceholder(retired);
-      }
+    // Recycling is the only thing that leaves a value with more than one placeholder, and it
+    // records them here — so this costs a lookup rather than a scan of `tokenValue`. Eviction
+    // calls forget() from the synchronous send path; an O(map) walk per mint at the cap is not
+    // a cost worth paying for a case that usually does not apply at all.
+    const retired = this.retired.get(value);
+    if (retired) {
+      for (const stale of retired) this.dropPlaceholder(stale);
+      this.retired.delete(value);
     }
     return true;
   }
@@ -414,7 +427,7 @@ export class Session {
     this.tokenValue.clear();
     this.tokenValueLower.clear();
     this.tokenCategory.clear();
-    this.recycled.clear();
+    this.retired.clear();
     this.surrogates = [];
     this.surrogatesLower = [];
     this.surrogatePattern = null;
@@ -446,6 +459,10 @@ export class Session {
   recycleSurrogate(value: string): string | null {
     const current = this.valueToken.get(value);
     if (current === undefined || !this.surrogates.includes(current)) return null;
+    // Bail BEFORE the attempt loop when no stand-in could be minted at all (mode off, cap
+    // reached, alternation broken). Otherwise every click would burn RECYCLE_ATTEMPTS ordinals
+    // on a guaranteed null, permanently inflating the next real value's token.
+    if (!this.canMintSurrogate(this.surrogates.length)) return null;
     const category = this.tokenCategory.get(current);
     if (category === undefined) return null;
     const prefix = this.prefixFor(category);
@@ -459,8 +476,12 @@ export class Session {
       );
       if (!next) continue;
       this.registerSurrogate(next);
+      // `current` stays in tokenValue so turns already on screen keep restoring; record it so
+      // forget() knows this value has more than one placeholder to drop.
+      const stale = this.retired.get(value) ?? new Set<string>();
+      stale.add(current);
+      this.retired.set(value, stale);
       this.remember(value, next, category); // rewrites valueToken; leaves `current` restorable
-      this.recycled.add(value);
       return next;
     }
     return null;
