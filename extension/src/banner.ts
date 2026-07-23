@@ -7,6 +7,8 @@
 // Shared so the two cannot drift into looking like different products, and so the dedup rule
 // (one bar per id, ever) is enforced in one place.
 
+import { Z_BANNER } from "./layers.ts";
+
 export type BannerTone = "error" | "warning";
 
 const TONE_BG: Record<BannerTone, string> = {
@@ -37,7 +39,7 @@ export function showBanner(opts: {
   bar.setAttribute("role", "alert");
   bar.dataset.ssBanner = opts.id;
   bar.style.cssText =
-    `position:fixed;inset:0 0 auto 0;z-index:2147483647;background:${TONE_BG[opts.tone]};color:#fff;` +
+    `position:fixed;inset:0 0 auto 0;z-index:${Z_BANNER};background:${TONE_BG[opts.tone]};color:#fff;` +
     "font:600 13px system-ui,sans-serif;padding:9px 14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.3)";
   bar.append(document.createTextNode(opts.text + " "));
 
