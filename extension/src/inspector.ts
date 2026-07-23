@@ -30,6 +30,12 @@ import type { Preview, Session } from "./tokenize.ts";
 const PANEL_ID = "ss-inspector";
 const REFRESH_MS = 250;
 
+/** Most mapping rows to render at once. MAX_MAPPINGS is 2 000, and eight elements per row makes
+ *  that 16 000 nodes rebuilt whenever the set changes — for a list nobody is going to read past
+ *  the top of. Newest first, and the count of what is hidden is stated rather than silently
+ *  dropped; the guard still holds every mapping either way. */
+const MAX_ROWS = 200;
+
 // Captured at document_start, before any page script runs, so the panel is attached with the
 // real attachShadow even if the page later patches Element.prototype to hand itself our root.
 // We share a realm with the page — this closes the realistic window, not every window.
@@ -178,6 +184,8 @@ export class Inspector {
     );
 
     this.body = el("div", "flex:1;overflow:auto;padding:14px");
+    this.body.id = `${PANEL_ID}-panel`;
+    this.body.setAttribute("role", "tabpanel");
     panel.append(header, this.body);
 
     // A CLOSED shadow root, not the light DOM. The Mappings tab renders every real value this
@@ -236,6 +244,7 @@ export class Inspector {
       this.render();
     });
     b.setAttribute("role", "tab");
+    b.setAttribute("aria-controls", `${PANEL_ID}-panel`);
     b.dataset.ssTab = key;
     return b;
   }
@@ -316,16 +325,20 @@ export class Inspector {
   // --- tab 2: what we are holding ------------------------------------------
 
   private renderMappings(): { node: HTMLElement; signature: string } {
-    const entries = this.session.entries();
+    const all = this.session.entries();
+    // Newest first: entries() is in mint order, and the row a user came here to find is almost
+    // always the one they just sent.
+    const entries = all.slice(-MAX_ROWS).reverse();
+    const hidden = all.length - entries.length;
     // Every signature carries its tab's prefix, so switching tabs can never look "unchanged"
-    // to render() and skip the rebuild.
-    const key = `m:${entries.map((e) => `${e.placeholder}=${e.value}`).join(" ")}`;
-    // Computed BEFORE building anything: at the mapping cap this is 2 000 rows of elements,
-    // and rebuilding them every refresh tick only for render() to throw them away is a lot of
-    // allocation and GC for a panel the user is sitting and reading.
+    // to render() and skip the rebuild. Built over the SHOWN rows only, so it stays bounded —
+    // stringifying 2 000 mappings four times a second is the cost this check exists to avoid.
+    const key = `m:${hidden}:${entries.map((e) => `${e.placeholder}=${e.value}`).join(" ")}`;
+    // Computed BEFORE building anything: rebuilding rows every refresh tick only for render()
+    // to throw them away is a lot of allocation for a panel the user is sitting and reading.
     if (key === this.signature) return { node: this.body ?? el("div", ""), signature: key };
     const wrap = el("div", "");
-    if (entries.length === 0) {
+    if (all.length === 0) {
       wrap.append(note("Nothing kept local in this tab yet."));
       return { node: wrap, signature: key };
     }
@@ -370,8 +383,13 @@ export class Inspector {
       wrap.append(row);
     }
 
+    if (hidden > 0) {
+      wrap.append(
+        note(`Showing the ${entries.length} most recent. ${hidden} older mapping${hidden === 1 ? " is" : "s are"} still held and still restored — just not listed here.`),
+      );
+    }
     wrap.append(
-      button(`Clear all ${entries.length} mappings`, `${CHIP};margin-top:4px`, () => {
+      button(`Clear all ${all.length} mappings`, `${CHIP};margin-top:4px`, () => {
         this.session.clear();
         this.refresh();
       }),
