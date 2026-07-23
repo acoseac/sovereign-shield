@@ -21,24 +21,23 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Category:** Productivity
 **Language:** English
 
-**Detailed description** (keep under the 1,600-char limit — the dashboard shows a live count):
-> Sovereign Shield keeps sensitive data out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces identifiers, API keys and your own terms with placeholders, then restores the real values in the reply — so nothing sensitive leaves your machine.
+**Detailed description** (the dashboard shows a live count; keep it tight — this copy runs ~1.7k
+chars, and the 0.5.0 submission went through at a similar length):
+> Sovereign Shield keeps sensitive data out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces identifiers, API keys and your own terms with placeholders, then restores the real values in the reply. Everything runs locally — no account, no server, no analytics.
 >
-> Everything runs locally: no account, no API key, no server, no analytics.
->
-> Identifiers are checksum-validated — shape and check digit must agree — so ordinary text is untouched and there are no false positives. Secrets match well-known shapes.
+> Identifiers are checksum-validated (shape and check digit must agree), so ordinary text is untouched and there are no false positives. Secrets match well-known shapes.
 >
 > What it detects:
 > • Swiss AHV/AVS, IBAN (worldwide), credit card, phone, email
-> • National, tax & health IDs: Italy, Spain, France, Netherlands, Germany, Poland, Portugal, Belgium, UK NHS, Brazil (CPF & CNPJ), South Africa, China, Canada, India
+> • National, tax & health IDs across the EU (IT/ES/FR/NL/DE/PL/PT/BE), UK NHS, Brazil, South Africa, China, Canada and India
 > • Secrets: AWS, OpenAI, Anthropic, GitHub, Google, Slack & Stripe keys, JWTs, PEM private keys
 > • Your own keywords or regexes — code names, client names, internal domains
 >
-> Smokescreen mode (optional): send realistic stand-ins like alice.morgan@example.org instead of [EMAIL_1], so models write better drafts — real values never leave the page. Emails and your own terms only; IDs, cards and secrets always use placeholders.
+> Smokescreen mode (optional): send realistic stand-ins like alice.morgan@example.org instead of [EMAIL_1], so models write better drafts. Emails and your own terms only; IDs, cards and secrets always use placeholders.
 >
-> You stay in control: choose which categories to block, add your own rules, and an on-device activity log shows what was kept local — type, time and site only, never the value. A live count above the chat box shows what will be kept before you send.
+> See exactly what you send: a live count above the chat box, and Inspect for a side-by-side view of your prompt versus what the provider receives. Copying a reply gives back the real values. If a site changes its internal API so a message goes out uninspected, you are told rather than left guessing.
 >
-> The value-to-placeholder map lives only in your tab's memory, never stored or transmitted. Names and addresses are out of scope.
+> Choose which categories to block, add your own rules, and review an on-device log of what was kept local — type, time and site only, never the value. The value-to-placeholder map lives only in your tab's memory. Names and addresses are out of scope.
 >
 > Open source: https://github.com/acoseac/sovereign-shield
 
@@ -94,9 +93,12 @@ Upload in this order (the store shows the first as the primary tile):
    kept local when you send", above a real prompt. Leads with the headline pre-send feature.
 2. `2-chatgpt.png` — the same pill on ChatGPT (3 items: card, email, AHV).
 3. `3-claude.png` — the same pill on Claude (2 items: AHV, Swiss phone).
-4. `4-options.png` — the options UI: the identifier + "Secrets & API keys" toggles, the custom-rules editor, and the value-free activity log. (Regenerate for 0.5.0 — smokescreen mode added a section.)
+4. `4-options.png` — the options UI: the identifier + "Secrets & API keys" toggles, the custom-rules editor, and the value-free activity log. (Regenerate for 0.6.0 — still shows the pre-smokescreen layout.)
 5. `5-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
    while the reply shows the restored number (the "receipts" shot).
+6. **New for 0.6.0** — the inspector panel's Preview tab, prompt beside redacted payload with
+   the replaced spans marked. It is the most legible single proof the extension works, and it
+   needs no DevTools to read, so consider promoting it above `5-gemini-proof.png`.
 
 Tiles 1–3 are designed 1280×800 promo images (exact pill markup/CSS from `indicator.ts`, with
 real detector output); 4–5 are live product captures. The two earlier web-page shots

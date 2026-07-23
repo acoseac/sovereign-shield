@@ -40,12 +40,15 @@ first — it is the best map of the live transports.
 - `interceptor.ts` — **MAIN world**, `document_start`. Patches the page's real
   `fetch`/`XHR` to redact the outgoing prompt, and restores tokens in the reply. MAIN
   world is required: Gemini's Trusted-Types + CSP block a script injected from an
-  isolated world.
+  isolated world. Also hosts `clipboard.ts` and `inspector.ts` — see the rehydration
+  boundary below for why those two live here and not in the isolated world.
 - `bridge.ts` — ISOLATED world. Bridges MAIN ↔ extension storage (settings, activity
   log) via `window.postMessage` + `data-ss-*` attributes on `<html>`.
 - `indicator.ts` — ISOLATED world. The pre-send **pill** (counts identifiers before you
-  send). Purely additive: `pointer-events:none`, never mutates the composer, **cannot
-  block a send** (rule this out first when a send breaks).
+  send) and the **send canary**. Purely additive: `pointer-events:none`, never mutates the
+  composer, **cannot block a send** (rule this out first when a send breaks). The one
+  interactive child is the pill's `Inspect` button, which re-enables pointer events on
+  itself only and cancels its own `mousedown` so it can't steal composer focus.
 
 **Transport is per-site** — only the one transport each site actually uses is hooked
 (so we never initiate a site's unrelated cross-origin beacons):
@@ -69,6 +72,37 @@ first — it is the best map of the live transports.
   nodes via a MutationObserver, never inside the response stream. Gemini's stream is
   length-prefixed; rewriting a chunk desyncs the parser and hangs generation. Composers
   (contenteditable/textarea) are skipped so we never edit what the user is typing.
+- **The rehydration boundary** — real values may surface on exactly **three** surfaces:
+  the painted DOM, the **clipboard** (`clipboard.ts`), and the **inspector panel**
+  (`inspector.ts`). Never the stream, never `chrome.storage`, never a `postMessage`,
+  never the activity log. That last one is why the inspector renders in the MAIN world —
+  it's the only surface showing real values, so it runs where they already live and
+  nothing has to cross — in a **closed shadow root** (`display:contents` host, so it adds
+  no stacking context and `layers.ts` keeps applying), and why "stop redacting this" is
+  session-only rather than persisted. The sites' Copy
+  buttons serve their own markdown *source*, which the DOM rehydrator never sees; with
+  smokescreen on, an unrehydrated copy hands the user a **fabricated** address that reads
+  as real. Adding a fourth surface is a boundary decision, not a feature detail.
+  Rationale: [ADR 0005](docs/adr/0005-rehydration-boundary.md).
+- **Fail loudly when a transport moves** — `GENERATE_ENDPOINTS` is hardcoded on purpose;
+  matching by payload *shape* would have us rewriting bodies we have no model of, against
+  both fail-open and byte-faithful. The defect to fix was that breakage was **silent**, so
+  `interceptor.ts` bumps `data-ss-seen` per inspected body and `indicator.ts` warns when a
+  composer drains with no counter movement (`canary.ts`). Corroborators are deliberately
+  generic — a list of per-site send-button selectors would rot on the same schedule as the
+  endpoints, and a canary that stops warning is worse than none.
+- **No session reset on SPA navigation** — ChatGPT and Claude rewrite the URL from `/` to
+  `/c/<uuid>` *after* the first message of a new chat is sent, so a route-change reset
+  wipes the mapping for the message streaming right then and paints `[EMAIL_1]` into its
+  own reply. Growth is bounded by `MAX_MAPPINGS` (oldest evicted first) instead. Counters
+  are never rewound by eviction/`forget`/`clear`: a re-typed value must get a *fresh*
+  token, or the rehydrator restores the new value into an old message showing that token.
+  The cost is that an evicted placeholder no longer restores in far scrollback — degraded
+  display, never a leak.
+- **Overlay stacking lives in `layers.ts`** — banner > panel > pill, in one place because
+  it spans three files and two worlds. The breakage banner stays on top deliberately: "this
+  send was not inspected" must never be covered, least of all by our own UI reassuring the
+  user things are fine.
 - **Guard defaults ON** — if the bridge hasn't set the flag yet, redact anyway (fail-safe).
   Smokescreen is the exception: it defaults **OFF**, because it changes what the model sees.
 - **Smokescreen stand-ins are re-detectable** — [`extension/src/surrogate.ts`](extension/src/surrogate.ts).
@@ -84,6 +118,11 @@ first — it is the best map of the live transports.
 MV3 installs the MAIN-world patch at `document_start`, so **open tabs keep the old code
 until hard-reloaded** — after reloading the unpacked extension, hard-reload the chat tab
 and check `document.documentElement.dataset.ssBuild` in its console.
+
+**Gotcha:** tests run on Node's **strip-only** TypeScript support, so `src/` must avoid
+syntax it can't strip — notably constructor **parameter properties** (`constructor(private
+readonly x: T)`). esbuild handles them fine, so this only shows up the moment a file gains
+its first test.
 
 **Build / test (from `extension/`):**
 ```bash

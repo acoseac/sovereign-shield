@@ -67,14 +67,18 @@ Two content scripts, because the worlds have complementary powers:
 | File | World | Can it… | Job |
 | --- | --- | --- | --- |
 | `interceptor.ts` | `MAIN` | page's real `fetch`/`XMLHttpRequest` ✓, `chrome.*` ✗ | patch `fetch` + XHR `open`/`send`, tokenize enabled categories in each site's generate body, rehydrate the rendered DOM, emit per-redaction events (category only) |
+| `clipboard.ts` | `MAIN` | the page's `copy` event + `navigator.clipboard` | rehydrate what you copy, so the clipboard matches the screen |
+| `inspector.ts` | `MAIN` | the live value↔placeholder map | the pre-send diff and the mapping drawer — MAIN because it's the only surface that shows real values, so nothing has to cross a world boundary |
+| `indicator.ts` | `ISOLATED` | `chrome.*` ✓, composer DOM ✓ | the pre-send pill, its `Inspect` button, and the send canary |
 | `bridge.ts` | `ISOLATED` | `chrome.*` ✓, page globals ✗ | push settings to the page (`data-ss-*`), forward redaction events to the worker, answer the popup |
 | `background.ts` | service worker | `chrome.action` ✓ | paint the per-tab badge, swap the active/paused icon, single writer for the activity log |
 | `popup.ts` / `options.ts` | extension pages | `chrome.*` ✓ | on/off, per-category toggles, activity log + Clear |
 
-They share the DOM but not their globals, so they pass two values through `data-*`
-attributes on `<html>`: `data-ss-enabled` (bridge → guard), `data-ss-kept`
-(guard → bridge → popup), and `data-ss-build` (a build stamp, so a reload can be verified
-from the page — unpacked extensions keep running old code until you hit ↻ on the card).
+They share the DOM but not their globals, so they pass values through `data-*` attributes on
+`<html>`: `data-ss-enabled` (bridge → guard), `data-ss-kept` (guard → bridge → popup),
+`data-ss-seen` (guard → indicator, the inspected-request counter behind the send canary), and
+`data-ss-build` (a build stamp, so a reload can be verified from the page — unpacked extensions
+keep running old code until you hit ↻ on the card).
 
 The request rewrite is **structure-agnostic**: it walks every *string* in the parsed
 body and tokenizes it (numbers — timestamps, request ids — left alone), so it does not
@@ -84,11 +88,50 @@ depend on any provider's exact field layout and survives their reshuffles.
 
 - **Toolbar badge** — how many identifiers were kept local on the current tab (resets per page load).
 - **Fail-open alert** — if a body-parse error ever lets a request through unredacted, the badge turns **red with `!`** so the bypass is never silent.
+- **Uninspected-send warning** — if a message goes out that the guard never got a look at (the likeliest cause being that the site moved its internal API), an amber banner says so and the badge turns amber `?`. Distinct from fail-open on purpose: there the guard read the body and fumbled it, here it never saw it, and the remedy differs. See [below](#when-a-site-changes-its-api).
 - **Stale-tab banner** — after you update the extension, tabs that were already open show a "reload this tab" nudge; their old content script can't protect you until reloaded (`chrome://extensions` ↻ updates the code, not the open tabs).
 - **Popup** (click the icon) — on/off toggle, the live count, and a link to the full page.
 - **Options page** (the popup link, or `chrome://extensions` → Details → Extension options) — choose which categories to block, and view the activity log.
 - **Activity log** — records **type + time + site only, never the value** (not even masked). A rolling window of the last 200 events with a one-click Clear. The value↔placeholder map stays in page memory and is never written to disk, so the "nothing sensitive is persisted" promise holds.
 - **Smokescreen mode** (opt-in, off by default) — see below.
+
+## The inspector panel
+
+The pre-send pill has an **Inspect** button. It opens a side panel with two tabs:
+
+- **Preview** — your prompt and what the provider actually receives, side by side, with the
+  replaced spans marked on both. The preview is computed by the *same* session object that will
+  do the real send, so the placeholders it shows are the placeholders the model gets — not a
+  plausible-looking re-derivation that could disagree.
+- **Mappings** — every live `placeholder ↔ value` pair this tab is holding. **Next stand-in**
+  rotates a smokescreen value to another one from the vetted pool (free text is not offered: a
+  hand-typed stand-in could be a real person's address). **Stop redacting** excuses a false
+  positive for the rest of the tab's life.
+
+Two things the panel tells you rather than hides: excusing a value is **never written to disk**,
+so a reload redacts it again, and messages already sent keep their placeholder and stop being
+restored on screen. It shows real values, so close it before you share your screen.
+
+## What you copy matches what you see
+
+Every supported site renders markdown, and its **Copy** button serves the markdown *source* —
+which is not what's painted on screen. Without this, copying a reply gave you `[EMAIL_1]`; with
+smokescreen on it gave you a **fabricated** address that reads as real, straight into whatever
+you pasted it into. Copying now restores the real values, in both the plain-text and rich-text
+flavours, so a paste into Gmail or Slack matches what you were reading.
+
+## When a site changes its API
+
+These are private, undocumented endpoints and they do move. The guard matches them by URL and
+deliberately does *not* fall back to guessing from the payload's shape — that would mean
+rewriting request bodies it has no model of.
+
+What it does instead is notice. Every inspected request bumps a counter; if you send a message
+and the counter doesn't move, an amber banner tells you the prompt went out **as you typed it**.
+Silent breakage is the failure mode that actually costs you something, so it's the one that's
+engineered against. If you see that banner,
+[open an issue](https://github.com/acoseac/sovereign-shield/issues) — it means the matcher needs
+updating.
 
 ## Smokescreen mode
 
