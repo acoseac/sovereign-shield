@@ -6,7 +6,8 @@ import { ALL_CATEGORY_KEYS } from "./categories";
 import { appendLogBatch, clearLog, getSettings, KEYS, type LogEntry } from "./storage";
 
 const BADGE_COLOR = "#0E7C66";
-const ALERT_COLOR = "#B91C1C";
+const ALERT_COLOR = "#B91C1C"; // fail-open: a parse error let a request through
+const MISSED_COLOR = "#B45309"; // canary: a send the guard never saw at all
 
 const iconPaths = (variant: "" | "paused-"): Record<number, string> => ({
   16: `icons/icon-${variant}16.png`,
@@ -82,6 +83,12 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     // A parse error let a request through unredacted — make it loud.
     chrome.action.setBadgeBackgroundColor({ tabId, color: ALERT_COLOR }).catch(() => undefined);
     chrome.action.setBadgeText({ tabId, text: "!" }).catch(() => undefined);
+  } else if (msg?.type === "ss-missed") {
+    // A send the guard never inspected at all — most likely the site moved its generate
+    // endpoint. Amber rather than red: unlike fail-open we did not read the body and fumble
+    // it, we never got a look, so the remedy is different (report it, not retry).
+    chrome.action.setBadgeBackgroundColor({ tabId, color: MISSED_COLOR }).catch(() => undefined);
+    chrome.action.setBadgeText({ tabId, text: "?" }).catch(() => undefined);
   } else if (
     msg?.type === "ss-redaction" &&
     typeof msg.category === "string" &&

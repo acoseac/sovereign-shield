@@ -7,13 +7,12 @@
 //   - detects a stale (extension-updated) tab and nudges a reload
 import { ALL_CATEGORY_KEYS } from "./categories";
 import { getSettings, KEYS } from "./storage";
+import { showBanner } from "./banner";
 
 // --- stale-tab detection ---------------------------------------------------
 // Reloading an unpacked extension does NOT reload the content scripts already
 // running in open tabs — they keep executing old code against a dead chrome.*
 // context. Detect that and nudge the user to reload this tab.
-let bannerShown = false;
-
 function contextValid(): boolean {
   try {
     return Boolean(chrome.runtime?.id);
@@ -23,23 +22,13 @@ function contextValid(): boolean {
 }
 
 function showStaleBanner(): void {
-  if (bannerShown) return;
-  bannerShown = true;
-  const bar = document.createElement("div");
-  bar.setAttribute("role", "alert");
-  bar.style.cssText =
-    "position:fixed;inset:0 0 auto 0;z-index:2147483647;background:#b91c1c;color:#fff;" +
-    "font:600 13px system-ui,sans-serif;padding:9px 14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.3)";
-  bar.append(
-    document.createTextNode("🛡️ Sovereign Shield was updated — reload this tab to restore redaction. "),
-  );
-  const btn = document.createElement("button");
-  btn.textContent = "Reload";
-  btn.style.cssText =
-    "margin-left:8px;background:#fff;color:#b91c1c;border:0;border-radius:6px;padding:3px 12px;font:inherit;cursor:pointer";
-  btn.addEventListener("click", () => location.reload());
-  bar.append(btn);
-  (document.body ?? document.documentElement).append(bar);
+  showBanner({
+    id: "ss-stale-context",
+    tone: "error",
+    text: "🛡️ Sovereign Shield was updated — reload this tab to restore redaction.",
+    actionLabel: "Reload",
+    onAction: () => location.reload(),
+  });
 }
 
 const staleTimer = setInterval(() => {
