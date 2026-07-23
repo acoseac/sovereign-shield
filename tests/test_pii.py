@@ -14,6 +14,9 @@ from sovereign_shield.pii import (
     _luhn_ok,
     _nl_bsn_ok,
     _norm_record,
+    _pt_nif_ok,
+    _trivial_digit_run,
+    _uk_nhs_ok,
     detect_pii,
 )
 
@@ -104,6 +107,60 @@ def test_phone_ch_rejects_digit_runs_that_are_not_swiss_numbers() -> None:
         "0234567890",
     ):
         assert PiiCategory.PHONE_CH not in {h.category for h in detect_pii(text)}, text
+
+
+def test_trivial_digit_run_families() -> None:
+    for d in ("0000000000", "1111111111", "0123456789", "2345678901", "9876543210", "0987654321"):
+        assert _trivial_digit_run(d), d
+    # Ascending/descending are mod 10, so a run that wraps past 9 or 0 still counts.
+    assert _trivial_digit_run("8901234567")
+    assert _trivial_digit_run("2109876543")
+    # Nothing merely round-looking, and a single digit is not a progression.
+    for d in ("500000018", "943476591", "111222333", "1", "", "1234567891", "1123456789"):
+        assert not _trivial_digit_run(d), d
+
+
+def test_trivial_digit_runs_are_rejected_despite_valid_check_digits() -> None:
+    # Each of these PASSES the check digit of the category that would claim it — a single
+    # mod-11 digit accepts roughly 1 in 11 arbitrary runs — so the checksum alone cannot
+    # keep them out. They are placeholders in source code, never issued identifiers.
+    assert _pt_nif_ok("123456789")  # genuinely a valid NIF
+    assert _uk_nhs_ok("0123456789")  # genuinely a valid NHS number
+    for text in (
+        "123456789",
+        "0123456789",
+        'const digits = "0123456789"',
+        'const hexChars = "0123456789ABCDEF"',
+        "0000000000",
+        "9876543210",
+        "1234567890",
+        "0987654321",
+    ):
+        assert detect_pii(text) == [], text
+
+
+def test_trivial_run_guard_leaves_real_identifiers_alone() -> None:
+    # The guard is narrow on purpose: only exact progressions, never merely round-looking
+    # numbers. Every gated category must still detect a genuine value.
+    for text, category in (
+        ("500000018", PiiCategory.PT_NIF),
+        ("943 476 5919", PiiCategory.UK_NHS),
+        ("111222333", PiiCategory.NL_BSN),
+        ("90051512340", PiiCategory.PL_PESEL),
+        ("9001015009086", PiiCategory.ZA_ID),
+        ("130 692 544", PiiCategory.CA_SIN),
+        ("2341 2341 2346", PiiCategory.IN_AADHAAR),
+        ("11223344553", PiiCategory.DE_STEUERID),
+    ):
+        assert category in {h.category for h in detect_pii(text)}, text
+
+
+def test_trivial_run_guard_does_not_touch_anchored_categories() -> None:
+    # AHV/IBAN/PAN carry a prefix, mod-97 or Luhn over a 13-19 digit window, so a bare
+    # progression cannot reach them — and the canonical test PAN must survive.
+    assert PiiCategory.AHV_AVS in {h.category for h in detect_pii(AHV_SEED)}
+    assert PiiCategory.CREDIT_CARD in {h.category for h in detect_pii(PAN_VISA)}
+    assert PiiCategory.IBAN in {h.category for h in detect_pii(IBAN_CH)}
 
 
 def test_rejects_checksum_lookalikes() -> None:
@@ -213,7 +270,9 @@ def test_eu_markers_never_leak_raw() -> None:
 PACK_VALID: dict[PiiCategory, str] = {
     PiiCategory.DE_STEUERID: "11223344553",
     PiiCategory.PL_PESEL: "90051512340",
-    PiiCategory.PT_NIF: "123456789",
+    # 500000018, not the 123456789 this used to be: that is a checksum-valid NIF but also
+    # a trivial digit run, which _trivial_digit_run now rejects (see the tests above).
+    PiiCategory.PT_NIF: "500000018",
     PiiCategory.BE_NRN: "85073003328",
     PiiCategory.UK_NHS: "9434765919",
     PiiCategory.BR_CPF: "11144477735",

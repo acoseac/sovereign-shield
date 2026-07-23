@@ -347,28 +347,17 @@
   {
     "input": "const digits = \"0123456789\"",
     "contained_pii": "756.1234.5678.97",
-    "detect_pii": [
-      {
-        "category": "uk_nhs",
-        "marker": "nhs:\u202689",
-        "start": 16,
-        "end": 26
-      }
-    ],
+    "detect_pii": [],
     "scan_completion": {
-      "blocked": true,
+      "blocked": false,
       "raw_violation": false,
-      "reason": "uk_nhs",
-      "categories": [
-        "uk_nhs"
-      ]
+      "reason": "clean",
+      "categories": []
     },
     "scan_prompt": {
-      "blocked": true,
-      "reason": "uk_nhs",
-      "categories": [
-        "uk_nhs"
-      ]
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
     }
   },
   {
@@ -1173,12 +1162,12 @@
     }
   },
   {
-    "input": "123456789",
+    "input": "500000018",
     "contained_pii": "756.1234.5678.97",
     "detect_pii": [
       {
         "category": "pt_nif",
-        "marker": "nif:\u202689",
+        "marker": "nif:\u202618",
         "start": 0,
         "end": 9
       }
@@ -1197,6 +1186,86 @@
       "categories": [
         "pt_nif"
       ]
+    }
+  },
+  {
+    "input": "123456789",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "0123456789",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "0000000000",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "9876543210",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "1234567890",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
     }
   },
   {

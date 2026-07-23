@@ -28,6 +28,7 @@ import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum
+from itertools import pairwise
 
 
 class PiiCategory(StrEnum):
@@ -88,6 +89,33 @@ class PiiHit:
 # --------------------------------------------------------------------------- #
 def _digits(s: str) -> str:
     return re.sub(r"\D", "", s)
+
+
+def _trivial_digit_run(d: str) -> bool:
+    """True for a digit string that is a placeholder, not an identifier.
+
+    Applied ONLY by the unanchored numeric detectors (see `_TRIVIAL_RUN_GATED`) —
+    the ones whose whole shape is "N bare digits" and whose single check digit is
+    their only filter. A mod-11 or Luhn digit accepts roughly 1 in 11 (or 1 in 10)
+    arbitrary runs, so `0123456789` really is a checksum-valid NHS number and
+    `123456789` really is a checksum-valid PT NIF. In prose that is a tolerable
+    miss; in pasted source code it is not, because digit tables (`const digits =
+    "0123456789"`) are everywhere and redacting one corrupts the code under review.
+
+    Three families, all of which are issued by no scheme on earth:
+      - repdigits            0000000000, 1111111111
+      - ascending by 1       0123456789, 2345678901  (mod 10, so ...890... counts)
+      - descending by 1      9876543210, 0987654321
+
+    Deliberately narrow. It rejects only these exact progressions, never anything
+    merely "round-looking" — a real identifier must not be lost to a heuristic.
+    """
+    if len(d) < 2:
+        return False
+    if len(set(d)) == 1:
+        return True
+    deltas = {(int(b) - int(a)) % 10 for a, b in pairwise(d)}
+    return deltas in ({1}, {9})
 
 
 # Strip everything but alphanumerics (separator-robust normalisation for checksums).
@@ -605,6 +633,28 @@ _DETECTORS: list[tuple[PiiCategory, re.Pattern[str], object]] = [
     (PiiCategory.CA_SIN, _CA_SIN_RE, _ca_sin_ok),
 ]
 
+# Categories whose entire shape is "N bare digits", so a single check digit is the only
+# thing standing between them and any digit run in the text. These — and only these —
+# additionally reject the placeholder progressions in `_trivial_digit_run`.
+#
+# Not gated, on purpose: AHV/IBAN/CF/DNI/NIR/NRN/CPF/CNPJ/CN-ID carry a literal prefix,
+# an embedded date or an alphabetic component, so a bare progression cannot reach them.
+# CREDIT_CARD is excluded too — Luhn plus the 13-19 digit window is weak, but the
+# canonical test PANs live in exactly this space and silently dropping one would be a
+# worse failure than the false positive it prevents.
+_TRIVIAL_RUN_GATED = frozenset(
+    {
+        PiiCategory.UK_NHS,
+        PiiCategory.NL_BSN,
+        PiiCategory.PL_PESEL,
+        PiiCategory.ZA_ID,
+        PiiCategory.CA_SIN,
+        PiiCategory.PT_NIF,
+        PiiCategory.IN_AADHAAR,
+        PiiCategory.DE_STEUERID,
+    }
+)
+
 
 def _detect_raw(text: str, *, include_dob: bool = False) -> list[tuple[PiiCategory, str, int, int]]:
     """Internal: return validated (category, raw_match, start, end) tuples.
@@ -623,6 +673,8 @@ def _detect_raw(text: str, *, include_dob: bool = False) -> list[tuple[PiiCatego
     for category, pattern, validator in detectors:
         for m in pattern.finditer(text):
             if validator is not None and not validator(m.group(0)):  # type: ignore[operator]
+                continue
+            if category in _TRIVIAL_RUN_GATED and _trivial_digit_run(_digits(m.group(0))):
                 continue
             start, end = m.start(), m.end()
             if any(start < s_end and s_start < end for s_start, s_end in spans):

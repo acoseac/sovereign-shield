@@ -58,6 +58,24 @@ export const CONTAINED_RESPONSE =
   '"Response withheld: data-residency / PII containment policy (FADP)."}';
 
 const onlyDigits = (s: string): string => s.replace(/\D/g, "");
+
+/**
+ * True for a digit string that is a placeholder, not an identifier. Port of Python's
+ * `_trivial_digit_run` — see there for the full rationale; keep the two in step.
+ *
+ * Short version: for the unanchored numeric categories (TRIVIAL_RUN_GATED) a single
+ * check digit accepts ~1 in 11 arbitrary runs, so `0123456789` genuinely passes the NHS
+ * mod-11 and `123456789` genuinely passes the PT NIF check. Harmless in prose, not in
+ * pasted source code, where digit tables are everywhere. Rejects exactly three families
+ * — repdigits, ascending-by-1 and descending-by-1 (both mod 10) — and nothing else.
+ */
+function trivialDigitRun(d: string): boolean {
+  if (d.length < 2) return false;
+  if (new Set(d).size === 1) return true;
+  const deltas = new Set<number>();
+  for (let i = 1; i < d.length; i++) deltas.add((Number(d[i]) - Number(d[i - 1]) + 10) % 10);
+  return deltas.size === 1 && (deltas.has(1) || deltas.has(9));
+}
 const normRecord = (s: string): string => s.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 
 // --- checksums (the false-positive filter; strip separators first) ---
@@ -473,6 +491,22 @@ const DETECTORS: Detector[] = [
   ["ca_sin", CA_SIN_RE, caSinOk],
 ];
 
+// Categories whose entire shape is "N bare digits", so a single check digit is the only
+// thing between them and any digit run in the text. These — and only these — also reject
+// the placeholder progressions in `trivialDigitRun`. Mirrors Python's `_TRIVIAL_RUN_GATED`;
+// the not-gated rationale (prefix/date/alpha-anchored categories, and credit_card's test
+// PANs) lives there.
+const TRIVIAL_RUN_GATED: ReadonlySet<PiiCategory> = new Set<PiiCategory>([
+  "uk_nhs",
+  "nl_bsn",
+  "pl_pesel",
+  "za_id",
+  "ca_sin",
+  "pt_nif",
+  "in_aadhaar",
+  "de_steuerid",
+]);
+
 interface RawHit {
   category: PiiCategory;
   raw: string;
@@ -489,6 +523,7 @@ function detectRaw(text: string, includeDob = false): RawHit[] {
     for (const m of text.matchAll(pattern)) {
       const raw = m[0];
       if (validator && !validator(raw)) continue;
+      if (TRIVIAL_RUN_GATED.has(category) && trivialDigitRun(onlyDigits(raw))) continue;
       const start = m.index ?? 0;
       const end = start + raw.length;
       if (spans.some(([s, e]) => start < e && s < end)) continue; // overlaps higher-priority hit
