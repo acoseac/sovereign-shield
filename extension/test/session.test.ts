@@ -316,3 +316,32 @@ test("forgetting a recycled value drops its retired stand-in too", () => {
   assert.equal(s.rehydrate(`${first} / ${second}`), `${first} / ${second}`);
   assert.equal(s.mayNeedRehydration(first), false);
 });
+
+test("recycle with smokescreen off burns no ordinals", () => {
+  // Every attempt is guaranteed to fail with the mode off, and each one used to bump the
+  // counter — so clicking the button permanently inflated the next real value's token.
+  const s = new Session();
+  s.smokescreen = true;
+  s.tokenize(EMAIL);
+  s.smokescreen = false;
+  assert.equal(s.recycleSurrogate(EMAIL), null);
+  assert.equal(s.recycleSurrogate(EMAIL), null);
+  assert.equal(s.tokenize("erika.beispiel@gmx.ch"), "[EMAIL_2]");
+});
+
+test("recycle twice keeps BOTH earlier stand-ins restorable", () => {
+  const s = new Session();
+  s.smokescreen = true;
+  const first = s.tokenize(EMAIL);
+  const second = s.recycleSurrogate(EMAIL);
+  const third = s.recycleSurrogate(EMAIL);
+  assert.ok(second && third && new Set([first, second, third]).size === 3);
+  assert.equal(
+    s.rehydrate(`${first} ${second} ${third}`),
+    `${EMAIL} ${EMAIL} ${EMAIL}`,
+  );
+  assert.equal(s.count, 1);
+  // And forgetting the value drops every one of them.
+  s.forget(EMAIL);
+  assert.equal(s.rehydrate(`${first} ${second} ${third}`), `${first} ${second} ${third}`);
+});
