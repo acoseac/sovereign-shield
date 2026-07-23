@@ -77,7 +77,9 @@ first — it is the best map of the live transports.
   (`inspector.ts`). Never the stream, never `chrome.storage`, never a `postMessage`,
   never the activity log. That last one is why the inspector renders in the MAIN world —
   it's the only surface showing real values, so it runs where they already live and
-  nothing has to cross — and why "stop redacting this" is session-only. The sites' Copy
+  nothing has to cross — in a **closed shadow root** (`display:contents` host, so it adds
+  no stacking context and `layers.ts` keeps applying), and why "stop redacting this" is
+  session-only rather than persisted. The sites' Copy
   buttons serve their own markdown *source*, which the DOM rehydrator never sees; with
   smokescreen on, an unrehydrated copy hands the user a **fabricated** address that reads
   as real. Adding a fourth surface is a boundary decision, not a feature detail.

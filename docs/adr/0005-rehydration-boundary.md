@@ -89,16 +89,27 @@ safe without having to be certain which source each site uses today, or will use
 
 ### Consequences for the inspector panel
 
-Displaying the mapping table puts real values in the page's DOM, where a script on that page
-could read them. Accepted, and worth being precise about why: every value in the table came from
-the composer, which the site's own JS reads as the user types. The marginal exposure is values
-from earlier in the session that the page has since discarded — and in practice it rendered and
-still holds the whole conversation anyway. A hostile script on `chatgpt.com` is already game over
-by a much shorter route.
+Displaying the mapping table means putting real values somewhere the page could, in principle,
+read them. Two things follow.
 
-What does *not* follow from that is carelessness. The panel never auto-opens, the render
-signature is held in a class field rather than a `data-*` attribute, and the UI says plainly that
-real values are on screen before you share it.
+**Be precise about the actual exposure.** Every value in that table came from the composer, which
+the site's own JS reads as the user types. The marginal exposure is values from earlier in the
+session that the page has since discarded — and in practice it rendered and still holds the whole
+conversation anyway. A hostile script on `chatgpt.com` is already game over by a much shorter
+route than scraping our panel.
+
+**Do not use that as a licence for carelessness.** The panel renders in a **closed shadow root**,
+so `host.shadowRoot` is null and a `document.querySelector("#ss-inspector")` finds nothing;
+`attachShadow` is captured at `document_start`, before any page script runs, so patching
+`Element.prototype` afterwards does not hand anyone our root. That raises the bar against
+opportunistic scraping without pretending to defeat a page that is actively hunting for us — we
+share a JS realm with it, and that is not a boundary a content script can win outright. Alongside
+it: the panel never auto-opens, the render signature is held in a class field rather than a
+`data-*` attribute, and the UI says plainly that real values are on screen before you share it.
+
+The shadow host is `display:contents` — it must add no layout, and above all must not become a
+stacking context, or the panel's `z-index` would be trapped inside it and `layers.ts`'s ordering
+would silently stop applying.
 
 ## Consequences
 
