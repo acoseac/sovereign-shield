@@ -18,7 +18,7 @@ import { installInspector } from "./inspector";
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "13-inspector";
+const BUILD = "14-nested-json";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -202,11 +202,22 @@ if (!FETCH_ONLY) {
 
   proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
     const kind = generateKind(xhrUrls.get(this) ?? "");
-    if (kind && guardEnabled() && typeof body === "string") {
-      try {
-        return origSend.call(this, rewriteBodyForSend(kind, body) as XMLHttpRequestBodyInit);
-      } catch (err) {
-        console.warn("[sovereign-shield] XHR passthrough after error:", err);
+    if (kind && guardEnabled()) {
+      if (typeof body === "string") {
+        try {
+          return origSend.call(this, rewriteBodyForSend(kind, body) as XMLHttpRequestBodyInit);
+        } catch (err) {
+          console.warn("[sovereign-shield] XHR passthrough after error:", err);
+          failopen();
+        }
+      } else if (body != null) {
+        // A generate request we RECOGNISED but cannot read: the client sent a Blob, FormData
+        // or URLSearchParams instead of a string. It used to fall through here silently, which
+        // is the same class of defect the canary exists to catch — the prompt goes out in the
+        // clear and nothing says so. Fail open, but loudly.
+        console.warn(
+          `[sovereign-shield] uninspected ${kind} body of type ${body.constructor?.name ?? typeof body}`,
+        );
         failopen();
       }
     }
@@ -284,8 +295,31 @@ async function rewriteFetch(
   } catch (err) {
     console.warn("[sovereign-shield] fetch passthrough after error:", err);
     failopen();
+    return origFetch.call(window, input, init); // returns here, so the check below can't double-report
+  }
+  // Reaching this line means we recognised a generate endpoint and did NOT inspect its body:
+  // a non-string init.body (Blob/FormData/URLSearchParams), a Request carrying a content type
+  // we don't buffer, or a non-POST. Falling through silently is the same defect the XHR path
+  // just fixed — the prompt goes out in the clear and nothing says so — and it matters more
+  // here, because ChatGPT and Claude are both fetch-only.
+  //
+  // Gated on a body actually being present: a GET or a bodyless POST to a matching URL has
+  // nothing to inspect, and warning about those would cry wolf until the warning meant nothing.
+  if (requestHasBody(input, init)) {
+    console.warn(`[sovereign-shield] uninspected ${kind} fetch body`);
+    failopen();
   }
   return origFetch.call(window, input, init);
+}
+
+/** Does this fetch carry a body at all? Reading `Request.body` does not consume it. */
+function requestHasBody(input: RequestInfo | URL, init?: RequestInit): boolean {
+  try {
+    if (init && init.body != null) return true;
+    return input instanceof Request && input.body !== null;
+  } catch {
+    return false; // never let the check itself break a send
+  }
 }
 
 // Report each newly-redacted identifier to the bridge (ISOLATED world) for the

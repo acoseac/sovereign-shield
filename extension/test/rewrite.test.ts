@@ -82,3 +82,77 @@ test("malformed f.req JSON fails open to the original body", () => {
   assert.equal(changed, false);
   assert.equal(out, body);
 });
+
+// --- nested JSON: escapes must not be readable as text ----------------------
+// Gemini's f.req is JSON inside JSON, so the inner document reached the detectors
+// ESCAPE-ENCODED — `\t` as two literal characters. In "Name\tango@corp.example" the
+// detector matched "tango@corp.example", eating the escape's `t`; the replacement left a
+// dangling `\[`, which is invalid JSON, so the send was rejected outright. It only bites
+// when a value sits right after an escape, which is why a pasted TABLE broke while prose
+// did not. ChatGPT/Claude parse once and never see this.
+
+/** Pull the inner document back out of a rewritten freq body. */
+function innerOf(body: string): unknown {
+  const fReq = new URLSearchParams(body).get("f.req");
+  assert.ok(fReq, "f.req should still be present");
+  return JSON.parse(JSON.parse(fReq)[1] as string);
+}
+
+test("freq: a value directly after a tab escape still yields parseable JSON", () => {
+  const body = geminiBody("Name\tango@corp.example\tactive");
+  const { body: out, changed } = rewriteBody("freq", body, new Session(), undefined);
+  assert.equal(changed, true);
+  const inner = innerOf(out) as [[string, ...unknown[]], ...unknown[]];
+  assert.equal(inner[0][0], "Name\t[EMAIL_1]\tactive", "the escape must survive intact");
+});
+
+test("freq: newline-separated table columns redact the RIGHT value", () => {
+  // The mapping must hold the real address. Eating the escape's `n` stored "nango@..." —
+  // a value nobody has, which rehydration would then paint back into the reply.
+  const session = new Session();
+  const body = geminiBody("Alicia Ngo\nango@corp.example\nSpecialist");
+  const { body: out } = rewriteBody("freq", body, session, undefined);
+  const inner = innerOf(out) as [[string, ...unknown[]], ...unknown[]];
+  assert.equal(inner[0][0], "Alicia Ngo\n[EMAIL_1]\nSpecialist");
+  assert.equal(session.rehydrate("[EMAIL_1]"), "ango@corp.example");
+});
+
+test("freq: every escape class survives a redaction in the same string", () => {
+  const body = geminiBody('a\tx@corp.example b\nc\\d "q" e\rf');
+  const { body: out } = rewriteBody("freq", body, new Session(), undefined);
+  const inner = innerOf(out) as [[string, ...unknown[]], ...unknown[]];
+  assert.equal(inner[0][0], 'a\t[EMAIL_1] b\nc\\d "q" e\rf');
+});
+
+test("freq: a clean nested document is still returned byte-for-byte", () => {
+  // The recursion must not re-serialise a subtree it did not change, or every clean prompt
+  // stops being byte-identical — the exact regression ADR 0002 exists to prevent.
+  const body = geminiBody("Name\tnothing sensitive\tactive");
+  const { body: out, changed } = rewriteBody("freq", body, new Session(), undefined);
+  assert.equal(changed, false);
+  assert.equal(out, body);
+});
+
+test("a prompt that is itself pretty-printed JSON is never reformatted", () => {
+  // Only round-trippable structures take the nested path. Pretty-printed JSON does not
+  // re-serialise byte-for-byte, so it stays plain text and keeps the user's own whitespace.
+  const pretty = '{\n  "email": "x@corp.example",\n  "n": 1\n}';
+  const { body: out } = rewriteBody("json", JSON.stringify({ prompt: pretty }), new Session(), undefined);
+  const parsed = JSON.parse(out) as { prompt: string };
+  assert.equal(parsed.prompt, '{\n  "email": "[EMAIL_1]",\n  "n": 1\n}');
+});
+
+test("a prompt that is compact JSON is walked, not treated as text", () => {
+  const compact = '{"email":"x@corp.example"}';
+  const { body: out } = rewriteBody("json", JSON.stringify({ prompt: compact }), new Session(), undefined);
+  const parsed = JSON.parse(out) as { prompt: string };
+  assert.equal(parsed.prompt, '{"email":"[EMAIL_1]"}');
+});
+
+test("a bare scalar string is never reinterpreted as JSON", () => {
+  // JSON.parse("123") succeeds and yields a number; reinterpreting would corrupt the prompt.
+  for (const scalar of ["123", "true", "null", '"quoted"']) {
+    const { body: out } = rewriteBody("json", JSON.stringify({ p: scalar }), new Session(), undefined);
+    assert.equal((JSON.parse(out) as { p: string }).p, scalar, `scalar ${scalar}`);
+  }
+});
