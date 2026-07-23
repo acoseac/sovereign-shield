@@ -30,6 +30,16 @@ import type { Preview, Session } from "./tokenize.ts";
 const PANEL_ID = "ss-inspector";
 const REFRESH_MS = 250;
 
+// Captured at document_start, before any page script runs, so the panel is attached with the
+// real attachShadow even if the page later patches Element.prototype to hand itself our root.
+// We share a realm with the page — this closes the realistic window, not every window.
+//
+// typeof-guarded because this module is imported by the unit tests, which run in plain Node
+// where there is no Element. Undefined only ever happens there; Chrome has had attachShadow
+// since long before the manifest's 111 floor.
+const nativeAttachShadow: typeof Element.prototype.attachShadow | undefined =
+  typeof Element === "undefined" ? undefined : Element.prototype.attachShadow;
+
 /** Settings the panel needs to predict what a send would do. Getters, not values: the bridge
  *  can change any of them between opening the panel and typing into it. */
 export interface InspectorContext {
@@ -71,6 +81,10 @@ const CHIP =
 
 export class Inspector {
   private panel: HTMLElement | null = null;
+  /** The light-DOM element hosting the closed shadow root the panel lives in. Kept because a
+   *  pointerdown inside a closed root is RETARGETED to the host by the time it reaches window,
+   *  so "was that click inside the panel?" has to be asked of the host, not the panel. */
+  private host: HTMLElement | null = null;
   private body: HTMLElement | null = null;
   private tab: "preview" | "mappings" = "preview";
   private tabButtons: HTMLButtonElement[] = [];
@@ -116,7 +130,8 @@ export class Inspector {
     this.timer = undefined;
     document.removeEventListener("keydown", this.onKeydown);
     window.removeEventListener("pointerdown", this.onPointerDown, true);
-    this.panel?.remove();
+    this.host?.remove(); // takes the shadow root, and the panel inside it, with it
+    this.host = null;
     this.panel = null;
     this.body = null;
     this.tabButtons = [];
@@ -164,7 +179,27 @@ export class Inspector {
 
     this.body = el("div", "flex:1;overflow:auto;padding:14px");
     panel.append(header, this.body);
-    (document.body ?? document.documentElement).append(panel);
+
+    // A CLOSED shadow root, not the light DOM. The Mappings tab renders every real value this
+    // session holds, and in the light DOM a `document.querySelector("#ss-inspector")` would
+    // scrape the lot. Closed means `host.shadowRoot` is null, so the page has no handle on the
+    // subtree. Worth being precise about what this does and does not buy: every one of those
+    // values came from the composer, which the site's own JS reads as the user types, and we
+    // share a JS realm with the page — so this raises the bar against opportunistic scraping
+    // rather than defeating a page that is actively hunting for us. It costs nothing, and the
+    // isolation from the site's own CSS is a bonus.
+    // display:contents so the host generates no box of its own — it must not add layout to the
+    // page, and it must not become a stacking context, or the panel's z-index would be trapped
+    // inside it and layers.ts's ordering would silently stop applying. (position on the host
+    // would do exactly that.) The panel's own position:fixed still resolves to the viewport.
+    this.host = el("div", "display:contents");
+    this.host.id = `${PANEL_ID}-host`;
+    if (nativeAttachShadow) {
+      nativeAttachShadow.call(this.host, { mode: "closed" }).append(panel);
+    } else {
+      this.host.append(panel); // unreachable in Chrome; degrade to the light DOM, not to nothing
+    }
+    (document.body ?? document.documentElement).append(this.host);
     this.panel = panel;
     this.signature = "";
     this.syncTabs();
@@ -185,7 +220,10 @@ export class Inspector {
   private readonly onPointerDown = (e: PointerEvent): void => {
     if (!this.panel) return;
     const target = e.target;
-    if (target instanceof Node && this.panel.contains(target)) return;
+    // Compared against the HOST: the shadow root is closed, so by the time a click inside the
+    // panel reaches window it has been retargeted and `panel.contains(target)` is false —
+    // which would close the panel on every click in it.
+    if (target instanceof Node && (target === this.host || this.host?.contains(target))) return;
     // The pill's own toggle re-opens us; let it handle its own click rather than racing it.
     if (target instanceof Element && target.closest("#ss-indicator-pill")) return;
     this.close();
@@ -279,12 +317,17 @@ export class Inspector {
 
   private renderMappings(): { node: HTMLElement; signature: string } {
     const entries = this.session.entries();
+    // Every signature carries its tab's prefix, so switching tabs can never look "unchanged"
+    // to render() and skip the rebuild.
+    const key = `m:${entries.map((e) => `${e.placeholder}=${e.value}`).join(" ")}`;
+    // Computed BEFORE building anything: at the mapping cap this is 2 000 rows of elements,
+    // and rebuilding them every refresh tick only for render() to throw them away is a lot of
+    // allocation and GC for a panel the user is sitting and reading.
+    if (key === this.signature) return { node: this.body ?? el("div", ""), signature: key };
     const wrap = el("div", "");
     if (entries.length === 0) {
       wrap.append(note("Nothing kept local in this tab yet."));
-      // Every signature carries its tab's prefix, so switching tabs can never look "unchanged"
-      // to render() and skip the rebuild.
-      return { node: wrap, signature: "m:" };
+      return { node: wrap, signature: key };
     }
 
     for (const entry of entries) {
@@ -339,10 +382,7 @@ export class Inspector {
       ),
       note("These are real values. Close the panel before sharing your screen."),
     );
-    return {
-      node: wrap,
-      signature: `m:${entries.map((e) => `${e.placeholder}=${e.value}`).join(" ")}`,
-    };
+    return { node: wrap, signature: key };
   }
 }
 
@@ -413,6 +453,10 @@ function diff(original: string, preview: Preview, side: "original" | "redacted")
       text,
     );
   for (const segment of diffSegments(original, preview, side)) {
+    // Defensive: a zero-width span would render as a bare <mark> that is nothing but padding.
+    // Neither detector can produce one today (custom.ts drops zero-width matches), so this
+    // guards a future rule rather than a current bug.
+    if (!segment.text) continue;
     box.append(segment.mark ? mark(segment.text) : segment.text);
   }
   return box;
