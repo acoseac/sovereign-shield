@@ -16,7 +16,7 @@ import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "10-smokescreen";
+const BUILD = "11-canary";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -33,6 +33,16 @@ function smokescreenEnabled(): boolean {
 
 function reportCount(): void {
   document.documentElement.dataset.ssKept = String(session.count);
+}
+
+// Monotonic count of generate bodies we actually inspected. The ISOLATED indicator watches
+// this to tell "the guard saw that send" from "the endpoint moved and we never got a look at
+// it" — see canary.ts. Bumped on inspection, NOT on redaction: a clean prompt is still a
+// prompt the guard read, and warning about it would cry wolf on every message.
+let inspected = 0;
+function reportInspected(): void {
+  inspected += 1;
+  document.documentElement.dataset.ssSeen = String(inspected);
 }
 
 function failopen(): void {
@@ -99,6 +109,7 @@ function currentCustomMatcher(): CustomMatcher | undefined {
 function rewriteBodyForSend(kind: BodyKind, body: string): string {
   session.customMatcher = currentCustomMatcher();
   session.smokescreen = smokescreenEnabled();
+  reportInspected(); // we got a look at this body, redaction or not
   const { body: out, changed } = rewriteBody(kind, body, session, allowedCategories());
   if (changed) reportCount();
   return out;
