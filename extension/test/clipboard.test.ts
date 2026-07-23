@@ -118,6 +118,7 @@ const evt = (over: Partial<Parameters<typeof planClipboardRewrite>[1]>) => ({
   plain: "",
   html: "",
   selection: "",
+  htmlSelection: () => "",
   ...over,
 });
 
@@ -181,4 +182,59 @@ test("cancelled + clean payload → no writes at all", () => {
     planClipboardRewrite(s, evt({ defaultPrevented: true, plain: "just some prose" })),
     { writes: [], cancel: false },
   );
+});
+
+test("cancelling replaces the browser's html flavour instead of dropping it", () => {
+  // preventDefault takes the browser's own text/html with it, so a paste into Gmail would
+  // otherwise lose every link, list and bold in the selection.
+  const s = new Session();
+  s.tokenize(`AHV ${AHV}`);
+  assert.deepEqual(
+    planClipboardRewrite(
+      s,
+      evt({ selection: "number [AHV_1]", htmlSelection: () => "<b>number</b> [AHV_1]" }),
+    ),
+    {
+      writes: [
+        { format: "text/plain", data: `number ${AHV}` },
+        { format: "text/html", data: `<b>number</b> ${AHV}` },
+      ],
+      cancel: true,
+    },
+  );
+});
+
+test("cancelling keeps markup that needed no rehydration at all", () => {
+  const s = new Session();
+  s.tokenize(`AHV ${AHV}`);
+  const plan = planClipboardRewrite(
+    s,
+    evt({ selection: "[AHV_1]", htmlSelection: () => "<ul><li>formatting</li></ul>" }),
+  );
+  assert.deepEqual(plan.writes[1], {
+    format: "text/html",
+    data: "<ul><li>formatting</li></ul>",
+  });
+});
+
+test("the html selection is never serialised on the common no-op path", () => {
+  // cloneContents over a large selection on every single Ctrl-C would be a real cost.
+  const s = new Session();
+  s.tokenize(`AHV ${AHV}`);
+  let calls = 0;
+  planClipboardRewrite(
+    s,
+    evt({
+      selection: `already real ${AHV}`,
+      htmlSelection: () => {
+        calls++;
+        return "";
+      },
+    }),
+  );
+  assert.equal(calls, 0);
+});
+
+test("escapeHtml covers both quote forms", () => {
+  assert.equal(escapeHtml(`O'Brien & "Co" <x>`), "O&#39;Brien &amp; &quot;Co&quot; &lt;x&gt;");
 });

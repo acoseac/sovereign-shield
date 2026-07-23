@@ -41,13 +41,16 @@ export function rehydrateClipboardText(
 
 /** Escape a value being spliced into an HTML flavour. Real identifiers (email, IBAN, AHV)
  *  contain nothing special, but a user's own custom-blocklist term is arbitrary text and
- *  could carry `&` or `<` and corrupt the markup it lands in. */
+ *  could carry `&` or `<` and corrupt the markup it lands in. Both quote forms are escaped:
+ *  the HTML serialiser only ever emits double-quoted attributes, so `'` is belt-and-braces
+ *  for a token that landed inside a hand-written single-quoted attribute. */
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /** One flavour to write back onto the event's DataTransfer. */
@@ -96,14 +99,33 @@ export interface ClipboardPlan {
  */
 export function planClipboardRewrite(
   session: Rehydrator,
-  event: { defaultPrevented: boolean; plain: string; html: string; selection: string },
+  event: {
+    defaultPrevented: boolean;
+    plain: string;
+    html: string;
+    selection: string;
+    /** Lazy: serialising the selection's markup is only worth it once we know we are going to
+     *  cancel, which is rare. Called at most once, and never on the common no-op path. */
+    htmlSelection: () => string;
+  },
 ): ClipboardPlan {
   if (!event.defaultPrevented) {
     const restored = rehydrateClipboardText(session, event.selection);
     // The common path: the painted selection is already real, so leave the event alone and
     // let the browser serialise it (including flavours we would have had to drop).
     if (restored === null) return { writes: [], cancel: false };
-    return { writes: [{ format: "text/plain", data: restored }], cancel: true };
+    const writes: ClipboardWrite[] = [{ format: "text/plain", data: restored }];
+    // Cancelling takes the browser's own text/html flavour with it, so if the selection had
+    // markup we have to supply it ourselves or a paste into Gmail/Docs loses every link, list
+    // and bold. Written even when rehydration changed nothing — the point is to not lose it.
+    const markup = event.htmlSelection();
+    if (markup) {
+      writes.push({
+        format: "text/html",
+        data: rehydrateClipboardText(session, markup, escapeHtml) ?? markup,
+      });
+    }
+    return { writes, cancel: true };
   }
   const writes: ClipboardWrite[] = [];
   const plain = rehydrateClipboardText(session, event.plain);
@@ -117,6 +139,18 @@ export function planClipboardRewrite(
   return { writes, cancel: false };
 }
 
+/** Serialise the current selection's markup, the way the browser's own text/html flavour
+ *  would. Only called when we are about to cancel and therefore have to replace it. */
+function selectionHtml(): string {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return "";
+  const holder = document.createElement("div");
+  for (let i = 0; i < selection.rangeCount; i++) {
+    holder.append(selection.getRangeAt(i).cloneContents());
+  }
+  return holder.innerHTML; // reading innerHTML is fine under Trusted Types; assigning is not
+}
+
 /** Thin DOM adapter over planClipboardRewrite. */
 function handleCopy(session: Rehydrator, event: ClipboardEvent): void {
   const data = event.clipboardData;
@@ -127,6 +161,7 @@ function handleCopy(session: Rehydrator, event: ClipboardEvent): void {
     html: data.getData("text/html"),
     // Only read when it is the source that matters; getSelection() is not free.
     selection: event.defaultPrevented ? "" : (window.getSelection()?.toString() ?? ""),
+    htmlSelection: selectionHtml,
   });
   for (const write of plan.writes) data.setData(write.format, write.data);
   if (plan.cancel) event.preventDefault();
