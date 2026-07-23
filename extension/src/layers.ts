@@ -4,6 +4,9 @@
 // relative order is load-bearing rather than cosmetic — a number nudged in isolation is
 // exactly how the pill ended up floating on top of the panel meant to explain it.
 //
+// Anything added here must slot into this order deliberately: ask "if this and the breakage
+// banner were on screen together, which one does the user need to read?"
+//
 // Top of the stack downwards:
 //   BANNER — "redaction is broken / this send was not inspected". Must never be covered by
 //            anything, least of all by our own UI reassuring the user things are fine.

@@ -12,12 +12,13 @@
 import { Session } from "./tokenize";
 import { rewriteBody, type BodyKind } from "./rewrite";
 import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
+import { installClipboardRehydrator } from "./clipboard";
 import { installInspector } from "./inspector";
 
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "11-inspector";
+const BUILD = "13-inspector";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -34,6 +35,16 @@ function smokescreenEnabled(): boolean {
 
 function reportCount(): void {
   document.documentElement.dataset.ssKept = String(session.count);
+}
+
+// Monotonic count of generate bodies we actually inspected. The ISOLATED indicator watches
+// this to tell "the guard saw that send" from "the endpoint moved and we never got a look at
+// it" — see canary.ts. Bumped on inspection, NOT on redaction: a clean prompt is still a
+// prompt the guard read, and warning about it would cry wolf on every message.
+let inspected = 0;
+function reportInspected(): void {
+  inspected += 1;
+  document.documentElement.dataset.ssSeen = String(inspected);
 }
 
 function failopen(): void {
@@ -100,6 +111,7 @@ function currentCustomMatcher(): CustomMatcher | undefined {
 function rewriteBodyForSend(kind: BodyKind, body: string): string {
   session.customMatcher = currentCustomMatcher();
   session.smokescreen = smokescreenEnabled();
+  reportInspected(); // we got a look at this body, redaction or not
   const { body: out, changed } = rewriteBody(kind, body, session, allowedCategories());
   if (changed) reportCount();
   return out;
@@ -111,6 +123,9 @@ function rewriteBodyForSend(kind: BodyKind, body: string): string {
 // generation. We let every provider's stream parse untouched and swap token->value
 // in the text nodes they paint. rehydrate is idempotent, so the mutation our own
 // write triggers converges in one no-op pass. Editable regions (composers) skipped.
+//
+// This covers what is PAINTED only. The sites' Copy buttons serve their own markdown
+// source, which never passes through here — see clipboard.ts.
 function installDomRehydrator(): void {
   const isEditable = (el: Element | null): boolean => {
     if (!el) return false;
@@ -293,6 +308,7 @@ installInspector(session, {
 });
 
 installDomRehydrator();
+installClipboardRehydrator(session);
 console.debug(
   `[sovereign-shield] guard installed on ${HOST} (${XHR_ONLY ? "xhr" : FETCH_ONLY ? "fetch" : "xhr+fetch"}) build ${BUILD}.`,
 );
