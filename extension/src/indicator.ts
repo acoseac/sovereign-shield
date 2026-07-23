@@ -11,6 +11,8 @@
 import { getSettings, KEYS } from "./storage.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
+import { showBanner } from "./banner.ts";
+import { CANARY_GRACE_MS, isSendIntent, missedSend, readSeen } from "./canary.ts";
 
 // One selector for all three sites — verified live that each exposes exactly one match:
 // Gemini's Quill editor, ChatGPT's #prompt-textarea, and Claude's ProseMirror all render
@@ -34,6 +36,9 @@ let wantVisible = false; // the pill has content to show (distinct from clip-hid
 let lastRendered = ""; // last pill text, to skip no-op writes (and aria re-announcements)
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 let rafPending = false;
+// --- send canary state (see canary.ts) ---
+let lastComposerText = ""; // to spot the non-empty -> empty drain that means "sent"
+let lastIntentAt = 0; // Enter, or a press on a button beside the composer
 
 // --- pill -----------------------------------------------------------------
 function ensurePill(): HTMLElement {
@@ -136,21 +141,96 @@ function requestReposition(): void {
   });
 }
 
+// --- send canary ----------------------------------------------------------
+// Notice when a message went out that the MAIN-world guard never inspected, which is what a
+// moved generate endpoint looks like from here. Decision logic lives in canary.ts; this is
+// the DOM shell. Everything below is passive — no preventDefault, no composer mutation — so
+// it cannot block a send, the same rule the pill follows.
+
+/** How far up from the composer a button still counts as "the send button". Generous enough
+ *  to cover the toolbar row every site puts beside/below the box, tight enough to exclude the
+ *  sidebar's "new chat" (which also drains the composer, and must not corroborate). Guessing
+ *  wrong only ever costs a spurious or a suppressed WARNING — never a send, never a redaction. */
+const COMPOSER_SCOPE_DEPTH = 4;
+
+function composerScope(): Element | null {
+  if (!activeComposer) return null;
+  const form = activeComposer.closest("form");
+  if (form) return form;
+  let node: Element = activeComposer;
+  for (let i = 0; i < COMPOSER_SCOPE_DEPTH && node.parentElement; i++) node = node.parentElement;
+  return node;
+}
+
+function noteIntent(): void {
+  lastIntentAt = Date.now();
+}
+
+/** Watch the composer's text for the non-empty -> empty transition. Called undebounced from
+ *  the content observer: the drain has to be timestamped against the keypress that caused it,
+ *  and a 200ms debounce would blur that.
+ *
+ *  textContent, NOT innerText: this runs on every keystroke, and innerText forces a synchronous
+ *  layout reflow — which is exactly why the pill's own recompute is debounced behind it.
+ *  textContent needs no layout, and "is it empty" is a question it answers just as well. */
+function noteComposerContent(): void {
+  const text = activeComposer?.textContent?.trim() ?? "";
+  const drained = lastComposerText !== "" && text === "";
+  lastComposerText = text;
+  if (drained && enabled) armCanary();
+}
+
+function armCanary(): void {
+  const drainedAt = Date.now();
+  if (!isSendIntent(lastIntentAt, drainedAt)) return; // a manual clear, not a send
+  const seenAtDrain = readSeen(document.documentElement.dataset.ssSeen);
+  setTimeout(() => {
+    if (!missedSend(seenAtDrain, readSeen(document.documentElement.dataset.ssSeen))) return;
+    warnMissedSend();
+  }, CANARY_GRACE_MS);
+}
+
+function warnMissedSend(): void {
+  // One bar per page: a site whose endpoint has moved will trip this on every message.
+  showBanner({
+    id: "ss-missed-send",
+    tone: "warning",
+    text:
+      "🛡️ Sovereign Shield didn't inspect that message — it was sent as you typed it. " +
+      "This site may have changed its API.",
+  });
+  chrome.runtime.sendMessage({ type: "ss-missed" }).catch(() => undefined);
+}
+
 // --- composer binding (no leaked listeners) -------------------------------
 function bindComposer(found: HTMLElement | null = document.querySelector<HTMLElement>(COMPOSER_SELECTOR)): void {
   if (found === activeComposer) return;
   if (activeComposer) {
+    // A site that REPLACES the composer on send rather than clearing it never trips the
+    // content observer — the old element's text never changed, it just left the document. So
+    // losing a non-empty composer counts as a drain too.
+    if (lastComposerText !== "" && !activeComposer.isConnected && enabled) armCanary();
     composerContent?.disconnect();
     composerResize?.disconnect();
   }
   activeComposer = found;
-  if (!activeComposer) return hidePill();
+  if (!activeComposer) {
+    lastComposerText = "";
+    return hidePill();
+  }
   // Drive recompute off the composer's CONTENT, not `input` events: Gemini clears the box
   // programmatically after send (and delete/cut don't reliably fire `input`), which would
   // otherwise leave a stale count. Any DOM change → debounced recompute; this also covers
   // typing, paste and IME. The indicator never mutates the composer, so no feedback loop.
-  composerContent = new MutationObserver(scheduleRender);
+  // Drain detection runs undebounced (it must stay correlated with the keypress that caused
+  // it); the pill's recompute stays debounced behind it.
+  composerContent = new MutationObserver(() => {
+    noteComposerContent();
+    scheduleRender();
+  });
   composerContent.observe(activeComposer, { childList: true, subtree: true, characterData: true });
+  // Seed, so re-binding isn't read as a drain. textContent to match noteComposerContent.
+  lastComposerText = activeComposer.textContent?.trim() ?? "";
   composerResize = new ResizeObserver(requestReposition); // composer grows as prompt wraps
   composerResize.observe(activeComposer);
   render();
@@ -188,6 +268,37 @@ function init(): void {
   // events don't bubble, but the capture phase reaches window).
   window.addEventListener("scroll", requestReposition, { passive: true, capture: true });
   window.addEventListener("resize", requestReposition, { passive: true });
+  // Send-intent corroborators for the canary. Capture phase so a site that stops propagation
+  // on its own composer can't hide the keypress from us; passive so we can never delay or
+  // cancel a send. Cmd/Ctrl+Enter falls out for free — only Shift is excluded, because that
+  // is the one modifier that means "newline" rather than "send" on all three sites.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.isComposing) return;
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      // Enter in the composer itself.
+      if (e.key === "Enter" && !e.shiftKey && activeComposer?.contains(target)) return noteIntent();
+      // Enter/Space on a focused send button. A keyboard user who tabs to Send never types in
+      // the composer at all, so without this the canary would systematically never fire for
+      // them — a blind spot, not the random miss the design tolerates.
+      if ((e.key === "Enter" || e.key === " ") && target instanceof Element) {
+        const button = target.closest('button, [role="button"]');
+        if (button && composerScope()?.contains(button)) noteIntent();
+      }
+    },
+    { passive: true, capture: true },
+  );
+  window.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!(e.target instanceof Element)) return;
+      const button = e.target.closest('button, [role="button"]');
+      if (button && composerScope()?.contains(button)) noteIntent();
+    },
+    { passive: true, capture: true },
+  );
   chrome.storage.onChanged.addListener((changes, area) => {
     if (
       area === "local" &&
