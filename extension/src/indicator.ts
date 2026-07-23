@@ -11,13 +11,8 @@
 import { getSettings, KEYS } from "./storage.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
+import { COMPOSER_SELECTOR } from "./composer.ts";
 
-// One selector for all three sites — verified live that each exposes exactly one match:
-// Gemini's Quill editor, ChatGPT's #prompt-textarea, and Claude's ProseMirror all render
-// the composer as div[contenteditable][role="textbox"]. role="textbox" is what excludes
-// Gemini's hidden .ql-clipboard; plaintext-only is future-proofing.
-const COMPOSER_SELECTOR =
-  'div[contenteditable="plaintext-only"][role="textbox"], div[contenteditable="true"][role="textbox"]';
 const PILL_ID = "ss-indicator-pill";
 const DEBOUNCE_MS = 200;
 const CLIP_TOP_PX = 56; // hide if the composer scrolls above this (behind Gemini's header)
@@ -27,6 +22,7 @@ let smokescreen = false; // stand-ins instead of [TOKEN_1] placeholders (affects
 let allowed: ReadonlySet<string> | undefined; // the guard's enabled category set
 let customMatcher: CustomMatcher | undefined; // compiled user keyword/regex blocklist
 let pill: HTMLElement | null = null;
+let pillText_: HTMLElement | null = null; // the ellipsised label inside the pill
 let activeComposer: HTMLElement | null = null;
 let composerContent: MutationObserver | undefined;
 let composerResize: ResizeObserver | undefined;
@@ -53,10 +49,10 @@ function ensurePill(): HTMLElement {
     "pointer-events:none",
     "box-sizing:border-box",
     "max-width:90vw",
-    "overflow:hidden",
-    "white-space:nowrap",
-    "text-overflow:ellipsis",
-    "padding:6px 14px",
+    "display:flex",
+    "align-items:center",
+    "gap:8px",
+    "padding:6px 8px 6px 14px",
     "border-radius:9999px",
     "background:rgba(15,23,42,.85)",
     "color:#f8fafc",
@@ -66,6 +62,29 @@ function ensurePill(): HTMLElement {
     "box-shadow:0 4px 12px rgba(0,0,0,.25)",
     "font:500 12px/1.4 system-ui,-apple-system,'Segoe UI',sans-serif",
   ].join(";");
+  // The label carries the ellipsis so a long category list truncates without squeezing the
+  // button out of the pill.
+  pillText_ = document.createElement("span");
+  pillText_.style.cssText = "overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0";
+  // The pill stays pointer-events:none — a descendant re-enabling them is the whole point, so
+  // exactly one 60x20px target is clickable and the rest of the chip still can't intercept a
+  // click meant for the page. mousedown is cancelled so opening the panel never pulls focus
+  // out of the composer mid-sentence.
+  const inspect = document.createElement("button");
+  inspect.type = "button";
+  inspect.textContent = "Inspect";
+  inspect.title = "Show what the provider will receive";
+  inspect.style.cssText =
+    "pointer-events:auto;flex:none;cursor:pointer;background:rgba(255,255,255,.12);" +
+    "color:inherit;border:1px solid rgba(255,255,255,.18);border-radius:9999px;" +
+    "padding:2px 10px;font:inherit;font-weight:600";
+  inspect.addEventListener("mousedown", (e) => e.preventDefault());
+  inspect.addEventListener("click", () => {
+    // Command only, no data: the panel lives in the MAIN world because that is where the real
+    // values are, and nothing sensitive comes back across this boundary.
+    window.postMessage({ source: "ss-ui", kind: "toggle-inspector" }, location.origin);
+  });
+  pill.append(pillText_, inspect);
   (document.body ?? document.documentElement).append(pill);
   return pill;
 }
@@ -111,11 +130,11 @@ function render(): void {
   const summary = summarize(activeComposer.innerText, allowed, customMatcher);
   if (summary.count === 0) return hidePill();
   const text = pillText(summary);
-  const p = ensurePill();
-  if (text !== lastRendered) {
+  ensurePill();
+  if (text !== lastRendered && pillText_) {
     // Only touch the DOM (and thus re-announce via aria-live) when the summary changes,
     // not on every keystroke — otherwise screen readers would spam.
-    p.textContent = text;
+    pillText_.textContent = text;
     lastRendered = text;
   }
   wantVisible = true;

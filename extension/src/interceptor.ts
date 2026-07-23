@@ -12,11 +12,12 @@
 import { Session } from "./tokenize";
 import { rewriteBody, type BodyKind } from "./rewrite";
 import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
+import { installInspector } from "./inspector";
 
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "10-smokescreen";
+const BUILD = "11-inspector";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -281,6 +282,15 @@ session.onMint = (category) => {
     /* best-effort telemetry; never block the guard */
   }
 };
+
+// The inspector reads the same settings a send would, so its preview cannot drift from what
+// the guard actually does. It renders in THIS world because this is where the real values
+// live — nothing sensitive crosses to the isolated side. See inspector.ts.
+installInspector(session, {
+  allowedCategories,
+  customMatcher: currentCustomMatcher,
+  smokescreen: smokescreenEnabled,
+});
 
 installDomRehydrator();
 console.debug(
