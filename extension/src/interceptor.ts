@@ -18,7 +18,7 @@ import { installInspector } from "./inspector";
 const session = new Session();
 
 // Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "13-inspector";
+const BUILD = "14-nested-json";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).
@@ -202,11 +202,22 @@ if (!FETCH_ONLY) {
 
   proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
     const kind = generateKind(xhrUrls.get(this) ?? "");
-    if (kind && guardEnabled() && typeof body === "string") {
-      try {
-        return origSend.call(this, rewriteBodyForSend(kind, body) as XMLHttpRequestBodyInit);
-      } catch (err) {
-        console.warn("[sovereign-shield] XHR passthrough after error:", err);
+    if (kind && guardEnabled()) {
+      if (typeof body === "string") {
+        try {
+          return origSend.call(this, rewriteBodyForSend(kind, body) as XMLHttpRequestBodyInit);
+        } catch (err) {
+          console.warn("[sovereign-shield] XHR passthrough after error:", err);
+          failopen();
+        }
+      } else if (body != null) {
+        // A generate request we RECOGNISED but cannot read: the client sent a Blob, FormData
+        // or URLSearchParams instead of a string. It used to fall through here silently, which
+        // is the same class of defect the canary exists to catch — the prompt goes out in the
+        // clear and nothing says so. Fail open, but loudly.
+        console.warn(
+          `[sovereign-shield] uninspected ${kind} body of type ${body.constructor?.name ?? typeof body}`,
+        );
         failopen();
       }
     }

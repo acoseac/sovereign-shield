@@ -10,6 +10,38 @@ import type { Session } from "./tokenize";
 
 export type BodyKind = "freq" | "json";
 
+/**
+ * A string that is *itself* a JSON structure, or undefined if it should be treated as plain
+ * text. Gemini's `f.req` nests its payload one level deep — `[null, "<json>"]` — so without
+ * this the inner document reaches the detectors **escape-encoded**, and `\t` or `\n` are two
+ * literal characters rather than one.
+ *
+ * That is not cosmetic. In `"Name\tango@corp.example\tactive"` the detector matched
+ * `tango@corp.example`, eating the `t` of the escape: the replacement left a dangling `\[`,
+ * which is invalid JSON, so the provider rejected the send outright — and the mapping stored
+ * the wrong address, so a restore would have shown a value nobody has. It only bites when a
+ * value sits directly after an escape, which is why a pasted table (tab- or newline-separated)
+ * broke while ordinary prose did not.
+ *
+ * Two guards keep this from becoming its own byte-faithfulness bug (ADR 0002):
+ *   - only `[`/`{` structures qualify, so a prompt of `123` or `"hi"` is never reinterpreted;
+ *   - `JSON.stringify(parsed)` must reproduce the input **byte for byte**. If the user pasted
+ *     pretty-printed JSON as their prompt, re-serialising would silently reformat it, so we
+ *     decline and treat it as text. We only take this path when the round-trip is provably
+ *     lossless.
+ */
+function nestedJson(value: string): unknown {
+  const first = value.charCodeAt(0);
+  if (first !== 0x5b /* [ */ && first !== 0x7b /* { */) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (parsed === null || typeof parsed !== "object") return undefined;
+    return JSON.stringify(parsed) === value ? parsed : undefined;
+  } catch {
+    return undefined; // not JSON, or not round-trippable — plain text
+  }
+}
+
 // Walk every STRING in a parsed body and tokenize it; numbers/booleans/structure
 // are left untouched (so ids, timestamps and enums never get corrupted).
 // Structure-agnostic on purpose — no dependency on any provider's exact layout.
@@ -23,6 +55,18 @@ function walk(
 ): unknown {
   if (node === null) return null;
   if (typeof node === "string") {
+    const nested = nestedJson(node);
+    if (nested !== undefined) {
+      // Recurse into the parsed form, so detectors see real characters. Track this subtree's
+      // changes separately: when nothing inside it was redacted we must hand back the ORIGINAL
+      // string, not a re-serialisation of it, or a clean prompt stops being byte-faithful.
+      const outerChanged = ctx.changed;
+      ctx.changed = false;
+      const walked = walk(nested, allowed, session, ctx);
+      const innerChanged = ctx.changed;
+      ctx.changed = outerChanged || innerChanged;
+      return innerChanged ? JSON.stringify(walked) : node;
+    }
     const out = session.tokenize(node, allowed);
     // tokenize returns the SAME string reference when it makes no substitution,
     // so an identity check is a reliable "did this string change" signal.
