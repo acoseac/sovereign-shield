@@ -73,6 +73,39 @@ def test_detects_each_category() -> None:
     assert PiiCategory.PHONE_CH in {h.category for h in detect_pii("call +41 79 123 45 67")}
 
 
+def test_phone_ch_accepts_every_allocated_ndc_form() -> None:
+    # Geographic, mobile and service numbers, in each separator style the shape allows.
+    for text in (
+        "+41 79 123 45 67",
+        "079 123 45 67",
+        "0041 79 123 45 67",
+        "0791234567",
+        "+41.79.123.45.67",
+        "+41 22 767 11 11",
+        "021 123 45 67",
+        "0313456789",
+        "091 123 45 67",
+        "0800 123 456",
+        "0848 800 800",
+    ):
+        assert PiiCategory.PHONE_CH in {h.category for h in detect_pii(text)}, text
+
+
+def test_phone_ch_rejects_digit_runs_that_are_not_swiss_numbers() -> None:
+    # ch_phone is the one category with no checksum, so the NDC whitelist carries the
+    # whole false-positive load. These all matched the old "0 + any 9 digits" shape; the
+    # first two are real lines from a Go source file that got redacted mid-paste.
+    for text in (
+        'const digits = "0123456789"',
+        'const hexChars = "0123456789ABCDEF"',
+        "0000000000",
+        "0987654321",
+        "0101010101",
+        "0234567890",
+    ):
+        assert PiiCategory.PHONE_CH not in {h.category for h in detect_pii(text)}, text
+
+
 def test_rejects_checksum_lookalikes() -> None:
     # A key-shaped but checksum-invalid AHV / IBAN / PAN must not be flagged.
     assert detect_pii("756.1234.5678.96") == []  # bad AHV check digit

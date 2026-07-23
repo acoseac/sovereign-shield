@@ -345,6 +345,103 @@
     }
   },
   {
+    "input": "const digits = \"0123456789\"",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "uk_nhs",
+        "marker": "nhs:\u202689",
+        "start": 16,
+        "end": 26
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "uk_nhs",
+      "categories": [
+        "uk_nhs"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "uk_nhs",
+      "categories": [
+        "uk_nhs"
+      ]
+    }
+  },
+  {
+    "input": "0123456789ABCDEF",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [],
+    "scan_completion": {
+      "blocked": false,
+      "raw_violation": false,
+      "reason": "clean",
+      "categories": []
+    },
+    "scan_prompt": {
+      "blocked": false,
+      "reason": "clean",
+      "categories": []
+    }
+  },
+  {
+    "input": "+41 22 767 11 11",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_phone",
+        "marker": "phone:\u202611",
+        "start": 0,
+        "end": 16
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    }
+  },
+  {
+    "input": "0800 123 456",
+    "contained_pii": "756.1234.5678.97",
+    "detect_pii": [
+      {
+        "category": "ch_phone",
+        "marker": "phone:\u202656",
+        "start": 0,
+        "end": 12
+      }
+    ],
+    "scan_completion": {
+      "blocked": true,
+      "raw_violation": false,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    },
+    "scan_prompt": {
+      "blocked": true,
+      "reason": "ch_phone",
+      "categories": [
+        "ch_phone"
+      ]
+    }
+  },
+  {
     "input": "hans.muster@bluewin.ch",
     "contained_pii": "756.1234.5678.97",
     "detect_pii": [

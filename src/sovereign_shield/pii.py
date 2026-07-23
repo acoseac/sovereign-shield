@@ -423,8 +423,21 @@ _IBAN_RE = re.compile(
 )
 # Card PAN: 13-19 digits with optional space/dash grouping.
 _PAN_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
-# Swiss phone: +41 / 0041 / national 0, then 9 significant digits.
-_PHONE_CH_RE = re.compile(r"(?<!\d)(?:\+41|0041|0)(?:[ .]?\d){9}(?!\d)")
+# Swiss phone: +41 / 0041 / national 0, then a national destination code (NDC) and
+# the 7 remaining subscriber digits. The NDC whitelist IS the false-positive filter —
+# this is the one category with no checksum to close it. The old shape was "0 plus any
+# 9 digits", which matches ordinary digit runs in source code: a Go `const digits =
+# "0123456789"` was tokenised as a phone number in a real review paste, and the
+# redaction corrupted the pasted code. Every Swiss number is NDC(2) + 7 digits, so
+# gating on the allocated NDCs rejects ~2/3 of arbitrary 10-digit runs — including
+# every ascending/descending sequence — while keeping all geographic (21-91), mobile
+# (74-79) and service (0800 / 084x / 086x / 087x / 090x) numbers. Codes per OFCOM's
+# national numbering plan.
+_PHONE_CH_RE = re.compile(
+    r"(?<!\d)(?:\+41|0041|0)[ .]?"
+    r"(?:2[12467]|3[1-4]|4[134]|5[12568]|6[12]|7[14-9]|8[01467]|9[01])"
+    r"(?:[ .]?\d){7}(?!\d)"
+)
 _EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")
 # DOB: dd?[./-]mm?[./-](19|20)yy. High false-positive → gated off by default.
 _DOB_RE = re.compile(r"\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}\b")

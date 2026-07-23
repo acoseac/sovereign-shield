@@ -38,6 +38,13 @@ INPUTS = [
     "4111111111111112",
     "+41 79 123 45 67",
     "079 123 45 67",
+    # ch_phone has no checksum, so the NDC whitelist is its only false-positive filter.
+    # Pin both directions: a digit-run literal from real source code must NOT be a phone,
+    # and the geographic / service NDCs must still be.
+    'const digits = "0123456789"',
+    "0123456789ABCDEF",
+    "+41 22 767 11 11",
+    "0800 123 456",
     "hans.muster@bluewin.ch",
     "I can help you open a support ticket instead.",
     '{"ahv": "756.1234.5678.97"}',

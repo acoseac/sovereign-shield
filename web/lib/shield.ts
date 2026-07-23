@@ -325,7 +325,13 @@ function inAadhaarOk(value: string): boolean {
 const AHV_RE = /\b756[.  ]?\d{4}[.  ]?\d{4}[.  ]?\d{2}\b/g;
 const IBAN_RE = /\b[A-Z]{2}\d{2}(?:[0-9A-Z]{11,30}|(?: [0-9A-Z]{4}){2,7}(?: [0-9A-Z]{1,3})?)\b/gi;
 const PAN_RE = /\b\d(?:[ -]?\d){12,18}\b/g;
-const PHONE_CH_RE = /(?<!\d)(?:\+41|0041|0)(?:[ .]?\d){9}(?!\d)/g;
+// The NDC alternation IS the false-positive filter — ch_phone has no checksum to close
+// it. See the Python source (`_PHONE_CH_RE`) for the full rationale; keep the two byte-
+// identical. Short version: "0 plus any 9 digits" matched ordinary digit runs in pasted
+// source code (`const digits = "0123456789"`), so the shape is gated on the NDCs OFCOM
+// actually allocates.
+const PHONE_CH_RE =
+  /(?<!\d)(?:\+41|0041|0)[ .]?(?:2[12467]|3[1-4]|4[134]|5[12568]|6[12]|7[14-9]|8[01467]|9[01])(?:[ .]?\d){7}(?!\d)/g;
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
 const DOB_RE = /\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}\b/g;
 const ES_DNI_RE = /\b[XYZ]?\d{7,8}[A-Z]\b/gi;
