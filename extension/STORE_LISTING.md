@@ -1,5 +1,8 @@
 # Chrome Web Store listing — copy/paste reference
 
+> **Status:** 0.6.0 submitted for review (July 2026), superseding the pending 0.5.0. The copy
+> below is what went in.
+
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
 
@@ -21,25 +24,36 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Category:** Productivity
 **Language:** English
 
-**Detailed description** (the dashboard shows a live count; keep it tight — this copy runs ~1.7k
-chars, and the 0.5.0 submission went through at a similar length):
-> Sovereign Shield keeps sensitive data out of the big chat assistants. Before your prompt leaves the browser for ChatGPT, Gemini or Claude, it replaces identifiers, API keys and your own terms with placeholders, then restores the real values in the reply. Everything runs locally — no account, no server, no analytics.
+**Detailed description** — this is the copy submitted for **0.6.0**. Plain text: the dashboard
+field takes no markdown, so the section labels and `•` bullets below are literal (line breaks
+are preserved). The field allows ~16,000 chars, so length is not a real constraint — the old
+"1,600-char limit" note was a myth.
+> Sovereign Shield keeps sensitive data out of web-based AI chat assistants. Before your prompt leaves the browser, it replaces personal identifiers, developer keys, and custom sensitive terms with placeholders — then automatically restores the real values in the AI's reply so nothing sensitive leaves your machine.
 >
-> Identifiers are checksum-validated (shape and check digit must agree), so ordinary text is untouched and there are no false positives. Secrets match well-known shapes.
+> Everything runs 100% locally: no accounts, no API keys required, no external servers, and no tracking or analytics.
 >
-> What it detects:
-> • Swiss AHV/AVS, IBAN (worldwide), credit card, phone, email
-> • National, tax & health IDs across the EU (IT/ES/FR/NL/DE/PL/PT/BE), UK NHS, Brazil, South Africa, China, Canada and India
-> • Secrets: AWS, OpenAI, Anthropic, GitHub, Google, Slack & Stripe keys, JWTs, PEM private keys
-> • Your own keywords or regexes — code names, client names, internal domains
+> How It Works
+> Identifiers are checksum-validated (shape and check digits must match) so ordinary text is untouched and false positives are minimized. Secrets are matched using structured credential patterns.
 >
-> Smokescreen mode (optional): send realistic stand-ins like alice.morgan@example.org instead of [EMAIL_1], so models write better drafts. Emails and your own terms only; IDs, cards and secrets always use placeholders.
+> What It Detects
+> • Personal & Financial Info: Swiss AHV/AVS, global IBANs, credit cards, phone numbers, and email addresses.
+> • National & Health IDs: Official tax, health, and government identity numbers across major regions (including EU, UK, Americas, and Asia).
+> • Developer Secrets: Common API keys, cloud service access tokens, authentication tokens (JWTs), and PEM private keys.
+> • Custom Rules: Your own custom keywords, internal code names, client names, domains, or regular expressions (regex).
 >
-> See exactly what you send: a live count above the chat box, and Inspect for a side-by-side view of your prompt versus what the provider receives. Copying a reply gives back the real values. If a site changes its internal API so a message goes out uninspected, you are told rather than left guessing.
+> See Exactly What You Send
+> A live counter above the chat box shows how many sensitive items will be kept local before you send. Click Inspect to open a side-by-side view of your prompt versus what the AI actually receives, plus a list of every active placeholder and its real value — so you can verify a redaction, remove a false positive, or swap a stand-in on the spot. When you copy the AI's reply, the real values come back too, matching what's on your screen. And if a site changes its internal API so a message would go out uninspected, you're warned instead of left guessing.
 >
-> Choose which categories to block, add your own rules, and review an on-device log of what was kept local — type, time and site only, never the value. The value-to-placeholder map lives only in your tab's memory. Names and addresses are out of scope.
+> Optional Smokescreen Mode
+> Send realistic stand-ins (e.g., alice.morgan@example.org instead of [EMAIL_1]) so AI models generate more natural, context-aware responses without seeing your real data. (Applies to emails and custom terms only; IDs, cards, and secrets always use standard placeholders.)
 >
-> Open source: https://github.com/acoseac/sovereign-shield
+> Privacy & Control
+> • Complete Granularity: Toggle specific detection categories on or off and define custom privacy rules.
+> • On-Device Activity Log: Monitor redacted items locally (only metadata like type, timestamp, and site are logged — never the raw values).
+> • Zero Storage: The value-to-placeholder map exists solely in your active tab's memory and is erased when closed.
+>
+> Open Source
+> Review the source code on GitHub: https://github.com/acoseac/sovereign-shield
 
 ---
 
@@ -100,8 +114,9 @@ Upload in this order (the store shows the first as the primary tile):
    the replaced spans marked. It is the most legible single proof the extension works, and it
    needs no DevTools to read, so consider promoting it above `5-gemini-proof.png`.
 
-Tiles 1–3 are designed 1280×800 promo images (exact pill markup/CSS from `indicator.ts`, with
-real detector output); 4–5 are live product captures. The two earlier web-page shots
+Tiles 1–3 are designed 1280×800 promo images (exact pill markup/CSS from `indicator.ts`, now
+including the **Inspect** button — see PR #61 — so regenerate them with `store-assets/render.sh`
+before the next upload); 4–5 are live product captures. The two earlier web-page shots
 (`1-showcase.png`, `2-tester.png`) are archived under `_archived-stale/` — they predated the
 CWS-advertise update and still carried the "not yet on the Chrome Web Store" line.
 
