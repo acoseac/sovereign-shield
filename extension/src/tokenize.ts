@@ -47,6 +47,10 @@ const TOKEN_PREFIX: Record<string, string> = {
 // direction is not symmetric: minting a surrogate we then cannot restore would leave the
 // user reading fabricated data believing it is real. If the probe fails we simply never mint
 // surrogates and everything stays on bracket tokens.
+/** Default `map` for rehydrate() — hoisted so the DOM hot path doesn't allocate a closure
+ *  on every streamed text node. */
+const identity = (value: string): string => value;
+
 let lookbehindOk: boolean | undefined;
 function supportsLookbehind(): boolean {
   if (lookbehindOk === undefined) {
@@ -264,14 +268,23 @@ export class Session {
    * Swap placeholders back to their real values. A token split across two stream
    * chunks (e.g. "[AHV_" now, "1]" next chunk) simply is not matched yet — it gets
    * restored once the closing chunk arrives, so partial reads never corrupt text.
+   *
+   * `map` post-processes each substituted VALUE (never the unmatched placeholder), for
+   * callers restoring into a syntax where a raw value could be misread — the clipboard
+   * rehydrator passes an HTML escaper when it rewrites a `text/html` flavour, so a custom
+   * term containing `&` or `<` can't corrupt the markup it lands in. Defaults to identity,
+   * so the DOM hot path is unchanged.
    */
-  rehydrate(text: string): string {
+  rehydrate(text: string, map: (value: string) => string = identity): string {
     if (this.tokenValue.size === 0) return text;
     let out = text;
     // Pass 1 — bracket tokens. One regex, O(1) lookup per match. Runs on every streamed
     // text-node mutation, so it must not scale with the token count.
     if (text.includes("[")) {
-      out = out.replace(/\[[A-Z0-9_]+_\d+\]/g, (m) => this.tokenValue.get(m) ?? m);
+      out = out.replace(/\[[A-Z0-9_]+_\d+\]/g, (m) => {
+        const value = this.tokenValue.get(m);
+        return value === undefined ? m : map(value);
+      });
     }
     // Pass 2 — surrogates, which carry no marker of their own. Skipped entirely (and the
     // alternation never built) in bracket-only sessions, so smokescreen-off behaviour is
@@ -279,10 +292,10 @@ export class Session {
     if (this.surrogates.length > 0) {
       const re = this.surrogateRe();
       if (re) {
-        out = out.replace(
-          re,
-          (m) => this.tokenValue.get(m) ?? this.tokenValueLower.get(m.toLowerCase()) ?? m,
-        );
+        out = out.replace(re, (m) => {
+          const value = this.tokenValue.get(m) ?? this.tokenValueLower.get(m.toLowerCase());
+          return value === undefined ? m : map(value);
+        });
       }
     }
     return out;
