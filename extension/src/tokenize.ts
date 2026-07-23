@@ -42,6 +42,57 @@ const TOKEN_PREFIX: Record<string, string> = {
   custom: "CUSTOM",
 };
 
+const EMPTY: ReadonlySet<string> = new Set();
+
+/**
+ * Hard cap on live value↔placeholder mappings, oldest evicted first.
+ *
+ * Purely hygiene, not performance: 2 000 mappings is on the order of 200 KB, and the DOM hot
+ * path is already bounded by MAX_SURROGATES. It exists so a tab left open for days on a
+ * single-page chat app cannot grow without limit.
+ *
+ * **The tradeoff:** an evicted placeholder can no longer be restored, so scrolling back to a
+ * very old turn in a 2 000-identifier thread will show `[EMAIL_1]` raw. That is the correct
+ * direction to fail — degraded display, never a leak — but it is a visible behaviour change.
+ *
+ * Note what this deliberately is NOT: a reset on SPA navigation. ChatGPT and Claude rewrite
+ * the URL from `/` to `/c/<uuid>` *after* the first message of a new chat is sent, so a
+ * route-change reset would wipe the mapping for the message that is streaming right then and
+ * paint `[EMAIL_1]` into its reply. Bounded growth, no navigation heuristics.
+ */
+export const MAX_MAPPINGS = 2000;
+
+/** How many successive pool entries recycleSurrogate will try before giving up and leaving the
+ *  mapping as it is. Small: every candidate is checked against the same mint-time rules, and
+ *  refusing to change is always safe. */
+const RECYCLE_ATTEMPTS = 8;
+
+/** One live mapping, for the inspector's Mappings tab. Contains a REAL value — this type only
+ *  ever crosses function calls inside the MAIN world, never a postMessage or chrome.storage. */
+export interface SessionEntry {
+  value: string;
+  placeholder: string;
+  category: string;
+  /** True when the placeholder is a smokescreen stand-in rather than a bracket token. */
+  surrogate: boolean;
+}
+
+/** One span the guard would redact, located in the ORIGINAL text so the panel can highlight
+ *  both sides of the diff. */
+export interface PreviewSpan {
+  start: number;
+  end: number;
+  category: string;
+  placeholder: string;
+}
+
+export interface Preview {
+  /** What the provider would receive. */
+  text: string;
+  /** Redacted spans, ascending by offset in the original text. */
+  spans: PreviewSpan[];
+}
+
 // The surrogate alternation is fenced with lookbehind, which V8 has had since Chrome 62 —
 // well under the manifest's Chrome 111 floor. Probed once anyway, because the failure
 // direction is not symmetric: minting a surrogate we then cannot restore would leave the
@@ -64,8 +115,22 @@ function supportsLookbehind(): boolean {
  * never sent anywhere.
  */
 export class Session {
+  /** value → the placeholder currently used for it. Insertion-ordered, which is what makes
+   *  "evict the oldest" a single call. One entry per distinct value. */
   private readonly valueToken = new Map<string, string>();
+  /** placeholder → value, the RESTORE direction. May hold more entries than `valueToken`:
+   *  recycleSurrogate retires a stand-in without dropping it, so turns already on screen
+   *  carrying the old one keep rehydrating. */
   private readonly tokenValue = new Map<string, string>();
+  /** placeholder → category, for the inspector's Mappings tab. */
+  private readonly tokenCategory = new Map<string, string>();
+  /** Values the user has explicitly excused via the inspector ("stop redacting this").
+   *  Session-only and never persisted: writing it to chrome.storage would put a real PII
+   *  value on disk, which is the one thing storage.ts promises never happens. */
+  private readonly allowlist = new Set<string>();
+  /** Values whose stand-in has been recycled — the only ones that map from more than one
+   *  placeholder. Lets forget() skip a reverse scan of `tokenValue` in the normal case. */
+  private readonly recycled = new Set<string>();
   // Prototype-free so a counter key can never resolve to an inherited member. Today
   // the prefix is sanitised to uppercase [A-Z0-9_] (no collision with the lowercase
   // Object.prototype keys is possible), but this keeps that safe if the prefix logic
@@ -115,15 +180,29 @@ export class Session {
     text: string,
     allowed?: ReadonlySet<string>,
   ): Array<{ start: number; end: number; category: string }> {
-    const builtin = detectPii(text).filter((h) => !allowed || allowed.has(h.category));
+    const builtin = detectPii(text)
+      .filter((h) => !allowed || allowed.has(h.category))
+      // Excused by the user in the inspector. Filtered BEFORE the spans below are computed, so
+      // an excused value doesn't go on blocking an overlapping custom-rule hit. Exact-match on
+      // the value, so a differently-cased mention is redacted again — the conservative
+      // direction for a manual override.
+      .filter((h) => !this.allowlist.has(text.slice(h.start, h.end)));
     const hits = builtin.map((h) => ({ start: h.start, end: h.end, category: h.category as string }));
     if (this.customMatcher && (!allowed || allowed.has("custom"))) {
       const spans = builtin.map((h) => [h.start, h.end] as [number, number]);
       for (const c of acceptCustomHits(text, spans, this.customMatcher)) {
+        if (this.allowlist.has(text.slice(c.start, c.end))) continue;
         hits.push({ start: c.start, end: c.end, category: "custom" });
       }
     }
     return hits;
+  }
+
+  /** The token prefix for a category, sanitised so it can only contain characters the
+   *  rehydrate regex matches — a future category key with a digit or dash can't mint a token
+   *  that then never gets restored. Shared by tokenize and preview so their ordinals agree. */
+  private prefixFor(category: string): string {
+    return (TOKEN_PREFIX[category] ?? category.toUpperCase()).replace(/[^A-Z0-9_]/g, "_");
   }
 
   /**
@@ -149,15 +228,11 @@ export class Session {
       if (this.tokenValue.has(value)) continue;
       let token = this.valueToken.get(value);
       if (!token) {
-        // Sanitise so the prefix can only contain characters the rehydrate regex
-        // matches — a future category key with a digit or dash can't mint a token
-        // that then never gets restored.
-        const prefix = (TOKEN_PREFIX[h.category] ?? h.category.toUpperCase()).replace(/[^A-Z0-9_]/g, "_");
+        this.evictIfFull();
+        const prefix = this.prefixFor(h.category);
         this.counters[prefix] = (this.counters[prefix] ?? 0) + 1;
         token = this.mintPlaceholder(h.category, prefix, this.counters[prefix]);
-        this.valueToken.set(value, token);
-        this.tokenValue.set(token, value);
-        this.tokenValueLower.set(token.toLowerCase(), value);
+        this.remember(value, token, h.category);
         this.onMint?.(h.category);
       }
       out = out.slice(0, h.start) + token + out.slice(h.end);
@@ -166,31 +241,229 @@ export class Session {
   }
 
   /**
+   * What `tokenize` WOULD produce for `text`, without mutating anything — no mapping stored,
+   * no counter advanced, no surrogate registered, `onMint` never fired. Backs the inspector's
+   * pre-send diff.
+   *
+   * Accuracy is the whole point, which is why this lives on Session rather than being computed
+   * from a throwaway one in the ISOLATED world: a fresh Session would number from `_1` and pick
+   * different pool entries than the real conversation, so the panel would promise
+   * `alice.morgan@example.org` while the model actually received `clara.hoffmann@example.net`.
+   * A preview that lies is worse than no preview.
+   *
+   * Ordinals are the live counters plus this preview's own deltas, and stand-ins run the same
+   * candidateSurrogate checks, so the prediction holds as long as the user sends what they
+   * previewed.
+   */
+  preview(text: string, allowed?: ReadonlySet<string>): Preview {
+    const hits = this.detect(text, allowed);
+    if (hits.length === 0) return { text, spans: [] };
+    const deltas: Record<string, number> = Object.create(null); // per-prefix, this preview only
+    const hypothetical = new Map<string, string>(); // value → placeholder, this preview only
+    const taken = new Set<string>(); // stand-ins claimed here but not registered
+    const spans: PreviewSpan[] = [];
+    let out = text;
+    // Back-to-front, like tokenize, so earlier offsets stay valid as we splice.
+    for (const h of [...hits].sort((a, b) => b.start - a.start)) {
+      const value = text.slice(h.start, h.end);
+      if (this.tokenValue.has(value)) continue; // already one of our placeholders
+      let placeholder = this.valueToken.get(value) ?? hypothetical.get(value);
+      if (!placeholder) {
+        const prefix = this.prefixFor(h.category);
+        deltas[prefix] = (deltas[prefix] ?? 0) + 1;
+        const ordinal = (this.counters[prefix] ?? 0) + deltas[prefix];
+        const surrogate = this.candidateSurrogate(
+          h.category,
+          ordinal,
+          taken,
+          this.surrogates.length + taken.size,
+        );
+        if (surrogate) taken.add(surrogate);
+        placeholder = surrogate ?? `[${prefix}_${ordinal}]`;
+        hypothetical.set(value, placeholder);
+      }
+      spans.push({ start: h.start, end: h.end, category: h.category, placeholder });
+      out = out.slice(0, h.start) + placeholder + out.slice(h.end);
+    }
+    spans.reverse(); // we walked back-to-front; hand back ascending offsets
+    return { text: out, spans };
+  }
+
+  /**
+   * The stand-in this `(category, ordinal)` would take, or **null when it must fall back to a
+   * bracket token**. Every guard fails that way, because degrading to a bracket costs nothing
+   * while a bad stand-in is a silent leak.
+   *
+   * Shared by the three callers that must agree on the answer — mintPlaceholder (which then
+   * registers it), preview (which must NOT, but must predict exactly what mint would do, or
+   * the inspector panel lies to the user) and recycleSurrogate. `alsoTaken` and `liveCount`
+   * let a caller account for candidates it is holding but has not registered.
+   */
+  private candidateSurrogate(
+    category: string,
+    ordinal: number,
+    alsoTaken: ReadonlySet<string>,
+    liveCount: number,
+  ): string | null {
+    if (!this.smokescreen || this.surrogatesBroken) return null;
+    if (liveCount >= MAX_SURROGATES) return null;
+    if (!surrogateEligible(category) || !supportsLookbehind()) return null;
+    const surrogate = mintSurrogate(category, ordinal);
+    if (!surrogate) return null;
+    // Two collisions to refuse, both of which would silently break the guard:
+    //   - one we already issued: two distinct real values would rehydrate to one string.
+    //   - one the user's own blocklist matches: because tokenize() skips anything already
+    //     in tokenValue, a later mention of the user's real term would then pass through
+    //     unredacted. Rare (it needs a pool value to equal one of their rules) but it is a
+    //     leak, so rule it out at mint time rather than hope.
+    if (this.tokenValue.has(surrogate) || alsoTaken.has(surrogate)) return null;
+    if (this.matchesCustomRule(surrogate)) return null;
+    return surrogate;
+  }
+
+  /**
    * The placeholder for a newly-seen value: a realistic stand-in when smokescreen is on and
-   * the category has a vendored pool, otherwise the classic `[PREFIX_n]` token. Falling back
-   * to a bracket token is always safe, which is why every guard below fails that way.
+   * the category has a vendored pool, otherwise the classic `[PREFIX_n]` token.
    */
   private mintPlaceholder(category: string, prefix: string, ordinal: number): string {
-    if (
-      this.smokescreen &&
-      !this.surrogatesBroken &&
-      this.surrogates.length < MAX_SURROGATES &&
-      surrogateEligible(category) &&
-      supportsLookbehind()
-    ) {
-      const surrogate = mintSurrogate(category, ordinal);
-      // Two collisions to refuse, both of which would silently break the guard:
-      //   - one we already issued: two distinct real values would rehydrate to one string.
-      //   - one the user's own blocklist matches: because tokenize() skips anything already
-      //     in tokenValue, a later mention of the user's real term would then pass through
-      //     unredacted. Rare (it needs a pool value to equal one of their rules) but it is a
-      //     leak, so rule it out at mint time rather than hope.
-      if (surrogate && !this.tokenValue.has(surrogate) && !this.matchesCustomRule(surrogate)) {
-        this.registerSurrogate(surrogate);
-        return surrogate;
-      }
+    const surrogate = this.candidateSurrogate(category, ordinal, EMPTY, this.surrogates.length);
+    if (surrogate) {
+      this.registerSurrogate(surrogate);
+      return surrogate;
     }
     return `[${prefix}_${ordinal}]`;
+  }
+
+  // --- mapping lifecycle ----------------------------------------------------
+
+  /** Install a value↔placeholder mapping in every index that has to know about it. */
+  private remember(value: string, token: string, category: string): void {
+    this.valueToken.set(value, token);
+    this.tokenValue.set(token, value);
+    this.tokenValueLower.set(token.toLowerCase(), value);
+    this.tokenCategory.set(token, category);
+  }
+
+  /** Make room before minting, oldest value first. See MAX_MAPPINGS for the tradeoff. */
+  private evictIfFull(): void {
+    while (this.valueToken.size >= MAX_MAPPINGS) {
+      const oldest = this.valueToken.keys().next();
+      if (oldest.done) return;
+      this.forget(oldest.value);
+    }
+  }
+
+  /** Remove one placeholder from every index that restores it. */
+  private dropPlaceholder(token: string): void {
+    this.tokenValue.delete(token);
+    this.tokenValueLower.delete(token.toLowerCase());
+    this.tokenCategory.delete(token);
+    const at = this.surrogates.indexOf(token);
+    if (at !== -1) {
+      // surrogatesLower is built index-parallel to surrogates (see registerSurrogate), so the
+      // same index removes the matching needle from the hot-path prefilter.
+      this.surrogates.splice(at, 1);
+      this.surrogatesLower.splice(at, 1);
+      this.surrogatePattern = null;
+    }
+  }
+
+  /**
+   * Drop a value and EVERY placeholder that maps to it, so nothing is left pointing at a value
+   * we no longer hold.
+   *
+   * Counters are deliberately not rewound. Ordinals stay monotonic, so a forgotten value that
+   * is typed again gets a fresh `[EMAIL_9]` rather than a recycled `[EMAIL_1]` — otherwise the
+   * DOM rehydrator would restore the NEW value into an OLD message still showing that token.
+   *
+   * Returns false if the value was not mapped.
+   */
+  forget(value: string): boolean {
+    const token = this.valueToken.get(value);
+    if (token === undefined) return false;
+    this.valueToken.delete(value);
+    this.dropPlaceholder(token);
+    // Only a recycled value maps from more than one placeholder, so the reverse scan is gated
+    // on that set rather than run every time. eviction calls this from the synchronous send
+    // path, and an O(map) walk per mint at the cap is not a cost worth paying for a rare case.
+    if (this.recycled.delete(value)) {
+      for (const [retired, mapped] of [...this.tokenValue]) {
+        if (mapped === value) this.dropPlaceholder(retired);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * "Stop redacting this" — a false-positive escape hatch for the inspector. Drops the mapping
+   * and excuses the value for the rest of this page's life.
+   *
+   * Two consequences the UI has to state rather than hide: turns already sent still carry the
+   * placeholder and will now render it unrestored, and the excuse is **not persisted** — a
+   * reload redacts the value again. Persisting it would mean writing a real PII value to
+   * chrome.storage.
+   */
+  allow(value: string): void {
+    this.allowlist.add(value);
+    this.forget(value);
+  }
+
+  /** Drop every mapping. Counters survive, for the same reason forget() does not rewind them. */
+  clear(): void {
+    this.valueToken.clear();
+    this.tokenValue.clear();
+    this.tokenValueLower.clear();
+    this.tokenCategory.clear();
+    this.recycled.clear();
+    this.surrogates = [];
+    this.surrogatesLower = [];
+    this.surrogatePattern = null;
+  }
+
+  /** Every live mapping, oldest first. Real values — MAIN world only. */
+  entries(): SessionEntry[] {
+    const isSurrogate = new Set(this.surrogates);
+    return [...this.valueToken].map(([value, placeholder]) => ({
+      value,
+      placeholder,
+      category: this.tokenCategory.get(placeholder) ?? "",
+      surrogate: isSurrogate.has(placeholder),
+    }));
+  }
+
+  /**
+   * Swap a stand-in for the next one the pool offers — the inspector's escape hatch for "this
+   * fake name is confusing me". Returns the new stand-in, or null if the mapping isn't a
+   * stand-in or no safe candidate exists (in which case nothing changes).
+   *
+   * Free-text replacement is deliberately not offered: a user-supplied stand-in could be a real
+   * person's address, or collide with their own blocklist, which is exactly the hazard ADR 0004
+   * closes. Every candidate here comes from the vetted pool and passes the same mint-time checks.
+   *
+   * The OLD stand-in is retired, not deleted: it stays in `tokenValue` so turns already on
+   * screen carrying it keep restoring to the real value. Only future sends use the new one.
+   */
+  recycleSurrogate(value: string): string | null {
+    const current = this.valueToken.get(value);
+    if (current === undefined || !this.surrogates.includes(current)) return null;
+    const category = this.tokenCategory.get(current);
+    if (category === undefined) return null;
+    const prefix = this.prefixFor(category);
+    for (let attempt = 0; attempt < RECYCLE_ATTEMPTS; attempt++) {
+      this.counters[prefix] = (this.counters[prefix] ?? 0) + 1;
+      const next = this.candidateSurrogate(
+        category,
+        this.counters[prefix],
+        EMPTY,
+        this.surrogates.length,
+      );
+      if (!next) continue;
+      this.registerSurrogate(next);
+      this.remember(value, next, category); // rewrites valueToken; leaves `current` restorable
+      this.recycled.add(value);
+      return next;
+    }
+    return null;
   }
 
   /** Would the user's own blocklist redact this candidate stand-in? On a throwing matcher
@@ -288,8 +561,10 @@ export class Session {
     return out;
   }
 
-  /** How many distinct identifiers have been kept local this conversation. */
+  /** How many distinct identifiers have been kept local this conversation. Counts VALUES, not
+   *  placeholders — recycleSurrogate can leave a value with a retired stand-in still restorable,
+   *  and that is one identifier kept local, not two. */
   get count(): number {
-    return this.tokenValue.size;
+    return this.valueToken.size;
   }
 }
