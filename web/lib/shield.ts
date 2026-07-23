@@ -58,6 +58,24 @@ export const CONTAINED_RESPONSE =
   '"Response withheld: data-residency / PII containment policy (FADP)."}';
 
 const onlyDigits = (s: string): string => s.replace(/\D/g, "");
+
+/**
+ * True for a digit string that is a placeholder, not an identifier. Port of Python's
+ * `_trivial_digit_run` — see there for the full rationale; keep the two in step.
+ *
+ * Short version: for the unanchored numeric categories (TRIVIAL_RUN_GATED) a single
+ * check digit accepts ~1 in 11 arbitrary runs, so `0123456789` genuinely passes the NHS
+ * mod-11 and `123456789` genuinely passes the PT NIF check. Harmless in prose, not in
+ * pasted source code, where digit tables are everywhere. Rejects exactly three families
+ * — repdigits, ascending-by-1 and descending-by-1 (both mod 10) — and nothing else.
+ */
+function trivialDigitRun(d: string): boolean {
+  if (d.length < 2) return false;
+  if (new Set(d).size === 1) return true;
+  const deltas = new Set<number>();
+  for (let i = 1; i < d.length; i++) deltas.add((Number(d[i]) - Number(d[i - 1]) + 10) % 10);
+  return deltas.size === 1 && (deltas.has(1) || deltas.has(9));
+}
 const normRecord = (s: string): string => s.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 
 // --- checksums (the false-positive filter; strip separators first) ---
@@ -325,7 +343,13 @@ function inAadhaarOk(value: string): boolean {
 const AHV_RE = /\b756[.  ]?\d{4}[.  ]?\d{4}[.  ]?\d{2}\b/g;
 const IBAN_RE = /\b[A-Z]{2}\d{2}(?:[0-9A-Z]{11,30}|(?: [0-9A-Z]{4}){2,7}(?: [0-9A-Z]{1,3})?)\b/gi;
 const PAN_RE = /\b\d(?:[ -]?\d){12,18}\b/g;
-const PHONE_CH_RE = /(?<!\d)(?:\+41|0041|0)(?:[ .]?\d){9}(?!\d)/g;
+// The NDC alternation IS the false-positive filter — ch_phone has no checksum to close
+// it. See the Python source (`_PHONE_CH_RE`) for the full rationale; keep the two byte-
+// identical. Short version: "0 plus any 9 digits" matched ordinary digit runs in pasted
+// source code (`const digits = "0123456789"`), so the shape is gated on the NDCs OFCOM
+// actually allocates.
+const PHONE_CH_RE =
+  /(?<!\d)(?:\+41|0041|0)[ .]?(?:2[12467]|3[1-4]|4[134]|5[12568]|6[12]|7[14-9]|8[01467]|9[01])(?:[ .]?\d){7}(?!\d)/g;
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
 const DOB_RE = /\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}\b/g;
 const ES_DNI_RE = /\b[XYZ]?\d{7,8}[A-Z]\b/gi;
@@ -467,6 +491,22 @@ const DETECTORS: Detector[] = [
   ["ca_sin", CA_SIN_RE, caSinOk],
 ];
 
+// Categories whose entire shape is "N bare digits", so a single check digit is the only
+// thing between them and any digit run in the text. These — and only these — also reject
+// the placeholder progressions in `trivialDigitRun`. Mirrors Python's `_TRIVIAL_RUN_GATED`;
+// the not-gated rationale (prefix/date/alpha-anchored categories, and credit_card's test
+// PANs) lives there.
+const TRIVIAL_RUN_GATED: ReadonlySet<PiiCategory> = new Set<PiiCategory>([
+  "uk_nhs",
+  "nl_bsn",
+  "pl_pesel",
+  "za_id",
+  "ca_sin",
+  "pt_nif",
+  "in_aadhaar",
+  "de_steuerid",
+]);
+
 interface RawHit {
   category: PiiCategory;
   raw: string;
@@ -483,6 +523,7 @@ function detectRaw(text: string, includeDob = false): RawHit[] {
     for (const m of text.matchAll(pattern)) {
       const raw = m[0];
       if (validator && !validator(raw)) continue;
+      if (TRIVIAL_RUN_GATED.has(category) && trivialDigitRun(onlyDigits(raw))) continue;
       const start = m.index ?? 0;
       const end = start + raw.length;
       if (spans.some(([s, e]) => start < e && s < end)) continue; // overlaps higher-priority hit
