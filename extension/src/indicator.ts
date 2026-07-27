@@ -15,7 +15,7 @@ import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
 import { showBanner, type BannerAction } from "./banner.ts";
 import { buildReportLinks } from "./report.ts";
-import { CANARY_GRACE_MS, isSendIntent, missedSend, readSeen } from "./canary.ts";
+import { CANARY_POLL_MS, canaryVerdict, isSendIntent, readSeen } from "./canary.ts";
 import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { Z_PILL } from "./layers.ts";
 
@@ -39,6 +39,7 @@ let rafPending = false;
 // --- send canary state (see canary.ts) ---
 let lastComposerText = ""; // to spot the non-empty -> empty drain that means "sent"
 let lastIntentAt = 0; // Enter, or a press on a button beside the composer
+let canaryPoll: ReturnType<typeof setInterval> | undefined; // active post-drain inspect watch
 
 // --- pill -----------------------------------------------------------------
 function ensurePill(): HTMLElement {
@@ -224,10 +225,19 @@ function armCanary(): void {
   const drainedAt = Date.now();
   if (!isSendIntent(lastIntentAt, drainedAt)) return; // a manual clear, not a send
   const seenAtDrain = readSeen(document.documentElement.dataset.ssSeen);
-  setTimeout(() => {
-    if (!missedSend(seenAtDrain, readSeen(document.documentElement.dataset.ssSeen))) return;
-    warnMissedSend();
-  }, CANARY_GRACE_MS);
+  // POLL, don't check once. The guard may inspect a send seconds after the composer drains —
+  // Gemini's Thinking model issues its StreamGenerate request only after preparatory RPCs — and
+  // a single fixed-deadline check false-fired on a send that WAS redacted, just later (see
+  // CANARY_GRACE_MS). Cancel the instant the counter advances; warn only if it never does within
+  // the window. A fresh send supersedes any pending poll.
+  clearInterval(canaryPoll);
+  canaryPoll = setInterval(() => {
+    const seenNow = readSeen(document.documentElement.dataset.ssSeen);
+    const verdict = canaryVerdict(seenAtDrain, seenNow, Date.now() - drainedAt);
+    if (verdict === "waiting") return;
+    clearInterval(canaryPoll);
+    if (verdict === "missed") warnMissedSend();
+  }, CANARY_POLL_MS);
 }
 
 function warnMissedSend(): void {
@@ -314,6 +324,9 @@ function bindComposer(found: HTMLElement | null = findComposer()): void {
 async function loadSettings(): Promise<void> {
   const s = await getSettings();
   enabled = s.enabled;
+  // If the guard was just switched off, drop any in-flight canary watch — a "this send wasn't
+  // inspected" banner arriving seconds after the user disabled the guard would be pure noise.
+  if (!enabled) clearInterval(canaryPoll);
   smokescreen = s.smokescreen;
   allowed = new Set(s.categories); // getSettings() defaults to all categories when unset
   customMatcher = compileRules(s.custom); // undefined when there are no (valid) rules
