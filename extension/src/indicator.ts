@@ -10,6 +10,7 @@
 // Enter may not tick the pill — the guard still redacts (the XHR rewrite is synchronous).
 import { getSettings, KEYS } from "./storage.ts";
 import { decodePending, PENDING_ATTR } from "./pending.ts";
+import { notifyWorker } from "./runtime.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
 import { showBanner, type BannerAction } from "./banner.ts";
@@ -263,7 +264,10 @@ function warnMissedSend(): void {
       "This site may have changed its API.",
     actions,
   });
-  chrome.runtime.sendMessage({ type: "ss-missed" }).catch(() => undefined);
+  // notifyWorker, not a bare sendMessage().catch(): a missed send very often coincides with an
+  // invalidated context (the extension was just updated), where sendMessage throws SYNCHRONOUSLY
+  // and .catch() can't see it. See runtime.ts.
+  notifyWorker({ type: "ss-missed" });
 }
 
 // --- composer binding (no leaked listeners) -------------------------------
