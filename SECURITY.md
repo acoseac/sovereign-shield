@@ -28,8 +28,10 @@ not be.
 
 Anything that breaks the guarantees the project actually makes:
 
-- **A prompt reaching a provider unredacted** when the guard was enabled and the identifier is one
-  of the supported, checksum-validated categories.
+- **A prompt reaching a provider unredacted** when the guard was enabled and the value is one of
+  the supported categories — *all* of them, not only the checksum-validated ones. Email, Swiss
+  phone, every secret and credential pattern, and an active custom rule all count. An API key
+  reaching a model is as much a failure as an AHV number is.
 - **Silent failure** — redaction stopping without the user being told. The extension warns when a
   send goes uninspected precisely because quiet breakage is worse than loud breakage; a path that
   evades that warning is a bug in its own right.
