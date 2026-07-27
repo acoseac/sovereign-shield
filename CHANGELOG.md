@@ -9,8 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the pro
 ## [0.4.0] — 2026-07-27
 
 The detection engine grew from the Swiss/finance core into a broad international set and gained a
-class of developer-secret detectors. The contract is unchanged throughout — shape regex plus a
-checksum — so the false-positive rate stays near zero.
+class of developer-secret detectors. The **identifiers** keep the original contract — shape regex
+plus a checksum, so the false-positive rate stays near zero — while the **secrets** are matched on
+high-signal vendor prefixes, a deliberate and bounded exception to the checksum rule
+([ADR 0003](docs/adr/0003-secrets-and-custom-blocklists.md)).
 
 ### Added
 
