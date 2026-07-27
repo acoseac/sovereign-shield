@@ -17,7 +17,10 @@
  *  on an invalidated context can itself throw, hence the try/catch. */
 export function contextValid(): boolean {
   try {
-    return Boolean(chrome.runtime?.id);
+    // `typeof` first so a missing `chrome` (a non-extension context, a bare-Node test) is a
+    // clean false rather than a thrown-then-caught ReferenceError — which is slow and trips
+    // "pause on caught exceptions" while debugging.
+    return typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
   } catch {
     return false;
   }
@@ -30,8 +33,12 @@ export function contextValid(): boolean {
  */
 export function notifyWorker(message: unknown): void {
   try {
-    if (!chrome.runtime?.id) return; // fast path: context already torn down
-    void chrome.runtime.sendMessage(message).catch(() => undefined);
+    if (typeof chrome === "undefined" || !chrome.runtime?.id) return; // context absent/torn down
+    // Guard the return: MV3 sendMessage returns a Promise, but a mock (or an odd runtime) may
+    // return undefined, and `.catch` on that would throw synchronously — the very failure mode
+    // we're here to prevent.
+    const p = chrome.runtime.sendMessage(message) as Promise<unknown> | undefined;
+    if (p && typeof p.catch === "function") p.catch(() => undefined);
   } catch {
     /* context invalidated (possibly between the id check and the call) — nothing to deliver to */
   }

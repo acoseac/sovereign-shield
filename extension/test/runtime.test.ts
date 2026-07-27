@@ -71,6 +71,21 @@ test("the happy path still sends", () => {
   assert.deepEqual(sent, [{ type: "ss-redaction", category: "email" }]);
 });
 
+test("a sendMessage that returns undefined instead of a Promise doesn't throw", () => {
+  // Some environments/mocks return undefined; `.catch` on that would throw synchronously —
+  // exactly the failure mode this module exists to prevent.
+  withChrome({ runtime: { id: "abc", sendMessage: () => undefined } }, () => {
+    assert.doesNotThrow(() => notifyWorker({ type: "ss-missed" }));
+  });
+});
+
+test("when chrome is entirely undefined, both are safe no-ops", () => {
+  withChrome(undefined, () => {
+    assert.equal(contextValid(), false);
+    assert.doesNotThrow(() => notifyWorker({ type: "ss-missed" }));
+  });
+});
+
 test("even reading chrome.runtime can throw — contextValid returns false, notifyWorker no-ops", () => {
   const hostile = {
     get runtime(): never {
