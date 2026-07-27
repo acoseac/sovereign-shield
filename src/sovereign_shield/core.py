@@ -15,7 +15,9 @@ strict and deterministic — bracketed tokens self-delimit (``[AHV_1]`` is not a
 substring of ``[AHV_11]``) — and it reports any placeholder a model mangled, so a
 caller never ships a broken ``[AHV_1`` to a user.
 
-Scope: **structured identifiers only** (AHV, IBAN, card, phone, email) — the same
+Scope: **structured identifiers only** — 20 of them (AHV, IBAN, card, phone, email
+and national IDs across the EU, UK, Americas and Asia), plus nine secret/credential
+patterns and an opt-in date-of-birth matcher. See the README table. The same
 deterministic core the browser demo runs. Person names and street addresses need
 an NER model; plug one via ``extra_detectors`` (see :class:`SpanDetector`). None
 ships here: a half-built local NER would forfeit the zero-dependency, deterministic

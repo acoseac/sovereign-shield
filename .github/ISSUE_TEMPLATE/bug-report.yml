@@ -1,0 +1,67 @@
+name: Bug report
+description: Something behaves incorrectly in the extension, the Python library, the proxy or the demo.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If it's a **security** issue — a prompt reaching a provider unredacted, a real value
+        surfacing somewhere it shouldn't — please don't file it here. See
+        [SECURITY.md](https://github.com/acoseac/sovereign-shield/blob/main/SECURITY.md) for the
+        private channels.
+
+        If the **guard stopped working on a chat site**, the other template collects the right
+        details.
+
+        ⚠️ **Never paste real personal data.** Every detector is checksum-based, so a synthetic
+        value reproduces the behaviour exactly. `756.1234.5678.97` is a valid AHV;
+        `hans.muster@bluewin.ch` is the example used throughout the README.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which part?
+      options:
+        - Chrome extension
+        - Python library (sovereign-shield-ch)
+        - OpenAI-compatible proxy (sovereign-shield-proxy)
+        - Web demo (shield.ars.md)
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Extension version, `pip show sovereign-shield-ch`, or the date you loaded the demo.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: >
+        A synthetic input that triggers it is worth more than any description. If it's a
+        **false positive** — the shield redacting something it shouldn't — the exact text that
+        trips it is the whole report.
+      placeholder: |
+        1. Enable ...
+        2. Type: My AHV is 756.1234.5678.97
+        3. Expected [AHV_1], got ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Browser + version, or OS + Python version.

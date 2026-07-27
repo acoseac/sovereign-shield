@@ -117,18 +117,48 @@ Deterministic *shape regex + checksum* — the checksum rejects look-alikes so t
 guard never trips on a random 13-digit string. Separators are stripped first, so
 `756.1234.5678.97` and `756 1234 5678 97` validate identically.
 
+**20 identifiers** — 18 checksum-validated, plus phone and email on shape — and an
+opt-in date-of-birth matcher:
+
 | Category | Identifier | Validation |
 |---|---|---|
 | `ch_ahv` | Swiss AHV / AVS number | EAN-13 check digit |
-| `iban` | IBAN (any country) | country length + ISO-7064 mod-97 |
+| `iban` | IBAN (any country) | 76-country length table + ISO-7064 mod-97 |
+| `credit_card` | Card PAN | Luhn |
 | `it_cf` | Italian Codice Fiscale | check character (mod 26) |
 | `es_dni` | Spanish DNI / NIE | check letter (mod 23) |
-| `fr_nir` | French NIR / social security | check key (mod 97) |
+| `fr_nir` | French NIR / social security | check key (mod 97), Corsica 2A/2B |
 | `nl_bsn` | Dutch BSN | 11-test |
-| `credit_card` | Card PAN | Luhn |
-| `ch_phone` | Swiss phone | shape only |
+| `de_steuerid` | German Steuer-ID | ISO 7064 MOD 11,10 |
+| `be_nrn` | Belgian Rijksregisternummer | birth date + mod-97 |
+| `pl_pesel` | Polish PESEL | embedded birth date + mod-10 |
+| `pt_nif` | Portuguese NIF | type digit + mod-11 |
+| `uk_nhs` | UK NHS number | weighted mod-11 |
+| `br_cpf` | Brazilian CPF | double mod-11 |
+| `br_cnpj` | Brazilian CNPJ | double mod-11 |
+| `za_id` | South African ID | embedded date + Luhn |
+| `cn_resident` | Chinese resident ID | date + ISO 7064 mod-11,2 |
+| `ca_sin` | Canadian SIN | Luhn |
+| `in_aadhaar` | Indian Aadhaar | Verhoeff |
+| `ch_phone` | Swiss phone | shape + OFCOM area-code whitelist |
 | `email` | Email | shape only |
-| `dob` | Date of birth | off by default (bare dates false-positive) |
+| `dob` | Date of birth | **off by default** (bare dates false-positive) |
+
+**9 secrets and credentials.** Matched on high-signal vendor prefixes rather than a
+checksum — see [ADR 0003](docs/adr/0003-secrets-and-custom-blocklists.md) for why that
+relaxation is safe here:
+
+| Category | Secret | Match |
+|---|---|---|
+| `private_key` | PEM private key | `-----BEGIN … PRIVATE KEY-----` block |
+| `jwt` | JSON Web Token | three segments, header decoded and required to carry `alg` |
+| `aws_key` | AWS access key | `AKIA…` / `ASIA…` |
+| `anthropic_key` | Anthropic API key | `sk-ant-…` |
+| `openai_key` | OpenAI API key | `sk-…`, incl. `proj`/`svcacct`/`admin` |
+| `github_token` | GitHub token | `ghp_`/`gho_`/`ghu_`/`ghs_`/`ghr_`, `github_pat_` |
+| `google_api_key` | Google API key | `AIza…` |
+| `slack_token` | Slack token | `xoxb-`/`xoxa-`/`xoxp-`/`xoxr-`/`xoxs-` |
+| `stripe_key` | Stripe secret key | `sk_live_`/`rk_live_` only — never `_test_` |
 
 **Scope: structured identifiers only.** Person names and street addresses are
 *not* detected — they need an NER model, which would forfeit the deterministic,

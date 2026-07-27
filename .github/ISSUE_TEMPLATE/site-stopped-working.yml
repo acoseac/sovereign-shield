@@ -1,0 +1,78 @@
+name: A site stopped working
+description: The guard stopped redacting on ChatGPT, Gemini or Claude — or warned you a message went out uninspected.
+title: "[site] "
+labels: ["transport", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for telling us. **This is the most useful report you can file.**
+
+        The extension hooks one specific request per site, and providers reshuffle their internal
+        APIs without notice. There is no telemetry — by design, nothing about your usage ever
+        leaves your machine — so a report like this one is the *only* way we find out that a
+        transport moved. Until someone says so, the guard looks fine from here and is quietly
+        doing nothing on your machine.
+
+        ⚠️ **Please don't paste a real prompt.** We never need one. Everything below is
+        metadata, and a synthetic identifier reproduces any detector issue exactly — the
+        detectors are checksum-based, so a generated value behaves identically to a real one.
+
+  - type: dropdown
+    id: site
+    attributes:
+      label: Which site?
+      options:
+        - Gemini (gemini.google.com)
+        - ChatGPT (chatgpt.com)
+        - Claude (claude.ai)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: What did you see?
+      options:
+        - A banner said a message went out uninspected
+        - The pre-send count stopped appearing above the chat box
+        - The count appears, but identifiers reach the model anyway
+        - Placeholders are not restored in the reply
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: Chrome → Extensions → Sovereign Shield. Or the toolbar popup.
+      placeholder: "0.6.0"
+    validations:
+      required: true
+
+  - type: input
+    id: build
+    attributes:
+      label: Build stamp (optional, very helpful)
+      description: >
+        On the chat tab, open DevTools → Console and run
+        `document.documentElement.dataset.ssBuild`. If it returns `undefined`, the content script
+        never attached — worth saying so, that's a different fault.
+      placeholder: "14-nested-json"
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console warnings (optional)
+      description: >
+        Any line starting with `[sovereign-shield]` in the DevTools console. These name the
+        failure directly. **Check for personal data before pasting** — the warnings themselves
+        carry none, but nearby lines from the site might.
+      render: text
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Whether it worked before, whether a reload helped, roughly when it started.
