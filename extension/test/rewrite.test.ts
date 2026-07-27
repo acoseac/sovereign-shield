@@ -83,6 +83,68 @@ test("malformed f.req JSON fails open to the original body", () => {
   assert.equal(out, body);
 });
 
+// --- fail open, but LOUDLY ---------------------------------------------------
+// `changed:false` used to mean two different things — "clean prompt" and "could not read
+// this body" — and the caller could not tell them apart. So it bumped the inspected counter,
+// left the badge green and never fired failopen(): an unredacted prompt went out with all
+// three warning channels silent, which is exactly the silent breakage the canary exists to
+// catch. `inspected` is the discriminator. These pin both directions, because a false alarm
+// on every clean send would be just as bad as the silence was.
+
+test("freq: a clean prompt still counts as inspected", () => {
+  const { changed, inspected } = rewriteBody("freq", geminiBody("nothing sensitive here"), new Session(), undefined);
+  assert.equal(changed, false);
+  assert.equal(inspected, true, "we read the body and found nothing — not a failure");
+});
+
+test("freq: redaction counts as inspected", () => {
+  const { changed, inspected } = rewriteBody("freq", geminiBody(`AHV ${AHV}`), new Session(), undefined);
+  assert.equal(changed, true);
+  assert.equal(inspected, true);
+});
+
+test("freq: malformed f.req reports NOT inspected", () => {
+  const body = "f.req=not-json&at=tok";
+  const { body: out, changed, inspected } = rewriteBody("freq", body, new Session(), undefined);
+  assert.equal(inspected, false, "the prompt was in there and we never read it");
+  assert.equal(changed, false);
+  assert.equal(out, body, "still fails open — the send must not be blocked");
+});
+
+test("freq: a body with no f.req at all reports NOT inspected (the endpoint moved)", () => {
+  // The realistic regression: Gemini keeps the StreamGenerate URL but renames the parameter.
+  const body = "req=%5Bnull%2C%22whatever%22%5D&at=tok";
+  const { body: out, changed, inspected } = rewriteBody("freq", body, new Session(), undefined);
+  assert.equal(inspected, false);
+  assert.equal(changed, false);
+  assert.equal(out, body);
+});
+
+test("json: a clean body still counts as inspected", () => {
+  const body = JSON.stringify({ messages: [{ text: "hello" }] });
+  const { changed, inspected } = rewriteBody("json", body, new Session(), undefined);
+  assert.equal(changed, false);
+  assert.equal(inspected, true);
+});
+
+test("json: unparseable body reports NOT inspected", () => {
+  const body = '{"messages":[{"text":"my AHV is 756.1234.5678.97"}]'; // truncated — no closing brace
+  const { body: out, changed, inspected } = rewriteBody("json", body, new Session(), undefined);
+  assert.equal(inspected, false);
+  assert.equal(changed, false);
+  assert.equal(out, body);
+});
+
+test("an empty body is 'nothing to inspect', not a failure", () => {
+  // The XHR hook forwards any string, including "". Warning on those would cry wolf until
+  // the warning meant nothing.
+  for (const kind of ["freq", "json"] as const) {
+    const { changed, inspected } = rewriteBody(kind, "", new Session(), undefined);
+    assert.equal(changed, false, kind);
+    assert.equal(inspected, true, kind);
+  }
+});
+
 // --- nested JSON: escapes must not be readable as text ----------------------
 // Gemini's f.req is JSON inside JSON, so the inner document reached the detectors
 // ESCAPE-ENCODED — `\t` as two literal characters. In "Name\tango@corp.example" the
