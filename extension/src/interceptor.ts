@@ -11,6 +11,7 @@
 // real fetch/XHR — you cannot inject a <script> from an isolated world.
 import { Session } from "./tokenize";
 import { rewriteBody, type BodyKind } from "./rewrite";
+import { generateKind, transportsFor } from "./sites";
 import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
 import { installClipboardRehydrator } from "./clipboard";
 import { installInspector } from "./inspector";
@@ -53,25 +54,6 @@ function failopen(): void {
   } catch {
     /* best-effort */
   }
-}
-
-// Generate-endpoint fingerprints, one per supported chat UI — all confirmed
-// against live traffic (see file header). Providers reshuffle their internal API
-// paths from time to time; when that happens, update the matcher HERE and nothing
-// in the fetch/XHR wrappers needs to change.
-//   "freq" = url-encoded `f.req` (Gemini)   "json" = raw JSON (ChatGPT, Claude)
-const GENERATE_ENDPOINTS: ReadonlyArray<{
-  site: string;
-  kind: BodyKind;
-  match: (url: string) => boolean;
-}> = [
-  { site: "Gemini", kind: "freq", match: (u) => u.includes("StreamGenerate") },
-  { site: "ChatGPT", kind: "json", match: (u) => /\/backend-api\/(?:f\/)?conversation(?:$|\?)/.test(u) },
-  { site: "Claude", kind: "json", match: (u) => u.includes("/chat_conversations/") && u.includes("/completion") },
-];
-
-function generateKind(url: string): BodyKind | null {
-  return GENERATE_ENDPOINTS.find((e) => e.match(url))?.kind ?? null;
 }
 
 // Which categories the user has left enabled (bridge writes data-ss-cats from
@@ -180,26 +162,17 @@ function installDomRehydrator(): void {
 }
 
 // ---- transport hooks ------------------------------------------------------
-// Each chat UI sends its prompt over exactly one transport: Gemini over XHR
-// (StreamGenerate), ChatGPT/Claude over fetch. We install ONLY the transport a
-// site actually uses, so our content script never becomes the initiator of the
-// page's own unrelated cross-origin beacons. That matters because, e.g., Gemini's
-// GTM fires a request to ad.doubleclick.net that Gemini's *own* page CSP blocks;
-// if our fetch wrapper forwarded it, Chrome would file that CSP error against
-// this extension even though we never read or touch the request. Unknown hosts
-// (should the manifest gain one) get BOTH hooks, so the guard never silently
-// no-ops on a site we forgot to classify.
+// Which wrapper to install is a per-site fact, and it lives in sites.ts with the endpoint
+// fingerprints it has to stay consistent with — see that file for why only one transport is
+// hooked, and why an unclassified host gets both.
 const HOST = location.hostname;
-const hostIn = (domains: string[]): boolean =>
-  domains.some((d) => HOST === d || HOST.endsWith("." + d));
-const XHR_ONLY = hostIn(["gemini.google.com"]); // generate rides on XHR, never fetch
-const FETCH_ONLY = hostIn(["chatgpt.com", "chat.openai.com", "claude.ai"]); // fetch, never XHR
+const TRANSPORTS = transportsFor(HOST);
 
 // ---- XHR hook (Gemini) ----------------------------------------------------
 // URL is stashed in a closure-private WeakMap, not on the XHR instance — the
 // MAIN world is shared with the page, so an instance property would be readable
 // (and spoofable) by page scripts.
-if (!FETCH_ONLY) {
+if (TRANSPORTS.xhr) {
   const xhrUrls = new WeakMap<XMLHttpRequest, string>();
   const proto = XMLHttpRequest.prototype;
   const origOpen = proto.open;
@@ -243,7 +216,7 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 const origFetch = window.fetch;
-if (!XHR_ONLY) {
+if (TRANSPORTS.fetch) {
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     try {
       const kind = generateKind(requestUrl(input));
@@ -354,5 +327,5 @@ installInspector(session, {
 installDomRehydrator();
 installClipboardRehydrator(session);
 console.debug(
-  `[sovereign-shield] guard installed on ${HOST} (${XHR_ONLY ? "xhr" : FETCH_ONLY ? "fetch" : "xhr+fetch"}) build ${BUILD}.`,
+  `[sovereign-shield] guard installed on ${HOST} (${[TRANSPORTS.xhr && "xhr", TRANSPORTS.fetch && "fetch"].filter(Boolean).join("+")}) build ${BUILD}.`,
 );

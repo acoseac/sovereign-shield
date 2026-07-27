@@ -1,15 +1,15 @@
 // Popup: a guard on/off toggle plus a "kept local" count for the current tab.
 import { KEYS } from "./storage";
+import { isSupportedHost } from "./sites";
 
 const KEY = KEYS.enabled;
-const SUPPORTED = ["gemini.google.com", "chatgpt.com", "chat.openai.com", "claude.ai"];
-// Match on the parsed hostname, not a substring: otherwise a URL like
-// "evil.example/?ref=chatgpt.com" would read as a supported site.
+// Parse the URL and match on the hostname — never a substring test, or
+// "evil.example/?ref=chatgpt.com" would read as a supported site. The list itself lives in
+// sites.ts so it cannot drift from the transport hooks.
 const onSupported = (urlStr?: string): boolean => {
   if (!urlStr) return false;
   try {
-    const { hostname } = new URL(urlStr);
-    return SUPPORTED.some((h) => hostname === h || hostname.endsWith("." + h));
+    return isSupportedHost(new URL(urlStr).hostname);
   } catch {
     return false;
   }
