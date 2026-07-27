@@ -48,7 +48,15 @@ first — it is the best map of the live transports.
   send) and the **send canary**. Purely additive: `pointer-events:none`, never mutates the
   composer, **cannot block a send** (rule this out first when a send breaks). The one
   interactive child is the pill's `Inspect` button, which re-enables pointer events on
-  itself only and cancels its own `mousedown` so it can't steal composer focus.
+  itself only and cancels its own `mousedown` so it can't steal composer focus. It
+  **renders** the count but no longer computes it — see `pending.ts`.
+- `pending.ts` — MAIN world. Computes what the guard would keep local for the composer's
+  current text and publishes `{count, categories, surrogatable}` on `data-ss-pending`. It runs
+  in MAIN because `Session.excused` (the inspector's "stop redacting this") holds **real
+  values**, and sending those to the isolated world to filter there is precisely what ADR 0005
+  rules out. Only counts and labels cross. The pill falls back to computing locally if the
+  attribute is missing or malformed, so a page scribbling on it degrades to the old behaviour
+  rather than lying.
 
 **Transport is per-site** — only the one transport each site actually uses is hooked
 (so we never initiate a site's unrelated cross-origin beacons):

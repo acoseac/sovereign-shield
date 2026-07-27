@@ -30,8 +30,14 @@ export function summarize(
   text: string,
   allowed: ReadonlySet<string> | undefined,
   customMatcher?: CustomMatcher,
+  excused?: ReadonlySet<string>,
 ): Summary {
-  const builtin = detectPii(text).filter((h) => !allowed || allowed.has(h.category));
+  // Excused values are dropped BEFORE labels are derived, exactly as Session.detect does it.
+  // Deriving labels from the unfiltered hits would leave a category named in the pill after its
+  // only occurrence was excused.
+  const builtin = detectPii(text)
+    .filter((h) => !allowed || allowed.has(h.category))
+    .filter((h) => !excused?.has(text.slice(h.start, h.end)));
   const values = new Set(builtin.map((h) => text.slice(h.start, h.end)));
   const labels = new Set(builtin.map((h) => CATEGORY_LABEL[h.category] ?? h.category));
   // Dedup by value, same as `values`, so a repeated address is counted once in both.
@@ -39,9 +45,12 @@ export function summarize(
     builtin.filter((h) => surrogateEligible(h.category)).map((h) => text.slice(h.start, h.end)),
   );
   if (customMatcher && (!allowed || allowed.has("custom"))) {
+    // Overlap resolution still runs against the UNEXCUSED spans, matching Session.detect: an
+    // excused value must not go on blocking a custom rule that overlaps it.
     const spans = builtin.map((h) => [h.start, h.end] as [number, number]);
     for (const c of acceptCustomHits(text, spans, customMatcher)) {
       const value = text.slice(c.start, c.end);
+      if (excused?.has(value)) continue;
       values.add(value);
       if (surrogateEligible("custom")) surrogatable.add(value);
       // The rule's own label (e.g. "Project Apollo") for clarity; never the matched value.

@@ -15,6 +15,7 @@ import { generateKind, transportsFor } from "./sites";
 import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
 import { installClipboardRehydrator } from "./clipboard";
 import { installInspector } from "./inspector";
+import { installPendingSummary } from "./pending";
 
 const session = new Session();
 
@@ -322,6 +323,14 @@ installInspector(session, {
   allowedCategories,
   customMatcher: currentCustomMatcher,
   smokescreen: smokescreenEnabled,
+});
+
+// Publish what the guard would keep local for the composer's current text, for the isolated
+// world's pill. Runs HERE because the excused-values set is real PII and must not cross — see
+// pending.ts.
+installPendingSummary(session, {
+  allowedCategories,
+  customMatcher: currentCustomMatcher,
 });
 
 installDomRehydrator();

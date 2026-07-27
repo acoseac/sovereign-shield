@@ -85,3 +85,52 @@ test("count matches the tokens the guard would actually mint (Session.count)", (
   session.tokenize(text);
   assert.equal(summarize(text, undefined).count, session.count);
 });
+
+// --- the pill must agree with the guard after "stop redacting this" ---------
+// Session.detect drops values the user excused via the inspector; summarize() had no way to
+// know, so the pill went on counting a value the guard would deliberately let through. The
+// values live in the MAIN world and cannot cross (ADR 0005), which is why summarize() now takes
+// the set and is called there — see pending.ts.
+
+test("an excused value is not counted", () => {
+  const text = `AHV ${AHV} and email ${EMAIL}`;
+  assert.equal(summarize(text, undefined).count, 2);
+  const s = summarize(text, undefined, undefined, new Set([EMAIL]));
+  assert.equal(s.count, 1);
+  assert.deepEqual(s.categories, ["Swiss AHV / AVS"]);
+});
+
+test("excusing the only value of a category drops its label too", () => {
+  // Labels are derived AFTER the excused filter for exactly this reason: deriving them from the
+  // unfiltered hits would keep naming a category with nothing left in it.
+  const s = summarize(`email ${EMAIL}`, undefined, undefined, new Set([EMAIL]));
+  assert.equal(s.count, 0);
+  assert.deepEqual(s.categories, []);
+});
+
+test("excusing one occurrence excuses every identical occurrence", () => {
+  // The guard matches the allowlist by value, not by span, so the pill must too.
+  const s = summarize(`${EMAIL} and again ${EMAIL}`, undefined, undefined, new Set([EMAIL]));
+  assert.equal(s.count, 0);
+});
+
+test("an excused value does not reduce the count of a DIFFERENT value", () => {
+  const other = "other.person@corp.example";
+  const s = summarize(`${EMAIL} and ${other}`, undefined, undefined, new Set([EMAIL]));
+  assert.equal(s.count, 1);
+});
+
+test("summarize with the excused set matches what the guard actually mints", () => {
+  // The property that matters: pill number == tokens the guard would create.
+  const text = `AHV ${AHV} and email ${EMAIL}`;
+  const session = new Session();
+  session.allow(EMAIL); // as the inspector's "Stop redacting" does
+  session.tokenize(text);
+  assert.equal(summarize(text, undefined, undefined, session.excused).count, session.count);
+  assert.equal(session.count, 1);
+});
+
+test("an empty excused set behaves exactly as before", () => {
+  const text = `AHV ${AHV} and email ${EMAIL}`;
+  assert.deepEqual(summarize(text, undefined, undefined, new Set()), summarize(text, undefined));
+});

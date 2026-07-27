@@ -437,6 +437,19 @@ export class Session {
     this.surrogatePattern = null;
   }
 
+  /**
+   * Values the user excused via the inspector, so the pre-send pill can agree with what the
+   * guard will actually do.
+   *
+   * **Real values — MAIN world only, like `entries()`.** This must never be published to the
+   * isolated world or anywhere else (ADR 0005): the pill is computed in the MAIN world *because*
+   * of this set, and only the resulting counts cross. Read-only by contract; `allow()` is the
+   * one way in.
+   */
+  get excused(): ReadonlySet<string> {
+    return this.allowlist;
+  }
+
   /** Every live mapping, oldest first. Real values — MAIN world only. */
   entries(): SessionEntry[] {
     const isSurrogate = new Set(this.surrogates);
