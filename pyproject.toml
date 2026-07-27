@@ -46,7 +46,10 @@ proxy = [
 ]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.6",
+    # Upper bound deliberate: CI installs the dev extra fresh on every run, so an unpinned
+    # formatter can turn `main` red overnight with no commit behind it — which is exactly how
+    # 0.16.0 landed. Raise this on purpose, after checking `ruff format --diff`.
+    "ruff>=0.6,<0.17",
     "mypy>=1.10",
     "fastapi>=0.110",
     "httpx>=0.27",
@@ -88,6 +91,12 @@ exclude = [
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# Ruff 0.16 began formatting Python fenced in Markdown, which silently brought README.md and
+# every doc under the formatter. Keep prose out of it: the snippets there are illustrative, and
+# the formatter's reflow works against them — it drops the aligned trailing `#` comments that
+# make the quickstart readable and splits a wrapped string across five lines. Docs stay
+# hand-authored; the formatter owns `src/` and `tests/`.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = [
