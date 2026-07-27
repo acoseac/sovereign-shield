@@ -34,9 +34,9 @@ async function refresh(): Promise<void> {
     keptEl.textContent = "—";
     return;
   }
-  // The toggle is GLOBAL (one ssEnabled key), while the count below it is per-tab. Say so:
-  // the old copy read "Paused on this tab.", so someone pausing to paste one thing into one
-  // chat would drop the guard on every other tab without being told.
+  // The toggle is global (one ssEnabled key); the count below it is per-tab. The status line
+  // has to distinguish them — copy scoped to "this tab" would let someone pause for a single
+  // chat and unknowingly drop the guard everywhere else.
   statusEl.textContent = toggle.checked
     ? "Active here and on every supported site."
     : "Paused everywhere — on your other tabs too.";

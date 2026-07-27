@@ -72,8 +72,9 @@
   <body>
     <h1>🛡️ Sovereign Shield</h1>
     <div class="row">
-      <!-- "this tab" was a lie: the checkbox writes the single global ssEnabled key, so
-           switching it off here stops the guard on every tab and every supported site. -->
+      <!-- Global, not per-tab: this writes the single ssEnabled key, so switching it off
+           here stops the guard on every tab and every supported site. The label must not
+           imply otherwise — there is no per-tab or per-origin scope to promise. -->
       <label for="toggle">Guard every site</label>
       <input type="checkbox" id="toggle" />
     </div>
