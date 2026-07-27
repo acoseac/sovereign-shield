@@ -1,0 +1,13 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/acoseac/sovereign-shield/security/advisories/new
+    about: >
+      Privately, please — not a public issue. Anything where a prompt reached a provider
+      unredacted, or a real value surfaced somewhere it shouldn't. See SECURITY.md.
+  - name: Ask a question / suggest a detector
+    url: https://github.com/acoseac/sovereign-shield/discussions
+    about: >
+      Not sure it's a bug, or want a new identifier type covered? Start here. Include the
+      country and the checksum rule if you know it — detection is deterministic, so a category
+      needs a verifiable check digit to qualify.

@@ -140,8 +140,22 @@ npm run package     # → sovereign-shield-<version>.zip for the store
   triggers nothing; that's what we want.
 - The Chrome Web Store requires each upload's `version` to be **strictly greater** than
   what's already in the system — you cannot resubmit or replace the same version number.
-  Item id `fbdenbfhigickkdcokpchmklopkfkkbf`; listing copy is `extension/STORE_LISTING.md`
-  (keep in sync on user-facing changes).
+  Item id `fbdenbfhigickkdcokpchmklopkfkkbf`; listing copy is `extension/STORE_LISTING.md`.
+- **A user-facing change is not done until every surface that states a version or a feature
+  set says the same thing.** This rule used to name only `STORE_LISTING.md`, and the other
+  four drifted three releases behind — 0.6.0 shipped while the site and blog still advertised
+  0.3.2 and none of the 0.4–0.6 features. The full list:
+
+  | Surface | What goes stale |
+  |---|---|
+  | `extension/STORE_LISTING.md` | description, screenshots, permission justifications |
+  | `web/app/extension/page.tsx` | version string + feature copy + meta description |
+  | `README.md` | the detector tables under *What it detects* |
+  | ars.md blog — `src/pages/sovereign-shield.astro` | the extension card's version + blurb |
+  | ars.md blog — post frontmatter | `seoTitle`/`description` outlive the post's narrative |
+
+  The blog lives in a **separate repo** (`github.com/acoseac/blog`, Astro) with its own
+  `CLAUDE.md` — easy to forget precisely because it is not in this working tree.
 
 ## Python proxy & web demo (quick reference)
 

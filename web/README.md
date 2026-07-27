@@ -26,7 +26,7 @@ recorded runs on the **sanitized** prompts.
 cd web
 npm install
 npm run dev            # http://localhost:3000
-npm run parity         # verify the TS shield == the Python shield (21 vectors)
+npm run parity         # verify the TS shield == the Python shield (84 vectors)
 ```
 
 ## Record the corpus (real model runs on sanitized prompts)

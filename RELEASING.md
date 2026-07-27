@@ -5,9 +5,11 @@ token or secret is stored in the repo. The [`Release`](.github/workflows/release
 workflow builds the sdist + wheel, runs `twine check --strict`, and uploads
 whenever a **GitHub Release** is published.
 
-## One-time setup (before the first release)
+## One-time setup — already done
 
-The PyPI project does not exist yet, so register a **pending publisher** at
+`sovereign-shield-ch` has published since v0.1.0, so Trusted Publishing is configured and
+there is nothing to do here for a normal release. Kept for reference, and in case the
+publisher ever has to be re-registered: it was set up as a **pending publisher** at
 <https://pypi.org/manage/account/publishing/> with these exact values:
 
 | Field | Value |
