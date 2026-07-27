@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Nav({
   current,
 }: {
-  current?: "home" | "how" | "bench" | "scan" | "ext";
+  current?: "home" | "how" | "bench" | "scan" | "ext" | "gov";
 }) {
   return (
     <nav className="nav">
@@ -21,6 +21,9 @@ export default function Nav({
       </Link>
       <Link className={current === "bench" ? "active" : ""} href="/benchmark">
         Benchmark
+      </Link>
+      <Link className={current === "gov" ? "active" : ""} href="/governance">
+        Governance
       </Link>
       <a className="nav-home" href="https://www.ars.md/">
         ← ars.md

@@ -192,6 +192,14 @@ cd web && npm install && npm run parity       # TS shield reproduces them exactl
 
 The `web/` directory is the live demo (Next.js). See [web/README.md](web/README.md).
 
+## Working out AI data protection for a team?
+
+I help Swiss and EU organisations map how personal data actually flows into AI tools and put the
+right controls around it — a hands-on **technical** assessment of data flows, redaction boundaries
+and residual exposure. It supports the DPIA your DPO and legal counsel own; it is not a substitute
+for their determination or legal advice. → [arsenie@odysseus.fi](mailto:arsenie@odysseus.fi) ·
+[shield.ars.md/governance](https://shield.ars.md/governance)
+
 ## Credits & license
 
 Extracted from the [K.E.V.I.N.](https://github.com/acoseac/kevin) adversarial-testing
