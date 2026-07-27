@@ -33,7 +33,13 @@ export interface ReportLinks {
   email: string;
 }
 
-/** Plain-text body for the mail fallback — the same four facts, one per line. */
+/**
+ * Plain-text body for the mail fallback — the same four facts, one per line.
+ *
+ * CRLF, not LF: RFC 6068 specifies `%0D%0A` for line breaks in a `mailto` body, and clients that
+ * take it literally (Outlook among them) run a bare `%0A` body onto a single line. A report that
+ * arrives as one unreadable paragraph is one nobody acts on.
+ */
 function emailBody(ctx: ReportContext): string {
   return [
     "Sovereign Shield didn't inspect a message I sent.",
@@ -45,7 +51,7 @@ function emailBody(ctx: ReportContext): string {
     "",
     "What I was doing:",
     "",
-  ].join("\n");
+  ].join("\r\n");
 }
 
 /**

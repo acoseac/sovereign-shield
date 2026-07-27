@@ -84,6 +84,15 @@ test("the mail body encodes spaces as %20, not +", () => {
   assert.ok(decodeURIComponent(body).includes("Site:    gemini.google.com"));
 });
 
+test("the mail body breaks lines with CRLF, per RFC 6068", () => {
+  // %0A alone is rendered as a single run-on paragraph by some clients (Outlook), which turns a
+  // structured report into something nobody acts on.
+  const { email } = buildReportLinks(CTX);
+  const body = email.slice(email.indexOf("body="));
+  assert.ok(body.includes("%0D%0A"), "expected CRLF-encoded breaks");
+  assert.ok(!/%0A(?<!%0D%0A)/.test(body.replace(/%0D%0A/g, "")), "no bare LF should remain");
+});
+
 // --- robustness -------------------------------------------------------------
 
 test("a missing build stamp degrades rather than breaking the link", () => {
