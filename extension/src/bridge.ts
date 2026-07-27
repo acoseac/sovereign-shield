@@ -8,18 +8,12 @@
 import { ALL_CATEGORY_KEYS } from "./categories";
 import { getSettings, KEYS } from "./storage";
 import { showBanner } from "./banner";
+import { contextValid, notifyWorker } from "./runtime";
 
 // --- stale-tab detection ---------------------------------------------------
 // Reloading an unpacked extension does NOT reload the content scripts already
 // running in open tabs — they keep executing old code against a dead chrome.*
-// context. Detect that and nudge the user to reload this tab.
-function contextValid(): boolean {
-  try {
-    return Boolean(chrome.runtime?.id);
-  } catch {
-    return false;
-  }
-}
+// context (see runtime.ts). Detect that and nudge the user to reload this tab.
 
 function showStaleBanner(): void {
   showBanner({
@@ -66,7 +60,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 // Fresh page load => clear this tab's badge.
-chrome.runtime.sendMessage({ type: "ss-reset" }).catch(() => undefined);
+notifyWorker({ type: "ss-reset" });
 
 // The guard (MAIN world) posts { source: "ss-guard", category } per new redaction,
 // or { source: "ss-guard", kind: "failopen" } when a parse error let a request pass.
@@ -79,12 +73,12 @@ window.addEventListener("message", (ev) => {
     return;
   }
   if (d.kind === "failopen") {
-    chrome.runtime.sendMessage({ type: "ss-failopen" }).catch(() => undefined);
+    notifyWorker({ type: "ss-failopen" });
   } else if (typeof d.category === "string" && ALL_CATEGORY_KEYS.includes(d.category)) {
     // Only forward known categories: the MAIN world is shared with the page, so any
     // script there can post a spoofed { source: "ss-guard", category }. Rejecting
     // unknown values keeps arbitrary/oversized strings out of the log and badge path.
-    chrome.runtime.sendMessage({ type: "ss-redaction", category: d.category }).catch(() => undefined);
+    notifyWorker({ type: "ss-redaction", category: d.category });
   }
 });
 

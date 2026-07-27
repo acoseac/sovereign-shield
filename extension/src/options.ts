@@ -3,6 +3,7 @@
 import { CATEGORIES, type Category, CATEGORY_LABEL } from "./categories";
 import { KEYS, LOG_CAP, getSettings, readLog } from "./storage";
 import { lintRegex, MAX_LABEL, MAX_PATTERN, MAX_RULES, type CustomRule } from "./custom";
+import { notifyWorker } from "./runtime";
 
 const byId = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -245,7 +246,9 @@ async function renderLog(): Promise<void> {
 byId("clear").addEventListener("click", () => {
   // Route through the background (the single log writer) so a clear can't race a
   // buffered batch flush; the storage.onChanged listener re-renders on success.
-  chrome.runtime.sendMessage({ type: "ss-clear" }).catch(() => undefined);
+  // notifyWorker guards the invalidated-context throw — narrow here (this is the extension's
+  // own page), but the failure mode is identical if a click races an extension update.
+  notifyWorker({ type: "ss-clear" });
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
