@@ -12,7 +12,23 @@ import { SUPPORTED_HOSTS } from "./src/sites.ts";
 // the transport classifier falls through to "unknown host", which quietly hooks BOTH wrappers.
 // Both failures are silent at runtime, so catch them here.
 const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
-const hostsOf = (patterns) => [...new Set(patterns.map((p) => new URL(p.replace(/\*$/, "")).hostname))].sort();
+
+// Chrome match patterns are not URLs: the scheme may be `*` and the host may carry a leading
+// `*.`, both of which make `new URL()` throw. Normalise those two legal forms, and throw a
+// legible error on anything else. Deliberately NOT skipping unparseable patterns — a
+// consistency check that quietly ignores the entry it cannot read would pass while the drift
+// it exists to catch is still there.
+const hostOf = (pattern) => {
+  const normalised = pattern.replace(/^\*:\/\//, "https://").replace(/\*$/, "");
+  let hostname;
+  try {
+    ({ hostname } = new URL(normalised));
+  } catch {
+    throw new Error(`manifest.json: cannot read a hostname out of match pattern "${pattern}"`);
+  }
+  return hostname.replace(/^\*\./, ""); // *.claude.ai and claude.ai are the same site to us
+};
+const hostsOf = (patterns) => [...new Set(patterns.map(hostOf))].sort();
 const expected = [...SUPPORTED_HOSTS].sort();
 
 const mismatches = [["host_permissions", manifest.host_permissions]]

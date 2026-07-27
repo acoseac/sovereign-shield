@@ -89,10 +89,22 @@ export function isSupportedHost(hostname: string): boolean {
 /**
  * The body kind for a generate URL, or null if this isn't one.
  *
- * Deliberately not host-scoped: the transport hooks only ever run on a page the manifest
- * already granted, so the URL fingerprint is the whole test.
+ * Pass the **page's** hostname (not the request's) whenever it is known. On a recognised host
+ * only that site's fingerprint is consulted, so one provider's URL shape can never be read as
+ * another's — Gemini's `StreamGenerate` matcher in particular is a bare substring, and
+ * misclassifying a body kind means handing `rewriteBody` a parser that cannot read it, which
+ * now (correctly) reports an uninspected send and warns.
+ *
+ * An **unknown** host deliberately falls back to matching every fingerprint. Same reasoning as
+ * `transportsFor`: if the manifest gains a site nobody classified here, it must still be
+ * inspected, and the fingerprint is the only signal left. Scoping unconditionally would turn
+ * that fail-safe into a silent no-op.
  */
-export function generateKind(url: string): BodyKind | null {
+export function generateKind(url: string, hostname?: string): BodyKind | null {
+  if (hostname !== undefined) {
+    const site = SITES.find((s) => hostMatches(hostname, s.host));
+    if (site) return site.match(url) ? site.kind : null;
+  }
   return SITES.find((s) => s.match(url))?.kind ?? null;
 }
 

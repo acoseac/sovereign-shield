@@ -184,7 +184,7 @@ if (TRANSPORTS.xhr) {
   } as typeof proto.open;
 
   proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
-    const kind = generateKind(xhrUrls.get(this) ?? "");
+    const kind = generateKind(xhrUrls.get(this) ?? "", HOST);
     if (kind && guardEnabled()) {
       if (typeof body === "string") {
         try {
@@ -219,7 +219,7 @@ const origFetch = window.fetch;
 if (TRANSPORTS.fetch) {
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     try {
-      const kind = generateKind(requestUrl(input));
+      const kind = generateKind(requestUrl(input), HOST);
       if (kind && guardEnabled()) {
         return rewriteFetch(kind, input, init);
       }

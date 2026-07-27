@@ -48,6 +48,28 @@ test("a non-generate URL yields null rather than a default kind", () => {
   assert.equal(generateKind("https://example.com/"), null);
 });
 
+// --- host scoping -----------------------------------------------------------
+// Gemini's matcher is a bare `includes("StreamGenerate")`, so without scoping any site could
+// have a URL read as Gemini's — and a wrong body kind hands rewriteBody a parser that cannot
+// read the body, which now reports an uninspected send and warns the user.
+
+test("on a known host, only that site's fingerprint applies", () => {
+  const geminiShaped = "https://claude.ai/api/StreamGenerate";
+  assert.equal(generateKind(geminiShaped), "freq", "unscoped, this is read as Gemini");
+  assert.equal(generateKind(geminiShaped, "claude.ai"), null, "scoped, Claude's matcher rejects it");
+  // And the scoping does not break the real endpoints.
+  assert.equal(generateKind(GEMINI, "gemini.google.com"), "freq");
+  assert.equal(generateKind(CLAUDE, "claude.ai"), "json");
+  assert.equal(generateKind(CHATGPT, "chatgpt.com"), "json");
+});
+
+test("an unknown host still falls back to matching every fingerprint", () => {
+  // The fail-safe: a site the manifest grants but nobody classified must still be inspected.
+  // Scoping unconditionally would turn that into a silent no-op — worse than the bug above.
+  assert.equal(generateKind(GEMINI, "unclassified.example"), "freq");
+  assert.equal(generateKind(CLAUDE, "unclassified.example"), "json");
+});
+
 // --- transport selection ----------------------------------------------------
 // Getting this wrong is silent: hook the transport a site doesn't use and the guard installs
 // cleanly, reports nothing, and never sees a single send.
