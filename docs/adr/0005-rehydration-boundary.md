@@ -111,6 +111,37 @@ The shadow host is `display:contents` — it must add no layout, and above all m
 stacking context, or the panel's `z-index` would be trapped inside it and `layers.ts`'s ordering
 would silently stop applying.
 
+### Worked example: the pre-send pill (added 0.7.0)
+
+The first thing this ADR decided in anger, and it went the way the rule predicts.
+
+The pill counted identifiers in the isolated world while `Session` — in the MAIN world — dropped
+values the user had excused via *"stop redacting this"*. So the panel and the pill disagreed
+about the same prompt: the guard would send a value through, and the pill went on promising it
+would be kept local.
+
+The obvious fix is to hand the excused values to the isolated world so it can filter them out.
+**That is a boundary violation**, and a clear one: those are real values, the excused set exists
+*because* the user pointed at real values, and the bridge carries category names and bare
+commands only. It would also have put PII into a channel the activity log and badge deliberately
+keep clean.
+
+So the computation moved to the values instead of the values moving to the computation —
+`pending.ts` runs `summarize()` in the MAIN world and publishes `{count, categories,
+surrogatable}` on a `data-*` attribute. Counts and category labels are the same class of thing
+the activity log already carries. Two properties fall out of the boundary rather than being
+bolted on:
+
+- the isolated side treats the attribute as **untrusted input** (a page script can write it) and
+  falls back to computing its own summary on anything malformed — degrading to the old, merely
+  imprecise behaviour rather than to a fabricated promise;
+- it deletes the second detection pipeline, so there is now one `summarize()` call, in one world,
+  with the full picture.
+
+The general shape: when a surface needs to *reflect* something derived from real values, move the
+derivation to the values and let the summary cross. Only the three surfaces in the table above
+ever need the values themselves.
+
 ## Consequences
 
 - Adding a fourth surface that shows the user their conversation — a rich-text export, a

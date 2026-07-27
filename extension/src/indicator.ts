@@ -9,11 +9,12 @@
 // they could differ. And a keystroke landing within the ~200ms debounce right before
 // Enter may not tick the pill — the guard still redacts (the XHR rewrite is synchronous).
 import { getSettings, KEYS } from "./storage.ts";
+import { decodePending, PENDING_ATTR } from "./pending.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
 import { showBanner } from "./banner.ts";
 import { CANARY_GRACE_MS, isSendIntent, missedSend, readSeen } from "./canary.ts";
-import { COMPOSER_SELECTOR } from "./composer.ts";
+import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { Z_PILL } from "./layers.ts";
 
 const PILL_ID = "ss-indicator-pill";
@@ -131,9 +132,26 @@ function positionPill(): void {
 }
 
 // --- compute + render -----------------------------------------------------
+// What the guard will actually keep local for the current composer text.
+//
+// Prefer the MAIN world's published summary. It is the authoritative one: only that world can
+// see the values the user excused via the inspector's "stop redacting this", and sending those
+// across would be real PII on a postMessage — the thing ADR 0005 rules out. Counting here
+// instead is what used to make the pill and the panel disagree.
+//
+// Falls back to computing locally when the attribute is missing or malformed: the MAIN script
+// not yet installed, or a page script having scribbled on it. That is the pre-0.7.0 behaviour,
+// so a fallback costs at most the excused-value discrepancy rather than an empty pill.
+function currentSummary(text: string): Summary {
+  return (
+    decodePending(document.documentElement.dataset[PENDING_ATTR]) ??
+    summarize(text, allowed, customMatcher)
+  );
+}
+
 function render(): void {
   if (!enabled || !activeComposer?.isConnected) return hidePill();
-  const summary = summarize(activeComposer.innerText, allowed, customMatcher);
+  const summary = currentSummary(activeComposer.innerText);
   if (summary.count === 0) return hidePill();
   const text = pillText(summary);
   ensurePill();
@@ -223,7 +241,13 @@ function warnMissedSend(): void {
 }
 
 // --- composer binding (no leaked listeners) -------------------------------
-function bindComposer(found: HTMLElement | null = document.querySelector<HTMLElement>(COMPOSER_SELECTOR)): void {
+// Default via findComposer(), not a bare querySelector: it prefers the FOCUSED composer, which
+// is the same rule the MAIN world uses to decide which box to summarise (pending.ts) and
+// preview (inspector.ts). With two composers on the page — editing an earlier message spawns a
+// second one on ChatGPT and Claude — picking differently would park the pill beside one box
+// showing the other's count. The focusin handler below already converged them in practice;
+// this closes the initial-bind case.
+function bindComposer(found: HTMLElement | null = findComposer()): void {
   if (found === activeComposer) return;
   if (activeComposer) {
     // A site that REPLACES the composer on send rather than clearing it never trips the
@@ -284,6 +308,18 @@ function init(): void {
     if (muts.every((m) => m.target instanceof Element && m.target.closest(`#${PILL_ID}`))) return;
     if (!activeComposer || !activeComposer.isConnected) bindComposer();
   }).observe(document.body, { childList: true, subtree: true });
+  // Re-render when the MAIN world republishes its summary. Without this, excusing a value in
+  // the inspector would not reach the pill until the next keystroke — and "stop redacting this"
+  // is exactly the moment the two must visibly agree.
+  //
+  // render() directly, not scheduleRender(): pending.ts has already debounced (and only writes
+  // when the summary actually changed), so a second 200ms wait here would stack onto that one
+  // and add nothing — there is nothing left to coalesce. render() is idempotent and skips the
+  // DOM write when the text is unchanged.
+  new MutationObserver(render).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-ss-pending"],
+  });
   // capture:true so we also catch scrolls on Gemini's inner scroll container (scroll
   // events don't bubble, but the capture phase reaches window).
   window.addEventListener("scroll", requestReposition, { passive: true, capture: true });

@@ -25,6 +25,7 @@ import { CATEGORY_LABEL } from "./categories.ts";
 import { findComposer } from "./composer.ts";
 import type { CustomMatcher } from "./custom.ts";
 import { Z_PANEL } from "./layers.ts";
+import { refreshPending } from "./pending.ts";
 import type { Preview, Session } from "./tokenize.ts";
 
 const PANEL_ID = "ss-inspector";
@@ -377,6 +378,10 @@ export class Inspector {
         button("Stop redacting", CHIP, () => {
           this.session.allow(entry.value);
           this.refresh();
+          // The pill counts from a summary published by pending.ts. Republish now rather than
+          // at the next keystroke, or the panel and the pill would disagree about the value the
+          // user just excused — which is the whole defect this closes.
+          refreshPending();
         }),
       );
       row.append(top, meta, actions);
