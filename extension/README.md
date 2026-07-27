@@ -197,6 +197,10 @@ regenerate the store screenshots and promo tile, see [RELEASING.md](RELEASING.md
   that site until the selector is updated — it fails safe (passes traffic through).
 - **Structured identifiers only.** Names and street addresses are out of scope — they
   need an NER model, which this does not ship (same boundary as the core library).
+- **Typed prompt only — not attachments.** The guard rewrites the outgoing prompt; a **file you
+  upload** (a document, a codebase) rides a separate request the guard doesn't touch and reaches
+  the provider as-is. Attachments are an unguarded channel by design. This is also why the
+  uninspected-send banner names attachments as the likely cause before suggesting the API moved.
 - **Re-encoding.** The outgoing body is re-serialised (JSON re-stringify, or
   `URLSearchParams` for Gemini); standard encodings, but if a provider ever depends on an
   exact byte layout this could matter.

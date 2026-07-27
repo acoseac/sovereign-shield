@@ -100,6 +100,12 @@ export default function Page() {
             untouched.
           </li>
           <li>
+            <b>It guards the typed prompt, not attached files.</b> In the browser extension, the
+            contents of a document or codebase you <em>upload</em> to the chat go to the provider
+            as-is — the guard inspects the message you compose, not file uploads. Treat attachments
+            as an unguarded channel and redact them before you attach.
+          </li>
+          <li>
             <b>It is not a DPIA, a lawful-basis analysis, or a transfer-mechanism.</b> It removes the
             transfer question for the data it redacts. It does not remove your other obligations, and
             it is not legal advice.

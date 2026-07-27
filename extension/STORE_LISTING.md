@@ -33,7 +33,7 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 > Everything runs 100% locally: no accounts, no API keys required, no external servers, and no tracking or analytics.
 >
 > How It Works
-> Identifiers are checksum-validated (shape and check digits must match) so ordinary text is untouched and false positives are minimized. Secrets are matched using structured credential patterns.
+> Identifiers are checksum-validated (shape and check digits must match) so ordinary text is untouched and false positives are minimized. Secrets are matched using structured credential patterns. It acts on the message you type — not on files you attach, so redact a document or codebase before uploading it.
 >
 > What It Detects
 > • Personal & Financial Info: Swiss AHV/AVS, global IBANs, credit cards, phone numbers, and email addresses.
