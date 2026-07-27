@@ -107,6 +107,16 @@ transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test
   composer drains with no counter movement (`canary.ts`). Corroborators are deliberately
   generic — a list of per-site send-button selectors would rot on the same schedule as the
   endpoints, and a canary that stops warning is worse than none.
+  **The warning also reaches the maintainer, but only if the user says so.** The banner offers
+  a prefilled GitHub issue and a `mailto:` fallback ([`report.ts`](extension/src/report.ts)),
+  carrying site + version + `data-ss-build` and **nothing else** — pinned by
+  [`report.test.ts`](extension/test/report.test.ts), which asserts that no prompt content,
+  redacted value, placeholder or custom term can appear in either link. This is the project's
+  **only** outbound channel and it is not telemetry: the user clicks, or nothing happens. Two
+  paths because most users are not developers, and requiring a GitHub sign-in at the moment
+  something breaks would filter out most of the reports worth having. The `site` value must
+  match a dropdown option in `.github/ISSUE_TEMPLATE/site-stopped-working.yml` exactly, which
+  is why that template lists bare hostnames.
 - **No session reset on SPA navigation** — ChatGPT and Claude rewrite the URL from `/` to
   `/c/<uuid>` *after* the first message of a new chat is sent, so a route-change reset
   wipes the mapping for the message streaming right then and paints `[EMAIL_1]` into its

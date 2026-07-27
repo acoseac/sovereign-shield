@@ -11,6 +11,22 @@ import { Z_BANNER } from "./layers.ts";
 
 export type BannerTone = "error" | "warning";
 
+/**
+ * One control on the bar. Either a link or a button, never both.
+ *
+ * `href` is preferred where it fits: a real anchor gives the user the affordances they expect
+ * (hover to see the destination, middle-click, copy the link) and nothing happens until they
+ * choose it — which matters for the report links, where the whole point is that the user, not
+ * the extension, decides to send something.
+ */
+export interface BannerAction {
+  label: string;
+  href?: string;
+  onAction?: () => void;
+  /** Rendered as a quieter, secondary control. */
+  subtle?: boolean;
+}
+
 const TONE_BG: Record<BannerTone, string> = {
   error: "#b91c1c", // something is broken now
   warning: "#b45309", // something may be broken; you can keep working
@@ -29,8 +45,7 @@ export function showBanner(opts: {
   id: string;
   tone: BannerTone;
   text: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  actions?: BannerAction[];
 }): boolean {
   if (shown.has(opts.id)) return false;
   shown.add(opts.id);
@@ -43,14 +58,30 @@ export function showBanner(opts: {
     "font:600 13px system-ui,sans-serif;padding:9px 14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.3)";
   bar.append(document.createTextNode(opts.text + " "));
 
-  if (opts.actionLabel && opts.onAction) {
-    const btn = document.createElement("button");
-    btn.textContent = opts.actionLabel;
-    btn.style.cssText =
+  for (const action of opts.actions ?? []) {
+    const solid =
       `margin-left:8px;background:#fff;color:${TONE_BG[opts.tone]};border:0;border-radius:6px;` +
-      "padding:3px 12px;font:inherit;cursor:pointer";
-    btn.addEventListener("click", opts.onAction);
-    bar.append(btn);
+      "padding:3px 12px;font:inherit;cursor:pointer;text-decoration:none;display:inline-block";
+    const quiet =
+      "margin-left:8px;background:transparent;color:#fff;border:0;font:inherit;cursor:pointer;" +
+      "text-decoration:underline;opacity:.9";
+    if (action.href) {
+      const link = document.createElement("a");
+      link.textContent = action.label;
+      link.href = action.href;
+      link.target = "_blank";
+      // noopener/noreferrer: the report links open github.com in a tab that must get no handle
+      // back to a page we do not control.
+      link.rel = "noopener noreferrer";
+      link.style.cssText = action.subtle ? quiet : solid;
+      bar.append(link);
+    } else if (action.onAction) {
+      const btn = document.createElement("button");
+      btn.textContent = action.label;
+      btn.style.cssText = action.subtle ? quiet : solid;
+      btn.addEventListener("click", action.onAction);
+      bar.append(btn);
+    }
   }
 
   const dismiss = document.createElement("button");

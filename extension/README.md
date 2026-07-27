@@ -89,6 +89,7 @@ depend on any provider's exact field layout and survives their reshuffles.
 - **Toolbar badge** — how many identifiers were kept local on the current tab (resets per page load).
 - **Fail-open alert** — if a body-parse error ever lets a request through unredacted, the badge turns **red with `!`** so the bypass is never silent.
 - **Uninspected-send warning** — if a message goes out that the guard never got a look at (the likeliest cause being that the site moved its internal API), an amber banner says so and the badge turns amber `?`. Distinct from fail-open on purpose: there the guard read the body and fumbled it, here it never saw it, and the remedy differs. See [below](#when-a-site-changes-its-api).
+  The banner offers **Report this** (a prefilled GitHub issue) and an email fallback. Both are yours to click or ignore — there is no telemetry here, so a report is the only way we learn a site broke. They carry the site, the extension version and the build stamp, and **never any part of your prompt**; `test/report.test.ts` asserts exactly that.
 - **Stale-tab banner** — after you update the extension, tabs that were already open show a "reload this tab" nudge; their old content script can't protect you until reloaded (`chrome://extensions` ↻ updates the code, not the open tabs).
 - **Popup** (click the icon) — on/off toggle, the live count, and a link to the full page.
 - **Options page** (the popup link, or `chrome://extensions` → Details → Extension options) — choose which categories to block, and view the activity log.

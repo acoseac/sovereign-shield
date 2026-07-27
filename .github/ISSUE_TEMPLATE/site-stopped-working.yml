@@ -18,14 +18,18 @@ body:
         metadata, and a synthetic identifier reproduces any detector issue exactly — the
         detectors are checksum-based, so a generated value behaves identically to a real one.
 
+  # Options are bare hostnames on purpose: the extension's own "Report this" button prefills
+  # this field from location.hostname, and GitHub only preselects a dropdown when the value
+  # matches an option exactly. Keep in sync with SUPPORTED_HOSTS in extension/src/sites.ts.
   - type: dropdown
     id: site
     attributes:
       label: Which site?
       options:
-        - Gemini (gemini.google.com)
-        - ChatGPT (chatgpt.com)
-        - Claude (claude.ai)
+        - gemini.google.com
+        - chatgpt.com
+        - chat.openai.com
+        - claude.ai
     validations:
       required: true
 
