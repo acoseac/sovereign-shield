@@ -19,8 +19,13 @@ import { installPendingSummary } from "./pending";
 
 const session = new Session();
 
-// Build stamp so a reload can be verified from the page (data-ss-build on <html>).
-const BUILD = "14-nested-json";
+// Build stamp so a reload can be verified from the page (data-ss-build on <html>). Injected by
+// build.mjs (esbuild `define`) as "<manifest version>+<build time>" — no longer a hand-edited
+// constant that drifts, and it changes every rebuild so a hard-reload is confirmable. The typeof
+// guard keeps this from throwing if the file is ever loaded unbuilt (it never is at runtime —
+// interceptor patches fetch/XHR at document_start — but tests and tsc see the bare identifier).
+declare const __SS_BUILD__: string;
+const BUILD = typeof __SS_BUILD__ === "string" ? __SS_BUILD__ : "dev";
 document.documentElement.dataset.ssBuild = BUILD;
 
 // Default ON: if the bridge has not set the flag yet, guard anyway (fail-safe).

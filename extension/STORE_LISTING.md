@@ -1,7 +1,9 @@
 # Chrome Web Store listing — copy/paste reference
 
-> **Status:** 0.6.0 submitted for review (July 2026), superseding the pending 0.5.0. The copy
-> below is what went in.
+> **Status:** 0.6.0 is **live** on the Chrome Web Store (published 27 July 2026). **0.7.0 is
+> prepared** and is the next upload — a reliability release (see the release notes below). The
+> detailed description below still applies; the only content change for 0.7.0 is the one-click
+> breakage report noted in "See Exactly What You Send".
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
@@ -24,7 +26,8 @@ cd extension && npm run package   # -> extension/sovereign-shield-<version>.zip
 **Category:** Productivity
 **Language:** English
 
-**Detailed description** — this is the copy submitted for **0.6.0**. Plain text: the dashboard
+**Detailed description** — the copy first submitted for **0.6.0**, carried forward for **0.7.0**
+with one added clause (the report link, in "See Exactly What You Send"). Plain text: the dashboard
 field takes no markdown, so the section labels and `•` bullets below are literal (line breaks
 are preserved). The field allows ~16,000 chars, so length is not a real constraint — the old
 "1,600-char limit" note was a myth.
@@ -42,7 +45,7 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 > • Custom Rules: Your own custom keywords, internal code names, client names, domains, or regular expressions (regex).
 >
 > See Exactly What You Send
-> A live counter above the chat box shows how many sensitive items will be kept local before you send. Click Inspect to open a side-by-side view of your prompt versus what the AI actually receives, plus a list of every active placeholder and its real value — so you can verify a redaction, remove a false positive, or swap a stand-in on the spot. When you copy the AI's reply, the real values come back too, matching what's on your screen. And if a site changes its internal API so a message would go out uninspected, you're warned instead of left guessing.
+> A live counter above the chat box shows how many sensitive items will be kept local before you send. Click Inspect to open a side-by-side view of your prompt versus what the AI actually receives, plus a list of every active placeholder and its real value — so you can verify a redaction, remove a false positive, or swap a stand-in on the spot. When you copy the AI's reply, the real values come back too, matching what's on your screen. And if a site changes its internal API so a message would go out uninspected, you're warned instead of left guessing — with a one-click way to report it, so a moved endpoint gets fixed quickly.
 >
 > Optional Smokescreen Mode
 > Send realistic stand-ins (e.g., alice.morgan@example.org instead of [EMAIL_1]) so AI models generate more natural, context-aware responses without seeing your real data. (Applies to emails and custom terms only; IDs, cards, and secrets always use standard placeholders.)
@@ -54,6 +57,19 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 >
 > Open Source
 > Review the source code on GitHub: https://github.com/acoseac/sovereign-shield
+
+---
+
+## Release notes — 0.7.0 (dashboard "What's new" field)
+
+A reliability release. Paste into the version's "What's new" note:
+
+> 0.7.0 — reliability
+> • If the guard ever can't read an outgoing request, it now says so loudly instead of staying quiet — no message slips out unnoticed.
+> • The pre-send counter now matches exactly what's redacted after you use "stop redacting this".
+> • Clearer wording on the toolbar toggle (it turns the guard on or off for every site, not just the current tab).
+> • When a site changes its API and a message goes out uninspected, you can now report it in one click.
+> No new permissions. Still 100% local — no account, no servers, no analytics.
 
 ---
 
@@ -107,12 +123,17 @@ Upload in this order (the store shows the first as the primary tile):
    kept local when you send", above a real prompt. Leads with the headline pre-send feature.
 2. `2-chatgpt.png` — the same pill on ChatGPT (3 items: card, email, AHV).
 3. `3-claude.png` — the same pill on Claude (2 items: AHV, Swiss phone).
-4. `4-options.png` — the options UI: the identifier + "Secrets & API keys" toggles, the custom-rules editor, and the value-free activity log. (Regenerate for 0.6.0 — still shows the pre-smokescreen layout.)
+4. Options UI — Guard + Smokescreen, the identifier + **all nine** "Secrets & API keys" toggles,
+   the custom-rules editor, and the value-free activity log. Recaptured 27 Jul with every secret
+   type ticked (so it shows the shipped default) and the dev URL bar cropped; the current capture
+   is portrait, so needs a 1280×800 landscape pass (or split into two halves) before upload.
 5. `5-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
    while the reply shows the restored number (the "receipts" shot).
-6. **New for 0.6.0** — the inspector panel's Preview tab, prompt beside redacted payload with
-   the replaced spans marked. It is the most legible single proof the extension works, and it
-   needs no DevTools to read, so consider promoting it above `5-gemini-proof.png`.
+6. **The inspector panel's Preview tab** — prompt beside redacted payload with the replaced spans
+   marked (captured 27 Jul, e.g. Prompt C: a project name, an email and a Google key redacted at
+   once, with the key staying a bracket token while the email becomes a stand-in). The most
+   legible single proof the extension works, and it needs no DevTools — promote it above
+   `5-gemini-proof.png`. Needs the 1280×800 pass too (current captures are 3188×2024).
 
 Tiles 1–3 are designed 1280×800 promo images (exact pill markup/CSS from `indicator.ts`, now
 including the **Inspect** button — see PR #61 — so regenerate them with `store-assets/render.sh`
@@ -124,12 +145,14 @@ CWS-advertise update and still carried the "not yet on the Chrome Web Store" lin
 
 ## Submission checklist
 
-- [ ] Developer account created + $5 registration paid (decide: personal vs. odysseus.fi Workspace).
-- [ ] `npm run package` → upload `sovereign-shield-<version>.zip`.
-- [ ] Summary, description, category filled from above.
-- [ ] Privacy policy URL live at shield.ars.md/extension/privacy.
-- [ ] Data disclosure + permission justifications filled; remote code = **No**.
-- [ ] Test instructions filled (Access tab) — no credentials, synthetic-AHV recipe above.
-- [ ] ≥1 screenshot (1280×800) uploaded.
-- [ ] Visibility: **Unlisted** for the first release (public search later).
-- [ ] Submit → expect manual review (host access to major sites is scrutinised).
+The account, privacy policy, data disclosure and permission justifications were all settled for
+the live 0.6.0 listing. For the **0.7.0 update** the moving parts are:
+
+- [ ] `npm run package` → upload `sovereign-shield-0.7.0.zip` (version must be **strictly greater**
+      than 0.6.0 — the store will not accept an equal or lower number, and a number can't be reused).
+- [ ] Paste the 0.7.0 **"What's new"** note (above) into the version.
+- [ ] Description: re-paste only if you want the added report clause live (it's a one-line change).
+- [ ] Screenshots: swap in the refreshed inspector + all-secrets options shots once resized to
+      1280×800; the rest of the lineup is unchanged.
+- [ ] Visibility: leave as the live 0.6.0 listing — 0.7.0 is an update, not a first submission.
+- [ ] Submit → host-permission review is still manual and can take days (0.6.0 took ~4).
