@@ -26,8 +26,7 @@ function showStaleBanner(): void {
     id: "ss-stale-context",
     tone: "error",
     text: "🛡️ Sovereign Shield was updated — reload this tab to restore redaction.",
-    actionLabel: "Reload",
-    onAction: () => location.reload(),
+    actions: [{ label: "Reload", onAction: () => location.reload() }],
   });
 }
 

@@ -12,7 +12,8 @@ import { getSettings, KEYS } from "./storage.ts";
 import { decodePending, PENDING_ATTR } from "./pending.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
-import { showBanner } from "./banner.ts";
+import { showBanner, type BannerAction } from "./banner.ts";
+import { buildReportLinks } from "./report.ts";
 import { CANARY_GRACE_MS, isSendIntent, missedSend, readSeen } from "./canary.ts";
 import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { Z_PILL } from "./layers.ts";
@@ -229,6 +230,30 @@ function armCanary(): void {
 }
 
 function warnMissedSend(): void {
+  // Offer a way to tell us. There is no telemetry — by design — so this banner is the only
+  // place a moved transport can become a maintainer signal, and until now that signal stopped
+  // at the user. Both links are user-initiated and carry metadata only: site, version, build.
+  // Never a byte of the prompt. See report.ts.
+  //
+  // Two paths because most users are not developers: the GitHub link assumes an account and a
+  // willingness to sign in at the moment something broke, which would filter out most of the
+  // reports worth having.
+  let actions: BannerAction[] | undefined;
+  try {
+    const links = buildReportLinks({
+      host: location.hostname,
+      version: chrome.runtime.getManifest().version,
+      build: document.documentElement.dataset.ssBuild,
+    });
+    actions = [
+      { label: "Report this", href: links.issue },
+      { label: "or email", href: links.email, subtle: true },
+    ];
+  } catch {
+    // A dead extension context (see bridge.ts) makes getManifest() throw. The warning itself is
+    // the load-bearing half — show it regardless, just without the links.
+  }
+
   // One bar per page: a site whose endpoint has moved will trip this on every message.
   showBanner({
     id: "ss-missed-send",
@@ -236,6 +261,7 @@ function warnMissedSend(): void {
     text:
       "🛡️ Sovereign Shield didn't inspect that message — it was sent as you typed it. " +
       "This site may have changed its API.",
+    actions,
   });
   chrome.runtime.sendMessage({ type: "ss-missed" }).catch(() => undefined);
 }
