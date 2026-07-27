@@ -57,6 +57,9 @@ These are documented limitations, not vulnerabilities. They are stated plainly i
   named-entity model — deliberately out of scope. Plug your own in via `extra_detectors`.
 - **Encoding defeats the regex.** A model that base64s or ciphers an identifier gets past a
   structural matcher. Separator and whitespace reformatting *is* handled; encoding is not.
+- **Attached files are not inspected.** The extension guards the prompt you type, not the contents
+  of a document or codebase you upload in the chat UI — those reach the provider as-is. Attachments
+  are an unguarded channel by design; redact them beforehand.
 - **A hostile first-party script on the chat site itself.** The content script shares a JS realm
   with the page. A page that is actively hunting for the extension wins, and a page that hostile
   has far shorter routes to the same data. See ADR 0005 for what is and isn't claimed here.

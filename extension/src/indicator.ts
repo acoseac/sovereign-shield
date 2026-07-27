@@ -274,12 +274,18 @@ function warnMissedSend(): void {
   }
 
   // One bar per page: a site whose endpoint has moved will trip this on every message.
+  // The cause clause names attachments deliberately. An uninspected send is most often a file
+  // attachment — those ride a transport the guard doesn't hook and are out of scope anyway (it
+  // guards typed prompts, not uploads). Detecting an attachment programmatically would mean
+  // per-site chip selectors, exactly the rot-prone thing the canary avoids, so we name the
+  // likely benign cause instead of asserting "the API changed" — which was often just wrong —
+  // and leave "Report this" for the case the user rules out.
   showBanner({
     id: "ss-missed-send",
     tone: "warning",
     text:
       "🛡️ Sovereign Shield didn't inspect that message — it was sent as you typed it. " +
-      "This site may have changed its API.",
+      "Attachments aren't guarded; if you didn't attach one, the site may have changed how it sends.",
     actions,
   });
   // notifyWorker, not a bare sendMessage().catch(): a missed send very often coincides with an

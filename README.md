@@ -168,6 +168,11 @@ zero-dependency guarantee. Plug your own via `SovereignShield(extra_detectors=[.
 **Not encoding-robust.** A model that base64s or ciphers an identifier defeats the
 regex. Separator/whitespace reformatting is handled; encoding is not.
 
+**Text only — not file uploads.** The library sanitizes the text you pass it, and the browser
+extension guards the prompt you type. Neither inspects the contents of a **file you attach** in a
+chat UI: an uploaded document or codebase reaches the model as-is. Redact attachments before
+sending, or scan them with the library first.
+
 ## How it works
 
 The thesis, proven in the [K.E.V.I.N.](https://github.com/acoseac/kevin) red-team

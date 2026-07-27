@@ -89,8 +89,10 @@ export default function Page() {
         <p>
           The extension detects checksum-validated identifiers, common secret and API-key formats,
           and any custom keywords or patterns you configure. It does not attempt to detect names or
-          addresses. It is an independent open-source project and is not affiliated with Google,
-          OpenAI or Anthropic.
+          addresses. It guards the prompt you type; it does <strong>not</strong> inspect the
+          contents of files you attach — an uploaded document or codebase reaches the AI service
+          as-is, so treat attachments as an unguarded channel. It is an independent open-source
+          project and is not affiliated with Google, OpenAI or Anthropic.
         </p>
 
         <h2>Contact</h2>

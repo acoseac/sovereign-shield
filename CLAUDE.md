@@ -106,7 +106,14 @@ transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test
   `interceptor.ts` bumps `data-ss-seen` per inspected body and `indicator.ts` warns when a
   composer drains with no counter movement (`canary.ts`). Corroborators are deliberately
   generic — a list of per-site send-button selectors would rot on the same schedule as the
-  endpoints, and a canary that stops warning is worse than none.
+  endpoints, and a canary that stops warning is worse than none. Two edges learned the hard way,
+  both in `canary.ts`: it **polls** `data-ss-seen` for up to `CANARY_GRACE_MS` (12 s) rather than
+  checking once, because Gemini's Thinking model issues the generate request seconds after the
+  composer clears and a fixed 3 s deadline false-fired on redacted sends; and it does **not** try
+  to detect **file attachments** (out of scope — the guard rewrites the typed prompt, never
+  uploads), so the warning names attachments as the likely cause instead of asserting the API
+  moved. Detecting attachments would need per-site chip selectors — the same rot the canary
+  avoids.
   **The warning also reaches the maintainer, but only if the user says so.** The banner offers
   a prefilled GitHub issue and a `mailto:` fallback ([`report.ts`](extension/src/report.ts)),
   carrying site + version + `data-ss-build` and **nothing else** — pinned by
