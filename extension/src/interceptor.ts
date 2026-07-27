@@ -111,8 +111,18 @@ function currentCustomMatcher(): CustomMatcher | undefined {
 function rewriteBodyForSend(kind: BodyKind, body: string): string {
   session.customMatcher = currentCustomMatcher();
   session.smokescreen = smokescreenEnabled();
-  reportInspected(); // we got a look at this body, redaction or not
-  const { body: out, changed } = rewriteBody(kind, body, session, allowedCategories());
+  const { body: out, changed, inspected } = rewriteBody(kind, body, session, allowedCategories());
+  // Counted AFTER the rewrite and only when we actually read the body. Bumping it up front
+  // meant an unparseable body — a recognised endpoint whose prompt we never saw — looked
+  // exactly like a clean one to canary.ts: counter advanced, badge green, no warning, prompt
+  // out in the clear. The transport hooks below already warn for bodies they cannot read;
+  // this is the same contract one layer down. See RewriteResult.inspected.
+  if (inspected) {
+    reportInspected();
+  } else {
+    console.warn(`[sovereign-shield] uninspected ${kind} body: could not parse`);
+    failopen();
+  }
   if (changed) reportCount();
   return out;
 }

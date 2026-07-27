@@ -85,12 +85,42 @@ function walk(
 export interface RewriteResult {
   body: string;
   changed: boolean; // true iff at least one identifier was redacted
+  /**
+   * Did we actually READ the prompt? False means we recognised the endpoint but could not
+   * parse its body, so the request goes out **unredacted and unchecked**.
+   *
+   * This exists because `changed:false` alone is ambiguous, and the ambiguity was a real
+   * defect: a clean prompt and an unparseable body returned byte-identical results, so the
+   * caller bumped the inspected counter, left the badge green and never fired `failopen()`.
+   * The prompt went out in the clear with all three warning channels silent — precisely the
+   * silent breakage `canary.ts` exists to catch, bypassed one layer below it. The realistic
+   * trigger is Gemini renaming `f.req` or reshaping its payload.
+   *
+   * Callers must treat `inspected:false` as "warn loudly, do not count this as a look".
+   */
+  inspected: boolean;
+}
+
+/** The body goes out untouched and there is nothing to warn about. Covers both cases that
+ *  reach it: a prompt we read and found clean (much the commonest path), and an empty body,
+ *  where there was nothing to read — the XHR hook forwards any string, including "".
+ *  Distinguished from `uninspected` below, which also leaves the body untouched but means we
+ *  never got to look at it. */
+function inspectedUnchanged(body: string): RewriteResult {
+  return { body, changed: false, inspected: true };
+}
+
+/** Recognised the endpoint, could not read the body. The caller must warn. */
+function uninspected(body: string): RewriteResult {
+  return { body, changed: false, inspected: false };
 }
 
 /**
  * Rewrite a request body of the given kind, redacting via `session`. Returns the
  * original body untouched (`changed:false`) on a clean prompt OR any parse
- * surprise — the guard never corrupts a body it did not need to touch.
+ * surprise — the guard never corrupts a body it did not need to touch. A parse
+ * surprise additionally reports `inspected:false` so the caller can fail LOUDLY;
+ * silence there is what let an unredacted prompt through unnoticed.
  */
 export function rewriteBody(
   kind: BodyKind,
@@ -99,29 +129,33 @@ export function rewriteBody(
   allowed: ReadonlySet<string> | undefined,
 ): RewriteResult {
   const ctx = { changed: false };
+  if (body === "") return inspectedUnchanged(body);
   if (kind === "json") {
     let parsed: unknown;
     try {
       parsed = JSON.parse(body);
     } catch {
-      return { body, changed: false };
+      return uninspected(body);
     }
     const walked = walk(parsed, allowed, session, ctx);
-    if (!ctx.changed) return { body, changed: false }; // clean prompt → byte-for-byte passthrough
-    return { body: JSON.stringify(walked), changed: true };
+    if (!ctx.changed) return inspectedUnchanged(body); // clean prompt → byte-for-byte passthrough
+    return { body: JSON.stringify(walked), changed: true, inspected: true };
   }
   // "freq": url-encoded  f.req=<json>&at=...&...
   const params = new URLSearchParams(body);
   const fReq = params.get("f.req");
-  if (!fReq) return { body, changed: false };
+  // No f.req in a body we matched as Gemini's generate call: either the endpoint moved onto a
+  // different payload shape or the parameter was renamed. Either way the prompt is in there
+  // somewhere and we did not look at it.
+  if (!fReq) return uninspected(body);
   let parsed: unknown;
   try {
     parsed = JSON.parse(fReq);
   } catch {
-    return { body, changed: false };
+    return uninspected(body);
   }
   const walked = walk(parsed, allowed, session, ctx);
-  if (!ctx.changed) return { body, changed: false }; // clean prompt → byte-for-byte passthrough
+  if (!ctx.changed) return inspectedUnchanged(body); // clean prompt → byte-for-byte passthrough
   // Swap ONLY the f.req value, in place, inside the original body. Every other
   // byte — param order, the `at` token's encoding, any trailing separator — is
   // preserved exactly as the page sent it, so the sole delta the backend sees is
@@ -131,5 +165,5 @@ export function rewriteBody(
   // encodeURIComponent-encoded — spaces as %20 — matching the client's encoding.
   const encoded = encodeURIComponent(JSON.stringify(walked));
   const out = body.replace(/(^|&)(f\.req=)[^&]*/, (_m, pre: string, key: string) => pre + key + encoded);
-  return { body: out, changed: true };
+  return { body: out, changed: true, inspected: true };
 }
