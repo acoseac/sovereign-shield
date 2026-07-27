@@ -597,6 +597,40 @@ mark.val {
   font-size: 14.5px;
 }
 
+/* --- governance page: the consulting CTA block + the not-legal-advice note --- */
+.gov-cta {
+  margin: 34px 0 0;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--yellow);
+  border-radius: 12px;
+}
+.gov-cta-h {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.gov-cta-b {
+  margin: 8px 0 0;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.gov-note {
+  margin: 22px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+.gov-note b {
+  color: var(--text);
+}
+
 .tablewrap {
   overflow-x: auto;
   margin: 16px 0;
