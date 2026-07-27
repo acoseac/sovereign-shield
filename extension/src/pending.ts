@@ -61,12 +61,16 @@ export function decodePending(raw: string | undefined): Summary | null {
  * re-reads the right one. Read-only throughout: this never touches the composer, and like the
  * rest of the pre-send UI it can never block a send.
  */
-let scheduleRef: (() => void) | null = null;
+let publishNow: (() => void) | null = null;
 
-/** Force a republish now rather than at the next keystroke — the inspector calls this the
- *  moment a value is excused, so the pill stops counting it immediately. No-op before install. */
+/**
+ * Republish **immediately**, skipping the debounce — the inspector calls this the moment a value
+ * is excused. That is one deliberate click, not a burst of keystrokes, so there is nothing to
+ * coalesce and the debounce would only add latency to the one interaction where the panel and
+ * the pill must visibly agree. No-op before install.
+ */
 export function refreshPending(): void {
-  scheduleRef?.();
+  publishNow?.();
 }
 
 export function installPendingSummary(session: Session, deps: PendingDeps): void {
@@ -108,6 +112,10 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
     attributeFilter: ["data-ss-cats", "data-ss-custom", "data-ss-smoke", "data-ss-enabled"],
   });
 
-  scheduleRef = schedule;
+  // Cancel any queued run first, so an immediate publish is never followed by a redundant one.
+  publishNow = () => {
+    clearTimeout(timer);
+    publish();
+  };
   schedule(); // publish once at install, so a pre-filled composer is counted before any keystroke
 }

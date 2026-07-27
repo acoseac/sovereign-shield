@@ -310,8 +310,13 @@ function init(): void {
   }).observe(document.body, { childList: true, subtree: true });
   // Re-render when the MAIN world republishes its summary. Without this, excusing a value in
   // the inspector would not reach the pill until the next keystroke — and "stop redacting this"
-  // is exactly the moment the two must agree.
-  new MutationObserver(scheduleRender).observe(document.documentElement, {
+  // is exactly the moment the two must visibly agree.
+  //
+  // render() directly, not scheduleRender(): pending.ts has already debounced (and only writes
+  // when the summary actually changed), so a second 200ms wait here would stack onto that one
+  // and add nothing — there is nothing left to coalesce. render() is idempotent and skips the
+  // DOM write when the text is unchanged.
+  new MutationObserver(render).observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["data-ss-pending"],
   });
