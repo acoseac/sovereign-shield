@@ -221,6 +221,14 @@ function noteComposerContent(): void {
   if (drained && enabled) armCanary();
 }
 
+/** Stop any in-flight canary poll and forget its id. Nulling the id matters: a stale, already-
+ *  cleared timer id could otherwise be handed to a later clearInterval and, if the runtime had
+ *  recycled that numeric id, cancel an unrelated timer. */
+function stopCanary(): void {
+  clearInterval(canaryPoll);
+  canaryPoll = undefined;
+}
+
 function armCanary(): void {
   const drainedAt = Date.now();
   if (!isSendIntent(lastIntentAt, drainedAt)) return; // a manual clear, not a send
@@ -230,12 +238,12 @@ function armCanary(): void {
   // a single fixed-deadline check false-fired on a send that WAS redacted, just later (see
   // CANARY_GRACE_MS). Cancel the instant the counter advances; warn only if it never does within
   // the window. A fresh send supersedes any pending poll.
-  clearInterval(canaryPoll);
+  stopCanary();
   canaryPoll = setInterval(() => {
     const seenNow = readSeen(document.documentElement.dataset.ssSeen);
     const verdict = canaryVerdict(seenAtDrain, seenNow, Date.now() - drainedAt);
     if (verdict === "waiting") return;
-    clearInterval(canaryPoll);
+    stopCanary();
     if (verdict === "missed") warnMissedSend();
   }, CANARY_POLL_MS);
 }
@@ -326,7 +334,7 @@ async function loadSettings(): Promise<void> {
   enabled = s.enabled;
   // If the guard was just switched off, drop any in-flight canary watch — a "this send wasn't
   // inspected" banner arriving seconds after the user disabled the guard would be pure noise.
-  if (!enabled) clearInterval(canaryPoll);
+  if (!enabled) stopCanary();
   smokescreen = s.smokescreen;
   allowed = new Set(s.categories); // getSettings() defaults to all categories when unset
   customMatcher = compileRules(s.custom); // undefined when there are no (valid) rules
