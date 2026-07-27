@@ -10,9 +10,17 @@ export const COMPOSER_SELECTOR =
   'div[contenteditable="plaintext-only"][role="textbox"], div[contenteditable="true"][role="textbox"]';
 
 /** The composer the user is most likely working in: the focused one if there is one (editing
- *  an earlier message spawns a second contenteditable on ChatGPT/Claude), else the first. */
+ *  an earlier message spawns a second contenteditable on ChatGPT/Claude), else the first.
+ *
+ *  `.closest`, not `.matches`: on today's three sites the contenteditable root IS the focused
+ *  element, so both behave the same — but an editor that puts focus on a child node would slip
+ *  past `.matches` and fall back to the *first* composer on the page (the wrong box mid-edit).
+ *  `.closest` returns the composer whether the focused node is it or sits inside it, the same
+ *  ancestor-climb the DOM rehydrator's `isEditable` uses. Cheap hardening, no behaviour change
+ *  on the sites as they stand. */
 export function findComposer(): HTMLElement | null {
   const active = document.activeElement;
-  if (active instanceof HTMLElement && active.matches(COMPOSER_SELECTOR)) return active;
+  const focused = active instanceof HTMLElement ? active.closest<HTMLElement>(COMPOSER_SELECTOR) : null;
+  if (focused) return focused;
   return document.querySelector<HTMLElement>(COMPOSER_SELECTOR);
 }

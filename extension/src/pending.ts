@@ -81,7 +81,14 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
     let next = "";
     try {
       const composer = findComposer();
-      const text = composer?.innerText ?? "";
+      // textContent, not innerText: this runs (debounced) on every keystroke, and innerText
+      // forces a full-document layout reflow each time — costly on heavy chat DOMs. textContent
+      // needs no layout. indicator.ts's drain check made the same choice for the same reason. The
+      // trade-off is marginal and preview-only: textContent drops the line breaks innerText would
+      // insert between blocks, which could only matter if an identifier were split across a block
+      // boundary (a newline mid-value) — and even then this feeds the pre-send COUNT, never the
+      // redaction, which the guard does on the actual request body regardless.
+      const text = composer?.textContent ?? "";
       if (text.trim()) {
         // The excused set is the whole reason this runs here rather than in the pill.
         next = encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), session.excused));

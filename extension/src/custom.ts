@@ -128,7 +128,14 @@ export function compileRules(rules: readonly CustomRule[]): CustomMatcher | unde
           if (++n >= MAX_MATCHES_PER_RULE) break;
         }
       } catch {
-        /* fail open: skip this rule, keep the rest */
+        // Fail open: skip this rule, keep the rest. A compiled RegExp essentially never throws
+        // in exec() on string input, so this is defensive — but a silently-skipped rule means a
+        // term the user asked to redact could slip through, so make it observable rather than
+        // truly silent. Label only, never the matched text (the no-leak rule). console is the one
+        // side-effect this otherwise-pure module allows itself, and it's justified here.
+        console.warn(
+          `[sovereign-shield] custom rule ${c.label ? `"${c.label}" ` : ""}threw at match time and was skipped`,
+        );
       }
     }
     return hits;
