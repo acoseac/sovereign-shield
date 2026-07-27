@@ -349,7 +349,9 @@ function init(): void {
   window.addEventListener(
     "focusin",
     (e) => {
-      if (e.target instanceof HTMLElement && e.target.matches(COMPOSER_SELECTOR)) bindComposer(e.target);
+      // .closest, not .matches: focus can land on a child of the composer (see composer.ts).
+      const composer = e.target instanceof HTMLElement ? e.target.closest<HTMLElement>(COMPOSER_SELECTOR) : null;
+      if (composer) bindComposer(composer);
     },
     { capture: true },
   );
