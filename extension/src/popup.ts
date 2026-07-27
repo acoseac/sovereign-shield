@@ -34,7 +34,12 @@ async function refresh(): Promise<void> {
     keptEl.textContent = "—";
     return;
   }
-  statusEl.textContent = toggle.checked ? "Active on this tab." : "Paused on this tab.";
+  // The toggle is global (one ssEnabled key); the count below it is per-tab. The status line
+  // has to distinguish them — copy scoped to "this tab" would let someone pause for a single
+  // chat and unknowingly drop the guard everywhere else.
+  statusEl.textContent = toggle.checked
+    ? "Active here and on every supported site."
+    : "Paused everywhere — on your other tabs too.";
   try {
     const res = (await chrome.tabs.sendMessage(tab.id, { type: "ss-status" })) as {
       kept?: number;
