@@ -105,6 +105,16 @@ function compileRule(rule: CustomRule): CompiledRule | null {
  * oversized input, cap matches per rule, advance past zero-width matches, and swallow any
  * per-rule throw so one bad rule can never break redaction of everything else.
  */
+/** A compiled RegExp essentially never throws in exec() on string input, so the match-time catch
+ *  is defensive — but a silently-skipped rule means a term the user asked to redact could slip
+ *  through, so we make it observable. The rule's LABEL only, never the matched text (the no-leak
+ *  rule); console is the one side-effect this otherwise-pure module allows itself. Hoisted out of
+ *  the matcher so the hot loop stays under Sonar's cognitive-complexity budget. */
+function warnRuleSkipped(label: string | undefined): void {
+  const which = label ? `"${label}" ` : "";
+  console.warn(`[sovereign-shield] custom rule ${which}threw at match time and was skipped`);
+}
+
 export function compileRules(rules: readonly CustomRule[]): CustomMatcher | undefined {
   const compiled: CompiledRule[] = [];
   for (const rule of rules.slice(0, MAX_RULES)) {
@@ -128,14 +138,7 @@ export function compileRules(rules: readonly CustomRule[]): CustomMatcher | unde
           if (++n >= MAX_MATCHES_PER_RULE) break;
         }
       } catch {
-        // Fail open: skip this rule, keep the rest. A compiled RegExp essentially never throws
-        // in exec() on string input, so this is defensive — but a silently-skipped rule means a
-        // term the user asked to redact could slip through, so make it observable rather than
-        // truly silent. Label only, never the matched text (the no-leak rule). console is the one
-        // side-effect this otherwise-pure module allows itself, and it's justified here.
-        console.warn(
-          `[sovereign-shield] custom rule ${c.label ? `"${c.label}" ` : ""}threw at match time and was skipped`,
-        );
+        warnRuleSkipped(c.label); // fail open: skip this rule, keep the rest — but not silently
       }
     }
     return hits;
