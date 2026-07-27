@@ -101,9 +101,12 @@ export interface RewriteResult {
   inspected: boolean;
 }
 
-/** Nothing to read, so nothing was missed. Distinguished from a parse failure so an empty
- *  body can't cry wolf — the XHR hook forwards any string, including "". */
-function nothingToInspect(body: string): RewriteResult {
+/** The body goes out untouched and there is nothing to warn about. Covers both cases that
+ *  reach it: a prompt we read and found clean (much the commonest path), and an empty body,
+ *  where there was nothing to read — the XHR hook forwards any string, including "".
+ *  Distinguished from `uninspected` below, which also leaves the body untouched but means we
+ *  never got to look at it. */
+function inspectedUnchanged(body: string): RewriteResult {
   return { body, changed: false, inspected: true };
 }
 
@@ -126,7 +129,7 @@ export function rewriteBody(
   allowed: ReadonlySet<string> | undefined,
 ): RewriteResult {
   const ctx = { changed: false };
-  if (body === "") return nothingToInspect(body);
+  if (body === "") return inspectedUnchanged(body);
   if (kind === "json") {
     let parsed: unknown;
     try {
@@ -135,7 +138,7 @@ export function rewriteBody(
       return uninspected(body);
     }
     const walked = walk(parsed, allowed, session, ctx);
-    if (!ctx.changed) return nothingToInspect(body); // clean prompt → byte-for-byte passthrough
+    if (!ctx.changed) return inspectedUnchanged(body); // clean prompt → byte-for-byte passthrough
     return { body: JSON.stringify(walked), changed: true, inspected: true };
   }
   // "freq": url-encoded  f.req=<json>&at=...&...
@@ -152,7 +155,7 @@ export function rewriteBody(
     return uninspected(body);
   }
   const walked = walk(parsed, allowed, session, ctx);
-  if (!ctx.changed) return nothingToInspect(body); // clean prompt → byte-for-byte passthrough
+  if (!ctx.changed) return inspectedUnchanged(body); // clean prompt → byte-for-byte passthrough
   // Swap ONLY the f.req value, in place, inside the original body. Every other
   // byte — param order, the `at` token's encoding, any trailing separator — is
   // preserved exactly as the page sent it, so the sole delta the backend sees is
