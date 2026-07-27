@@ -55,6 +55,13 @@ first — it is the best map of the live transports.
 - **Gemini** → XHR `StreamGenerate`, url-encoded `f.req` (`kind: "freq"`).
 - **ChatGPT / Claude** → `fetch`, JSON body (`kind: "json"`).
 
+**Adding or changing a site is a two-file edit, and the build enforces it.** Hosts, transports
+and endpoint fingerprints all live in [`extension/src/sites.ts`](extension/src/sites.ts);
+`manifest.json` is static JSON and cannot import it, so `build.mjs` **fails the build** if the
+two disagree. Both halves of that drift used to be silent — a host only in `sites.ts` never gets
+a content script, and a host only in the manifest falls through to "unknown", which hooks *both*
+transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test.ts).
+
 **Load-bearing invariants (each one has a shipped bug behind it):**
 - **Byte-faithful rewrite** — [`extension/src/rewrite.ts`](extension/src/rewrite.ts).
   When nothing is redacted, return the request body **unchanged**; a clean prompt must
@@ -84,7 +91,8 @@ first — it is the best map of the live transports.
   smokescreen on, an unrehydrated copy hands the user a **fabricated** address that reads
   as real. Adding a fourth surface is a boundary decision, not a feature detail.
   Rationale: [ADR 0005](docs/adr/0005-rehydration-boundary.md).
-- **Fail loudly when a transport moves** — `GENERATE_ENDPOINTS` is hardcoded on purpose;
+- **Fail loudly when a transport moves** — the endpoint fingerprints in
+  [`extension/src/sites.ts`](extension/src/sites.ts) are hardcoded on purpose;
   matching by payload *shape* would have us rewriting bodies we have no model of, against
   both fail-open and byte-faithful. The defect to fix was that breakage was **silent**, so
   `interceptor.ts` bumps `data-ss-seen` per inspected body and `indicator.ts` warns when a
