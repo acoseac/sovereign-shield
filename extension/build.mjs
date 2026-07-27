@@ -49,6 +49,14 @@ if (mismatches.length > 0) {
 rmSync("dist", { recursive: true, force: true }); // start clean so removed/renamed files never linger
 mkdirSync("dist", { recursive: true });
 
+// Build stamp injected into interceptor.ts (data-ss-build on <html>). Manifest version plus a
+// build time, so it is never a hand-maintained string that drifts AND it changes on every
+// rebuild — which is what makes "did my hard-reload pick up the new code?" answerable during
+// dev (see the reload-debugging note in the repo CLAUDE.md). Node's Date is fine here; this is
+// build tooling, not a resumable workflow script.
+const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 13); // YYYYMMDDTHHMM (UTC)
+const BUILD = `${manifest.version}+${stamp}`;
+
 await build({
   entryPoints: {
     interceptor: "src/interceptor.ts", // MAIN world
@@ -63,6 +71,7 @@ await build({
   format: "iife",
   target: "chrome111",
   legalComments: "none",
+  define: { __SS_BUILD__: JSON.stringify(BUILD) },
   logLevel: "info",
 });
 
