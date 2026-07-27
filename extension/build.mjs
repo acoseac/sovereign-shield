@@ -28,8 +28,11 @@ const hostOf = (pattern) => {
   }
   return hostname.replace(/^\*\./, ""); // *.claude.ai and claude.ai are the same site to us
 };
-const hostsOf = (patterns) => [...new Set(patterns.map(hostOf))].sort();
-const expected = [...SUPPORTED_HOSTS].sort();
+// One comparator for both sides — the two lists are compared by their joined form, so they
+// only have to agree with each other, but they have to agree exactly.
+const byName = (a, b) => a.localeCompare(b);
+const hostsOf = (patterns) => [...new Set(patterns.map(hostOf))].sort(byName);
+const expected = [...SUPPORTED_HOSTS].sort(byName);
 
 const mismatches = [["host_permissions", manifest.host_permissions]]
   .concat(manifest.content_scripts.map((cs, i) => [`content_scripts[${i}].matches`, cs.matches]))
