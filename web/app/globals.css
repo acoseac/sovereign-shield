@@ -606,28 +606,30 @@ mark.val {
   border-left: 3px solid var(--yellow);
   border-radius: 12px;
 }
-.gov-cta-h {
+/* These are <p> inside .prose, so they must out-specify `.prose p` (0,1,1). Scope with the
+   `.prose` prefix rather than reaching for !important — same reason the rest of this file does. */
+.prose .gov-cta-h {
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 700;
   color: var(--ink);
 }
-.gov-cta-b {
+.prose .gov-cta-b {
   margin: 8px 0 0;
   font-size: 14.5px;
   line-height: 1.65;
   color: var(--text);
 }
-.gov-note {
+.prose .gov-note {
   margin: 22px 0 0;
   padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--muted);
-  font-size: 13px !important;
-  line-height: 1.6 !important;
+  font-size: 13px;
+  line-height: 1.6;
 }
-.gov-note b {
+.prose .gov-note b {
   color: var(--text);
 }
 
