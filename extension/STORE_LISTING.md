@@ -1,9 +1,8 @@
 # Chrome Web Store listing — copy/paste reference
 
-> **Status:** 0.6.0 is **live** on the Chrome Web Store (published 27 July 2026). **0.7.0 is
-> prepared** and is the next upload — a reliability release (see the release notes below). The
-> detailed description below still applies; the only content change for 0.7.0 is the one-click
-> breakage report noted in "See Exactly What You Send".
+> **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
+> 0.6.0. The copy below is what is published. The next upload must be **0.7.1 or higher** — the
+> store will not accept an equal or lower version, and a number can never be reused.
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
@@ -145,14 +144,16 @@ CWS-advertise update and still carried the "not yet on the Chrome Web Store" lin
 
 ## Submission checklist
 
-The account, privacy policy, data disclosure and permission justifications were all settled for
-the live 0.6.0 listing. For the **0.7.0 update** the moving parts are:
+The account, privacy policy, data disclosure and permission justifications were settled for the
+first listing and carry forward untouched. For **each update** the moving parts are:
 
-- [ ] `npm run package` → upload `sovereign-shield-0.7.0.zip` (version must be **strictly greater**
-      than 0.6.0 — the store will not accept an equal or lower number, and a number can't be reused).
-- [ ] Paste the 0.7.0 **"What's new"** note (above) into the version.
-- [ ] Description: re-paste only if you want the added report clause live (it's a one-line change).
-- [ ] Screenshots: swap in the refreshed inspector + all-secrets options shots once resized to
-      1280×800; the rest of the lineup is unchanged.
-- [ ] Visibility: leave as the live 0.6.0 listing — 0.7.0 is an update, not a first submission.
+- [ ] `npm run package` → upload `sovereign-shield-<version>.zip` (the version must be **strictly
+      greater** than what is live — the store will not accept an equal or lower number, and a
+      number can never be reused).
+- [ ] Paste that version's **"What's new"** note into the version.
+- [ ] Description: re-paste only if a user-facing clause changed.
+- [ ] Screenshots: only if a pictured surface moved. Still outstanding from 0.7.0 — the refreshed
+      inspector-panel and all-secrets options captures need a 1280×800 landscape pass before they
+      can replace tiles 4 and 6.
+- [ ] Visibility: leave as the live listing — an update is not a first submission.
 - [ ] Submit → host-permission review is still manual and can take days (0.6.0 took ~4).

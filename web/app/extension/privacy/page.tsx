@@ -15,7 +15,7 @@ export default function Page() {
       <header className="header">
         <h1>Privacy policy</h1>
         <p className="tag">
-          Sovereign Shield — LLM PII guard (browser extension). Last updated 18 July 2026.
+          Sovereign Shield — LLM PII guard (browser extension). Last updated 29 July 2026.
         </p>
       </header>
 
@@ -23,8 +23,10 @@ export default function Page() {
         <h2>The short version</h2>
         <p>
           The extension does its work <strong>entirely inside your browser</strong>. It collects no
-          personal data, sends nothing to us or any third party, and has no server, account, API key
-          or analytics. There is nothing for us to see, because nothing ever leaves your device.
+          personal data, transmits nothing on its own, and has no server, account, API key or
+          analytics. The one and only way anything reaches the developer is if{" "}
+          <strong>you click to report</strong> a site that stopped working — described below, and it
+          carries no prompt content.
         </p>
 
         <h2>What the extension does</h2>
@@ -60,8 +62,17 @@ export default function Page() {
             page, and it never leaves your device.
           </li>
           <li>
-            <strong>No collection, no transmission, no tracking.</strong> No data is sent to the
-            developer or anyone else. There are no cookies, no analytics, no remote code.
+            <strong>Breakage reports are opt-in, one click at a time.</strong> If a site changes its
+            API and a message goes out uninspected, the warning banner offers to report it. Clicking
+            opens a prefilled GitHub issue — or your mail client — containing four facts: the{" "}
+            <strong>site&apos;s hostname, the extension version, the build stamp, and the symptom</strong>.
+            Never any prompt text, redacted value, placeholder or custom term. Nothing is sent
+            unless you click, and you can read and edit it before you send it.
+          </li>
+          <li>
+            <strong>No collection, no tracking.</strong> Apart from a report you choose to send, no
+            data reaches the developer or anyone else. There are no cookies, no analytics, no remote
+            code.
           </li>
         </ul>
 
