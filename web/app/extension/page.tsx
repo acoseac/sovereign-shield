@@ -85,8 +85,20 @@ export default function Page() {
           />
           <figcaption>
             Per-category control — 20 identifier types, each its own toggle; unchecked types
-            pass through untouched. Secrets, custom terms and smokescreen have their own sections
-            further down the same page.
+            pass through untouched.
+          </figcaption>
+        </figure>
+        <figure className="ext-shot">
+          <img
+            src="/ss-secrets-rules.png"
+            alt="Further down the same options page: a 'Secrets & API keys' group with nine toggles (AWS, Anthropic, Google, Stripe, PEM private key, OpenAI, GitHub, Slack, JWT), a 'Custom rules' editor holding a client project name with regex / case-sensitive / whole-word options, and the value-free activity log"
+            width={1530}
+            height={1628}
+          />
+          <figcaption>
+            Further down the same page: nine secret types, your own custom terms (plain text or
+            regex), and the activity log — which counts what was kept local and{" "}
+            <strong>never records the value</strong>, not even masked.
           </figcaption>
         </figure>
         <p className="ext-load">
@@ -129,6 +141,20 @@ export default function Page() {
           stand-in. Copy the reply and the real values come back with it, so what lands on your
           clipboard matches what you read on screen.
         </p>
+        <figure className="ext-shot">
+          <img
+            src="/ss-inspector.png"
+            alt="The Sovereign Shield inspector panel open beside a Gemini composer: a 'You typed' pane showing a client project name, an email address and a Google API key, and a 'What the provider receives' pane where the project name and email have become realistic stand-ins and the API key has become the placeholder [GOOGLE_1]"
+            width={1600}
+            height={1016}
+          />
+          <figcaption>
+            Left, what you typed. Right, what Gemini would receive — three spans replaced. The
+            client project and the email became stand-ins; the API key became{" "}
+            <code>[GOOGLE_1]</code>, because a plausible-looking fake key is the wrong thing to
+            hand a model.
+          </figcaption>
+        </figure>
         <p className="tag">
           <strong>Smokescreen</strong>, off by default, goes one step further for emails and custom
           terms: instead of <code>[EMAIL_1]</code> the model sees a plausible stand-in like{" "}
