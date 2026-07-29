@@ -60,8 +60,9 @@ export default function Page() {
             <p>
               An <strong>identifier</strong> is matched only when the regex shape <em>and</em> its
               check digit agree, so ordinary text is never touched — the exact same detector runs
-              here on this page. A <strong>secret</strong> is matched on its vendor prefix (
-              <code>sk-ant-</code>, <code>AKIA</code>, a decodable JWT header). A{" "}
+              here on this page. A <strong>secret</strong> is matched on its structured credential
+              pattern: a vendor prefix where there is one (<code>sk-ant-</code>, <code>AKIA</code>),
+              a decodable header for a JWT, the <code>BEGIN</code> block for a PEM key. A{" "}
               <strong>custom term</strong> is whatever you add: a client name, a code name, a
               domain, a regex.
             </p>
@@ -197,8 +198,9 @@ export default function Page() {
           on typing as though you were still covered. So the extension watches for exactly that. If
           your composer drains and no request went through the guard, a banner tells you{" "}
           <strong>that message was not inspected</strong> — and offers to report it in one click, so
-          a moved endpoint gets fixed quickly. The report carries the site name, the extension
-          version and the build stamp, and nothing else; it is sent only if you click.
+          a moved endpoint gets fixed quickly. The report carries four facts — the site&apos;s
+          hostname, the extension version, the build stamp and the symptom — and never any prompt
+          content or redacted value. It is sent only if you click.
         </p>
       </section>
 
@@ -224,7 +226,7 @@ export default function Page() {
         <p>
           Detection is regex + checksum, compiled to TypeScript and kept byte-for-byte in parity
           with the Python <a href="https://github.com/acoseac/sovereign-shield">sovereign-shield</a>{" "}
-          source. Structured identifiers, vendor-prefixed secrets and your own terms; names and
+          source. Structured identifiers, structured secrets and your own terms; names and
           addresses need an NER model, and a file you attach is never inspected — redact it before
           you upload it. See{" "}
           <a href="/how-it-works">how it works</a> and the{" "}

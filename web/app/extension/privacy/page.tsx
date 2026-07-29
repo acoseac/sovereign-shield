@@ -5,7 +5,7 @@ import Nav from "@/components/Nav";
 export const metadata: Metadata = {
   title: "Privacy policy — Sovereign Shield browser extension",
   description:
-    "The Sovereign Shield browser extension processes identifiers entirely in your browser. It collects nothing, transmits nothing, and uses no servers.",
+    "The Sovereign Shield browser extension processes identifiers entirely in your browser. It collects nothing, uses no servers, and transmits nothing on its own — the only exception is a breakage report you choose to send, which carries no prompt content.",
 };
 
 export default function Page() {

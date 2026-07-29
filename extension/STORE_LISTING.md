@@ -144,12 +144,14 @@ CWS-advertise update and still carried the "not yet on the Chrome Web Store" lin
 
 ## Submission checklist
 
-The account, privacy policy, data disclosure and permission justifications were settled for the
-first listing and carry forward untouched. For **each update** the moving parts are:
+The account, privacy policy, data disclosure and permission justifications carry forward from the
+first listing **only for as long as they stay true** — a release that changes what is collected,
+what is sent, or which permissions are requested needs them rewritten and re-reviewed, not carried.
+For **each update** the moving parts are:
 
-- [ ] `npm run package` → upload `sovereign-shield-<version>.zip` (the version must be **strictly
-      greater** than what is live — the store will not accept an equal or lower number, and a
-      number can never be reused).
+- [ ] `cd extension && npm run package` → upload `sovereign-shield-<version>.zip` (the version must
+      be **strictly greater** than what is live — the store will not accept an equal or lower
+      number, and a number can never be reused).
 - [ ] Paste that version's **"What's new"** note into the version.
 - [ ] Description: re-paste only if a user-facing clause changed.
 - [ ] Screenshots: only if a pictured surface moved. Still outstanding from 0.7.0 — the refreshed
