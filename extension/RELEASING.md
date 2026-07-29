@@ -37,6 +37,9 @@ Store visuals.
    git push origin extension-v<version>
    ```
 5. Upload to the Chrome Web Store (manual — see below).
+6. Once it is **published**, resync the public surfaces — see
+   [After it goes live](#after-it-goes-live). This step is not optional and it is not
+   cosmetic: it is the one that gets skipped.
 
 ## Chrome Web Store submission
 
@@ -63,6 +66,52 @@ single-purpose, permission justifications, data disclosure, test instructions) l
 
 Then set visibility and **Submit for review** (host-permission review is manual and can
 take days).
+
+## After it goes live
+
+**A release is not finished when the store publishes it.** Every surface below states a
+version or a feature set, not one of them is generated from `manifest.json`, and nothing
+fails when they drift — so the drift is silent and it compounds. It has happened: 0.7.0
+went live while
+`web/app/extension/page.tsx` still described **0.3.2**, four releases and every headline
+feature behind, and the privacy policy still promised that nothing ever leaves your device
+after 0.7.0 added the opt-in breakage report.
+
+Walk this table on **every** publish. It is the same list as the root
+[CLAUDE.md](../CLAUDE.md), kept here because this is where you actually are when the store
+mail arrives.
+
+| Surface | What goes stale | Repo |
+|---|---|---|
+| [`STORE_LISTING.md`](STORE_LISTING.md) | status header, "What's new" note, description, screenshots | this |
+| [`web/app/extension/page.tsx`](../web/app/extension/page.tsx) | version string, feature copy, meta description, screenshots | this |
+| [`web/app/extension/privacy/page.tsx`](../web/app/extension/privacy/page.tsx) | **what the extension collects, stores or sends** — and the `metadata.description`, which is the copy search results quote | this |
+| [`README.md`](../README.md) | the detector tables under *What it detects* | this |
+| `src/pages/sovereign-shield.astro` | the extension card's version + blurb | **ars.md blog** |
+| `src/content/blog/…` post frontmatter and any "this post describes X" banner | `seoTitle`/`description` and forward-pointers outlive the post's narrative | **ars.md blog** |
+
+Two of those live in a **separate repo** (`github.com/acoseac/blog`, Astro, its own
+`CLAUDE.md`) — easy to forget precisely because it is not in this working tree.
+
+The privacy policy row is the one to treat as load-bearing rather than copy: it is a public
+claim about data handling, so a release that changes what is collected, sent or persisted
+makes it **wrong**, not merely dated — and the same applies to the store's data disclosure
+and permission justifications, which otherwise carry forward untouched.
+
+A quick sweep for the version strings — the first from this repo's root, the second from
+wherever the blog is checked out:
+
+```bash
+grep -rn "v\?0\.[0-9]\+\.[0-9]\+" web/app/extension/page.tsx extension/STORE_LISTING.md
+```
+
+```bash
+grep -rn "Browser extension · \|extension has moved on" src/pages src/content/blog
+```
+
+Grep only catches the numbers. **Feature copy has no version string in it** — that is why
+the extension page could sit four releases behind while every version number on it looked
+self-consistent. Read the prose against the release notes you just pasted into the dashboard.
 
 ## Regenerating the store visuals
 

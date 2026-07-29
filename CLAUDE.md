@@ -181,14 +181,21 @@ npm run package     # → sovereign-shield-<version>.zip for the store
 
   | Surface | What goes stale |
   |---|---|
-  | `extension/STORE_LISTING.md` | description, screenshots, permission justifications |
-  | `web/app/extension/page.tsx` | version string + feature copy + meta description |
+  | `extension/STORE_LISTING.md` | status header, "What's new" note, description, screenshots, permission justifications |
+  | `web/app/extension/page.tsx` | version string + feature copy + meta description + screenshots |
+  | `web/app/extension/privacy/page.tsx` | **what the extension collects, stores or sends** + the `metadata.description` |
   | `README.md` | the detector tables under *What it detects* |
   | ars.md blog — `src/pages/sovereign-shield.astro` | the extension card's version + blurb |
-  | ars.md blog — post frontmatter | `seoTitle`/`description` outlive the post's narrative |
+  | ars.md blog — post frontmatter and "this post describes X" banners | `seoTitle`/`description` and forward-pointers outlive the post's narrative |
 
   The blog lives in a **separate repo** (`github.com/acoseac/blog`, Astro) with its own
   `CLAUDE.md` — easy to forget precisely because it is not in this working tree.
+
+  The privacy-policy row is not copy — it is a public claim about data handling, so a release
+  that changes what is collected, sent or persisted makes it **wrong**, not merely dated. 0.7.0
+  added the opt-in breakage report while the page still said nothing ever leaves your device.
+  The procedure, and a grep that catches the version strings, is in
+  [extension/RELEASING.md → After it goes live](extension/RELEASING.md#after-it-goes-live).
 
 ## Python proxy & web demo (quick reference)
 
