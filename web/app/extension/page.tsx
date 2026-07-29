@@ -149,10 +149,10 @@ export default function Page() {
             height={1016}
           />
           <figcaption>
-            Left, what you typed. Right, what Gemini would receive — three spans replaced. The
-            client project and the email became stand-ins; the API key became{" "}
-            <code>[GOOGLE_1]</code>, because a plausible-looking fake key is the wrong thing to
-            hand a model.
+            Left, what you typed. Right, what Gemini would receive — three spans replaced. This
+            capture has smokescreen (below) switched on, which is why the client project and the
+            email came out as stand-ins while the API key stayed <code>[GOOGLE_1]</code>: only
+            emails and your own custom terms are ever given a stand-in.
           </figcaption>
         </figure>
         <p className="tag">
