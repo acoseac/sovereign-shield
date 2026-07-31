@@ -141,6 +141,28 @@ export function invalidateComposerText(el: ComposerTextSource | null | undefined
   if (el) composerTextCache.delete(el);
 }
 
+/**
+ * The attribute value for `el`'s current contents — `""` when there is nothing worth publishing.
+ *
+ * Every decision `publish()` makes lives here: which text to read, what to pass summarize, and how
+ * it is encoded. That leaves publish() as DOM plumbing (find the composer, write the attribute),
+ * which is the same split canary.ts uses and for the same reason — a decision sitting inside a
+ * listener is a decision nothing can test. Reviewers of #92 pointed out, correctly and twice, that
+ * asserting on summarize() or even composerText() still let a publisher regression through.
+ *
+ * `excused` is taken as a bare set rather than a Session so a test can drive this with nothing but
+ * two plain objects.
+ */
+export function pendingFor(
+  el: ComposerTextSource | null | undefined,
+  excused: ReadonlySet<string> | undefined,
+  deps: PendingDeps,
+): string {
+  const text = composerText(el);
+  if (!text.trim()) return "";
+  return encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), excused));
+}
+
 export function installPendingSummary(session: Session, deps: PendingDeps): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let last = "";
@@ -148,13 +170,9 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
   const publish = (): void => {
     let next = "";
     try {
-      const composer = findComposer();
-      // Line breaks are load-bearing for the count — see composerText().
-      const text = composerText(composer);
-      if (text.trim()) {
-        // The excused set is the whole reason this runs here rather than in the pill.
-        next = encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), session.excused));
-      }
+      // The excused set is the whole reason this runs in the MAIN world; everything else about
+      // what gets published is decided in pendingFor, where it can be tested.
+      next = pendingFor(findComposer(), session.excused, deps);
     } catch {
       // Never let the pre-send hint break the page. An empty attribute makes the isolated side
       // fall back to computing its own summary, which is the pre-0.7.0 behaviour.

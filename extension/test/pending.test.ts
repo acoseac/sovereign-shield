@@ -6,7 +6,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { composerText, decodePending, invalidateComposerText } from "../src/pending.ts";
+import {
+  composerText,
+  decodePending,
+  invalidateComposerText,
+  pendingFor,
+} from "../src/pending.ts";
 import { summarize } from "../src/summarize.ts";
 
 const good = JSON.stringify({ c: 2, k: ["Email", "Swiss AHV / AVS"], s: 1 });
@@ -187,4 +192,49 @@ test("invalidation does not leak across composers", () => {
   invalidateComposerText(a);
   composerText(b);
   assert.equal(readsB, 1, "b should still be served from cache");
+});
+
+// --- pendingFor: what actually gets published -------------------------------
+//
+// The tests above assert composerText and summarize. Neither would catch publish() reading
+// composer.textContent directly and bypassing both — the point made twice in review of #92. So
+// everything publish() decides now lives in pendingFor, and these drive THAT: give it a
+// block-based composer, read back the attribute it would publish.
+
+const NO_DEPS = { allowedCategories: () => undefined, customMatcher: () => undefined };
+
+test("REGRESSION: the published summary reports every identifier, not just the last", () => {
+  const published = decodePending(pendingFor(fakeComposer(EIGHT_LINES), undefined, NO_DEPS));
+  assert.ok(published, "should have published something");
+  assert.equal(published.count, 8);
+});
+
+test("nothing is published for an empty or whitespace-only composer", () => {
+  assert.equal(pendingFor(fakeComposer([]), undefined, NO_DEPS), "");
+  assert.equal(pendingFor(fakeComposer(["   ", "\t"]), undefined, NO_DEPS), "");
+  assert.equal(pendingFor(null, undefined, NO_DEPS), "");
+});
+
+test("the published summary honours the excused set", () => {
+  // The one thing that forced this computation into the MAIN world: a value the user excused via
+  // "stop redacting this" must stop being counted, or the pill and the panel disagree.
+  const el = fakeComposer(["CPF (BR): 529.982.247-25"]);
+  assert.equal(decodePending(pendingFor(el, undefined, NO_DEPS))?.count, 1);
+  invalidateComposerText(el); // a fresh read, as an edit would force
+  // Zero, not absent: the composer still HAS text, so a summary is still published — it just
+  // counts nothing. The pill hides itself on count 0. Publishing "" is reserved for an empty
+  // composer, and conflating the two would make the isolated side fall back to computing its own
+  // summary, which is precisely the disagreement this module exists to end.
+  const excused = decodePending(pendingFor(el, new Set(["529.982.247-25"]), NO_DEPS));
+  assert.equal(excused?.count, 0, "an excused value must stop being counted");
+  assert.deepEqual(excused?.categories, []);
+});
+
+test("the published summary honours the category filter", () => {
+  const el = fakeComposer(EIGHT_LINES);
+  const onlyCpf = pendingFor(el, undefined, {
+    allowedCategories: () => new Set(["br_cpf"]),
+    customMatcher: () => undefined,
+  });
+  assert.equal(decodePending(onlyCpf)?.count, 1, "disabled categories must not be counted");
 });
