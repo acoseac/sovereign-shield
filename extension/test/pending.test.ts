@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decodePending } from "../src/pending.ts";
+import { composerText, decodePending } from "../src/pending.ts";
 import { summarize } from "../src/summarize.ts";
 
 const good = JSON.stringify({ c: 2, k: ["Email", "Swiss AHV / AVS"], s: 1 });
@@ -95,4 +95,56 @@ test("the count is boundary-sensitive, so the caller MUST preserve line breaks",
   const withBreaks = summarize(EIGHT_LINES.join("\n"), undefined, undefined).count;
   const without = summarize(EIGHT_LINES.join(""), undefined, undefined).count;
   assert.ok(withBreaks > without, "line breaks must not be droppable without changing the count");
+});
+
+// --- composerText: the publisher-level guard --------------------------------
+//
+// The summarize() tests above prove line breaks change the count, but they would ALL still pass
+// if installPendingSummary went back to reading textContent — they never touch the publisher.
+// These do: composerText is what publish() actually calls, and it is duck-typed so a plain object
+// stands in for the composer with no DOM. (Raised in review of #92.)
+
+/** A composer whose two text views disagree exactly the way a real block-based one does. */
+function fakeComposer(lines: string[]) {
+  return { innerText: lines.join("\n"), textContent: lines.join("") };
+}
+
+test("composerText reads innerText, so block boundaries survive", () => {
+  const el = fakeComposer(EIGHT_LINES);
+  assert.equal(composerText(el), EIGHT_LINES.join("\n"));
+  assert.notEqual(composerText(el), el.textContent, "textContent would lose the boundaries");
+});
+
+test("REGRESSION: the publisher's text yields every identifier, not just the last", () => {
+  // The end-to-end shape of the reported bug, one layer above summarize().
+  assert.equal(summarize(composerText(fakeComposer(EIGHT_LINES)), undefined, undefined).count, 8);
+});
+
+test("composerText returns empty for a missing composer rather than throwing", () => {
+  assert.equal(composerText(null), "");
+  assert.equal(composerText(undefined), "");
+});
+
+test("the layout-forcing read is cached, keyed on the cheap one", () => {
+  // innerText forces a synchronous layout and publish() runs on every focusin anywhere in the
+  // document, so an unchanged composer must not pay for it twice.
+  let reads = 0;
+  const el = {
+    textContent: "ab",
+    get innerText() {
+      reads++;
+      return "a\nb";
+    },
+  };
+  assert.equal(composerText(el), "a\nb");
+  assert.equal(composerText(el), "a\nb");
+  assert.equal(reads, 1, "second call should have been served from the cache");
+});
+
+test("the cache invalidates when the text actually changes", () => {
+  const el = { textContent: "ab", innerText: "a\nb" };
+  assert.equal(composerText(el), "a\nb");
+  el.textContent = "abc";
+  el.innerText = "a\nb\nc";
+  assert.equal(composerText(el), "a\nb\nc", "a real edit must not serve a stale count");
 });

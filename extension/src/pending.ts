@@ -73,6 +73,56 @@ export function refreshPending(): void {
   publishNow?.();
 }
 
+/** Just enough of an element to read text from, so this is drivable in Node without a DOM. */
+export interface ComposerTextSource {
+  innerText: string;
+  textContent: string | null;
+}
+
+/**
+ * Cache for the layout-forcing read, keyed on the cheap one.
+ *
+ * A closure-private WeakMap, **not** a property on the element. The MAIN world is shared with the
+ * page, so an own-property cache would be readable and — the part that matters — spoofable, and a
+ * spoofed entry would make the pill promise a count the guard will not deliver. That is precisely
+ * the threat the pending attribute is already treated as untrusted against. Same rule, and the
+ * same reason, as the XHR url map in interceptor.ts.
+ */
+const composerTextCache = new WeakMap<ComposerTextSource, { key: string; text: string }>();
+
+/**
+ * The composer's text with its block boundaries intact.
+ *
+ * **innerText, never textContent**, and this is the whole bug this function exists to prevent. A
+ * composer wraps each line in its own block — Gemini's Quill emits one `<p>` per line — so
+ * textContent concatenates them with no separator and every value that ENDS a line loses the
+ * boundary its pattern needs:
+ *
+ *   textContent  "…MRTMTT25D09F205ZNIR (FR): 2 69 05 49 588 157 80…"   -> 1 identifier found
+ *   innerText    "…MRTMTT25D09F205Z\n\nNIR (FR): 2 69 05 49 588 157 80…" -> 8 found
+ *
+ * Measured on a real eight-identifier prompt, where the pill read "1 item" while the inspector
+ * (which reads innerText) correctly showed 8. The guard was redacting all 8 either way — it parses
+ * the request body, whose newlines survive — so only the displayed count was ever wrong, and it
+ * was wrong in the direction that under-claims protection.
+ *
+ * innerText forces a synchronous layout, and `publish` runs on every `focusin` anywhere in the
+ * document, so most calls see text that has not changed at all. Hence the cache: textContent is
+ * free to read and changes whenever the typed text does, which makes it a sound key. A CSS change
+ * that altered innerText without touching textContent would go unnoticed until the next edit —
+ * irrelevant in a composer, and the cost is a stale count for one keystroke, never a wrong
+ * redaction.
+ */
+export function composerText(el: ComposerTextSource | null | undefined): string {
+  if (!el) return "";
+  const key = el.textContent ?? "";
+  const hit = composerTextCache.get(el);
+  if (hit && hit.key === key) return hit.text;
+  const text = el.innerText;
+  composerTextCache.set(el, { key, text });
+  return text;
+}
+
 export function installPendingSummary(session: Session, deps: PendingDeps): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let last = "";
@@ -81,24 +131,8 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
     let next = "";
     try {
       const composer = findComposer();
-      // innerText, NOT textContent — and the reasoning that used to sit here was wrong.
-      //
-      // It argued the missing line breaks "could only matter if an identifier were split across a
-      // block boundary". They matter far more ordinarily than that: a composer puts each line in
-      // its own block, so textContent runs them together and every value that ENDS a line loses
-      // the boundary its pattern needs. "…MRTMTT25D09F205Z" + "NIR (FR): …" reads as
-      // "MRTMTT25D09F205ZNIR" and no longer matches.
-      //
-      // Measured on a real eight-identifier prompt: textContent found 1, innerText found 8 — while
-      // the guard redacted all 8, because it reads the request body with its newlines intact. So
-      // the pill was under-reporting protection by seven on the one surface whose entire job is to
-      // be believed before you press send, and it under-reported in the alarming direction.
-      //
-      // innerText's layout cost is real but bounded: this is debounced (DEBOUNCE_MS), and
-      // inspector.ts already reads innerText from this same element for the same reason. The drain
-      // check in indicator.ts deliberately KEEPS textContent — it only asks "is this empty", which
-      // concatenation cannot affect, and it runs undebounced on every keystroke.
-      const text = composer?.innerText ?? "";
+      // Line breaks are load-bearing for the count — see composerText().
+      const text = composerText(composer);
       if (text.trim()) {
         // The excused set is the whole reason this runs here rather than in the pill.
         next = encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), session.excused));
