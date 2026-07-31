@@ -81,14 +81,24 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
     let next = "";
     try {
       const composer = findComposer();
-      // textContent, not innerText: this runs (debounced) on every keystroke, and innerText
-      // forces a full-document layout reflow each time — costly on heavy chat DOMs. textContent
-      // needs no layout. indicator.ts's drain check made the same choice for the same reason. The
-      // trade-off is marginal and preview-only: textContent drops the line breaks innerText would
-      // insert between blocks, which could only matter if an identifier were split across a block
-      // boundary (a newline mid-value) — and even then this feeds the pre-send COUNT, never the
-      // redaction, which the guard does on the actual request body regardless.
-      const text = composer?.textContent ?? "";
+      // innerText, NOT textContent — and the reasoning that used to sit here was wrong.
+      //
+      // It argued the missing line breaks "could only matter if an identifier were split across a
+      // block boundary". They matter far more ordinarily than that: a composer puts each line in
+      // its own block, so textContent runs them together and every value that ENDS a line loses
+      // the boundary its pattern needs. "…MRTMTT25D09F205Z" + "NIR (FR): …" reads as
+      // "MRTMTT25D09F205ZNIR" and no longer matches.
+      //
+      // Measured on a real eight-identifier prompt: textContent found 1, innerText found 8 — while
+      // the guard redacted all 8, because it reads the request body with its newlines intact. So
+      // the pill was under-reporting protection by seven on the one surface whose entire job is to
+      // be believed before you press send, and it under-reported in the alarming direction.
+      //
+      // innerText's layout cost is real but bounded: this is debounced (DEBOUNCE_MS), and
+      // inspector.ts already reads innerText from this same element for the same reason. The drain
+      // check in indicator.ts deliberately KEEPS textContent — it only asks "is this empty", which
+      // concatenation cannot affect, and it runs undebounced on every keystroke.
+      const text = composer?.innerText ?? "";
       if (text.trim()) {
         // The excused set is the whole reason this runs here rather than in the pill.
         next = encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), session.excused));

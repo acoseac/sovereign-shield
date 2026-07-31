@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { decodePending } from "../src/pending.ts";
+import { summarize } from "../src/summarize.ts";
 
 const good = JSON.stringify({ c: 2, k: ["Email", "Swiss AHV / AVS"], s: 1 });
 
@@ -51,4 +52,47 @@ test("a zero-count summary is valid, not falsy-rejected", () => {
     categories: [],
     surrogatable: 0,
   });
+});
+
+// --- why the composer text must keep its line breaks ------------------------
+//
+// installPendingSummary reads composer.innerText, not textContent. This pins the reason, because
+// the reason is not obvious and the code was wrong about it for two releases: the old comment
+// claimed missing line breaks "could only matter if an identifier were split across a block
+// boundary". They matter for the ordinary case. A composer puts each line in its own block, so
+// textContent concatenates them and every value that ENDS a line loses the boundary its pattern
+// needs.
+//
+// Observed live on Gemini: the pill read "1 item (CPF (BR))" while the inspector — which reads
+// innerText — correctly showed 8 spans replaced, and the guard redacted all 8.
+
+const EIGHT_LINES = [
+  "Codice fiscale (IT): MRTMTT25D09F205Z",
+  "NIR (FR): 2 69 05 49 588 157 80",
+  "NHS number (UK): 943 476 5919",
+  "Steuer-ID (DE): 86 095 742 719",
+  "NIF (PT): 501442600",
+  "PESEL (PL): 44051401359",
+  "Rijksregisternr (BE): 93.05.18-223.61",
+  "CPF (BR): 529.982.247-25",
+];
+
+test("every identifier is counted when the block boundaries survive", () => {
+  assert.equal(summarize(EIGHT_LINES.join("\n"), undefined, undefined).count, 8);
+});
+
+test("REGRESSION: concatenating the blocks loses all but the last identifier", () => {
+  // This is what textContent hands back, and why reverting to it would silently gut the pill.
+  // Only the final value survives, because it alone still has a clean boundary after it.
+  const concatenated = summarize(EIGHT_LINES.join(""), undefined, undefined);
+  assert.equal(concatenated.count, 1);
+  assert.deepEqual(concatenated.categories, ["CPF (BR)"]);
+});
+
+test("the count is boundary-sensitive, so the caller MUST preserve line breaks", () => {
+  // Stated as a contract rather than a curiosity: whatever installPendingSummary reads from the
+  // composer has to keep the newlines, or the pill under-reports how much is being protected.
+  const withBreaks = summarize(EIGHT_LINES.join("\n"), undefined, undefined).count;
+  const without = summarize(EIGHT_LINES.join(""), undefined, undefined).count;
+  assert.ok(withBreaks > without, "line breaks must not be droppable without changing the count");
 });
