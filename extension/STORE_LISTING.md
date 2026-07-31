@@ -1,18 +1,18 @@
 # Chrome Web Store listing — copy/paste reference
 
 > **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
-> 0.6.0. **0.8.2 is prepared** and is the next upload. The store will not accept a version equal
+> 0.6.0. **0.8.3 is prepared** and is the next upload. The store will not accept a version equal
 > to or lower than the live one, and a number can never be reused.
 >
-> **0.8.0 and 0.8.1 were tagged but never uploaded**, so users go straight from 0.7.0 to 0.8.2 and
-> never see either. The "What's new" note below is therefore the changelog **since 0.7.0** — write
-> it that way. Both tags stay in git as a record of what was verified when; nothing needs undoing.
+> **0.8.0, 0.8.1 and 0.8.2 were tagged but never uploaded**, so users go straight from 0.7.0 to
+> 0.8.3 and never see any of them. The "What's new" note below is therefore the changelog **since
+> 0.7.0** — write it that way. All three tags stay in git as a record of what was verified when;
+> nothing needs undoing.
 >
-> **Unlike 0.8.1, this one DOES change the detailed description**: the ready-made rule library is a
-> new user-facing feature, so the Custom Rules clause was reworded and the description must be
-> re-pasted in the dashboard. Nothing changed about what is detected, redacted, stored or sent, so
-> the privacy policy, the data disclosure and the permission justifications all stay correct as
-> written.
+> **The detailed description must be RE-PASTED** for this upload: the ready-made rule library is a
+> new user-facing feature and the Custom Rules clause was reworded for it. Nothing changed about
+> what is detected, redacted, stored or sent, so the privacy policy, the data disclosure and the
+> permission justifications all stay correct as written.
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
@@ -69,12 +69,13 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 
 ---
 
-## Release notes — 0.8.2 (dashboard "What's new" field)
+## Release notes — 0.8.3 (dashboard "What's new" field)
 
 Written as the changelog **since 0.7.0**, because neither 0.8.0 nor 0.8.1 was ever uploaded and
 no user ran either. Paste into the version's "What's new" note:
 
-> 0.8.2 — accurate warnings, safer copying, easier rules
+> 0.8.3 — accurate counts and warnings, safer copying, easier rules
+> • The counter above the chat box now counts every identifier in a multi-line prompt. It was only counting the last one, so a prompt with eight IDs could read "1 item" — everything was always redacted correctly, but the number understated it.
 > • Copying a reply now restores your real values on every site. The Copy button used to bypass it — and with Smokescreen on that meant copying a realistic stand-in address instead of your real one, with no way to tell.
 > • Fixed a false alarm: the "this message wasn't inspected" banner could appear on messages that had in fact been redacted correctly. Long prompts were most affected, and Gemini's Thinking model most of all. If that warning does appear and later turns out to be wrong, it now takes itself back down.
 > • New: a library of ready-made rules — US Social Security numbers, UK National Insurance numbers, internal IP addresses, internal hostnames and MAC addresses — added with one click, no regular expressions needed.
@@ -177,7 +178,7 @@ For **each update** the moving parts are:
       be **strictly greater** than what is live — the store will not accept an equal or lower
       number, and a number can never be reused).
 - [ ] Paste that version's **"What's new"** note into the version.
-- [ ] Description: re-paste only if a user-facing clause changed. **REQUIRED for 0.8.2** — the
+- [ ] Description: re-paste only if a user-facing clause changed. **REQUIRED for 0.8.3** — the
       Custom Rules clause now names the ready-made library.
 - [ ] Screenshots: only if a pictured surface moved. Still outstanding from 0.7.0 — the refreshed
       inspector-panel and all-secrets options captures need a 1280×800 landscape pass before they
