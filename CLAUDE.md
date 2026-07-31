@@ -106,8 +106,12 @@ transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test
   `interceptor.ts` bumps `data-ss-seen` per inspected body and `indicator.ts` warns when a
   composer drains with no counter movement (`canary.ts`). Corroborators are deliberately
   generic — a list of per-site send-button selectors would rot on the same schedule as the
-  endpoints, and a canary that stops warning is worse than none. Two edges learned the hard way,
-  both in `canary.ts`: it **polls** `data-ss-seen` for up to `CANARY_GRACE_MS` (12 s) rather than
+  endpoints, and a canary that stops warning is worse than none. Three edges learned the hard way,
+  all in `canary.ts`: the baseline it measures a send against is sampled at the **send intent**,
+  never at the drain (`sendBaseline`) — Gemini dispatches `StreamGenerate` *before* clearing the
+  composer and the rewrite is synchronous inside `xhr.send()`, so a drain-sampled baseline already
+  counts the send and the verdict is `missed` at every tick, which no grace window can fix; it
+  **polls** `data-ss-seen` for up to `CANARY_GRACE_MS` (12 s) rather than
   checking once, because Gemini's Thinking model issues the generate request seconds after the
   composer clears and a fixed 3 s deadline false-fired on redacted sends; and it does **not** try
   to detect **file attachments** (out of scope — the guard rewrites the typed prompt, never

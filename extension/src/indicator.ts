@@ -15,7 +15,7 @@ import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
 import { showBanner, type BannerAction } from "./banner.ts";
 import { buildReportLinks } from "./report.ts";
-import { CANARY_POLL_MS, canaryVerdict, isSendIntent, readSeen } from "./canary.ts";
+import { CANARY_POLL_MS, canaryVerdict, isSendIntent, readSeen, sendBaseline } from "./canary.ts";
 import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { Z_PILL } from "./layers.ts";
 
@@ -39,6 +39,9 @@ let rafPending = false;
 // --- send canary state (see canary.ts) ---
 let lastComposerText = ""; // to spot the non-empty -> empty drain that means "sent"
 let lastIntentAt = 0; // Enter, or a press on a button beside the composer
+// data-ss-seen as it stood at that intent — the ONLY reading that is reliably from before the
+// request could have been dispatched. See sendBaseline() for the false alarm this prevents.
+let seenAtIntent = 0;
 let canaryPoll: ReturnType<typeof setInterval> | undefined; // active post-drain inspect watch
 
 // --- pill -----------------------------------------------------------------
@@ -205,6 +208,9 @@ function composerScope(): Element | null {
 
 function noteIntent(): void {
   lastIntentAt = Date.now();
+  // Sample HERE, not at the drain. The keypress is the last moment guaranteed to precede the
+  // generate request; by the time the composer empties the guard may already have inspected it.
+  seenAtIntent = readSeen(document.documentElement.dataset.ssSeen);
 }
 
 /** Watch the composer's text for the non-empty -> empty transition. Called undebounced from
@@ -232,7 +238,10 @@ function stopCanary(): void {
 function armCanary(): void {
   const drainedAt = Date.now();
   if (!isSendIntent(lastIntentAt, drainedAt)) return; // a manual clear, not a send
-  const seenAtDrain = readSeen(document.documentElement.dataset.ssSeen);
+  // The bar this send has to clear. Taken from the INTENT sample, because the inspect can land
+  // before the drain as easily as after it — reading the counter here instead is what made the
+  // guard warn about sends it had already redacted. See sendBaseline().
+  const baseline = sendBaseline(seenAtIntent, readSeen(document.documentElement.dataset.ssSeen));
   // POLL, don't check once. The guard may inspect a send seconds after the composer drains —
   // Gemini's Thinking model issues its StreamGenerate request only after preparatory RPCs — and
   // a single fixed-deadline check false-fired on a send that WAS redacted, just later (see
@@ -241,7 +250,7 @@ function armCanary(): void {
   stopCanary();
   canaryPoll = setInterval(() => {
     const seenNow = readSeen(document.documentElement.dataset.ssSeen);
-    const verdict = canaryVerdict(seenAtDrain, seenNow, Date.now() - drainedAt);
+    const verdict = canaryVerdict(baseline, seenNow, Date.now() - drainedAt);
     if (verdict === "waiting") return;
     stopCanary();
     if (verdict === "missed") warnMissedSend();
