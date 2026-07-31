@@ -1,18 +1,18 @@
 # Chrome Web Store listing — copy/paste reference
 
 > **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
-> 0.6.0. **0.8.1 is prepared** and is the next upload — a correctness release for the breakage
-> warning (see the release notes below). The store will not accept a version equal to or lower
-> than the live one, and a number can never be reused.
+> 0.6.0. **0.8.2 is prepared** and is the next upload. The store will not accept a version equal
+> to or lower than the live one, and a number can never be reused.
 >
-> **0.8.0 was tagged but never uploaded**, so users go straight from 0.7.0 to 0.8.1 and never see
-> a 0.8.0. Its "What's new" note is therefore the changelog **since 0.7.0**, not a delta from
-> 0.8.0 — write it that way. `extension-v0.8.0` stays in git as a record of what was verified
-> when; nothing needs undoing.
+> **0.8.0 and 0.8.1 were tagged but never uploaded**, so users go straight from 0.7.0 to 0.8.2 and
+> never see either. The "What's new" note below is therefore the changelog **since 0.7.0** — write
+> it that way. Both tags stay in git as a record of what was verified when; nothing needs undoing.
 >
-> The detailed description below still applies unchanged: 0.8.1 adds no feature, changes no
-> permission, and changes nothing about what is detected, redacted or sent. It only stops the
-> "wasn't inspected" banner from appearing on sends that *were* inspected.
+> **Unlike 0.8.1, this one DOES change the detailed description**: the ready-made rule library is a
+> new user-facing feature, so the Custom Rules clause was reworded and the description must be
+> re-pasted in the dashboard. Nothing changed about what is detected, redacted, stored or sent, so
+> the privacy policy, the data disclosure and the permission justifications all stay correct as
+> written.
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
@@ -51,7 +51,7 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 > • Personal & Financial Info: Swiss AHV/AVS, global IBANs, credit cards, phone numbers, and email addresses.
 > • National & Health IDs: Official tax, health, and government identity numbers across major regions (including EU, UK, Americas, and Asia).
 > • Developer Secrets: Common API keys, cloud service access tokens, authentication tokens (JWTs), and PEM private keys.
-> • Custom Rules: Your own custom keywords, internal code names, client names, domains, or regular expressions (regex).
+> • Custom Rules: Your own custom keywords, internal code names, client names, domains, or regular expressions (regex) — plus a built-in library of ready-made rules (US Social Security numbers, UK National Insurance numbers, internal IP addresses, internal hostnames, MAC addresses) you can add with one click, no regex required.
 >
 > See Exactly What You Send
 > A live counter above the chat box shows how many sensitive items will be kept local before you send. Click Inspect to open a side-by-side view of your prompt versus what the AI actually receives, plus a list of every active placeholder and its real value — so you can verify a redaction, remove a false positive, or swap a stand-in on the spot. When you copy the AI's reply, the real values come back too, matching what's on your screen. And if a site changes its internal API so a message would go out uninspected, you're warned instead of left guessing — with a one-click way to report it, so a moved endpoint gets fixed quickly.
@@ -69,17 +69,17 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 
 ---
 
-## Release notes — 0.8.1 (dashboard "What's new" field)
+## Release notes — 0.8.2 (dashboard "What's new" field)
 
-A correctness release for the breakage warning. Nothing about detection or redaction changed.
-Written as the changelog **since 0.7.0**, because 0.8.0 was never uploaded and no user ran it.
-Paste into the version's "What's new" note:
+Written as the changelog **since 0.7.0**, because neither 0.8.0 nor 0.8.1 was ever uploaded and
+no user ran either. Paste into the version's "What's new" note:
 
-> 0.8.1 — accurate breakage warnings
-> • Fixed a false alarm: the "this message wasn't inspected" banner could appear on messages that had in fact been redacted correctly. Long prompts were most affected, and Gemini's Thinking model most of all.
-> • If that warning ever does appear and then turns out to be wrong, it now takes itself back down.
-> • Tapping stop, attach or the mic no longer silences the warning when it is genuine.
-> No new permissions, and no change to what is detected, redacted or sent. Still 100% local — no account, no servers, no analytics.
+> 0.8.2 — accurate warnings, safer copying, easier rules
+> • Copying a reply now restores your real values on every site. The Copy button used to bypass it — and with Smokescreen on that meant copying a realistic stand-in address instead of your real one, with no way to tell.
+> • Fixed a false alarm: the "this message wasn't inspected" banner could appear on messages that had in fact been redacted correctly. Long prompts were most affected, and Gemini's Thinking model most of all. If that warning does appear and later turns out to be wrong, it now takes itself back down.
+> • New: a library of ready-made rules — US Social Security numbers, UK National Insurance numbers, internal IP addresses, internal hostnames and MAC addresses — added with one click, no regular expressions needed.
+> • Smokescreen stand-ins are more varied, so a long document with many contacts keeps reading naturally.
+> No new permissions, and no change to what is detected, stored or sent. Still 100% local — no account, no servers, no analytics.
 
 ---
 
@@ -177,8 +177,8 @@ For **each update** the moving parts are:
       be **strictly greater** than what is live — the store will not accept an equal or lower
       number, and a number can never be reused).
 - [ ] Paste that version's **"What's new"** note into the version.
-- [ ] Description: re-paste only if a user-facing clause changed. **Not needed for 0.8.0** — no
-      clause moved.
+- [ ] Description: re-paste only if a user-facing clause changed. **REQUIRED for 0.8.2** — the
+      Custom Rules clause now names the ready-made library.
 - [ ] Screenshots: only if a pictured surface moved. Still outstanding from 0.7.0 — the refreshed
       inspector-panel and all-secrets options captures need a 1280×800 landscape pass before they
       can replace tiles 4 and 6.
