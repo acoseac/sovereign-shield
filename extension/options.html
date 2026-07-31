@@ -86,6 +86,24 @@
         font-weight: 600;
         margin: 18px 0 2px;
       }
+      .row-actions { display: flex; gap: 8px; }
+      #templates {
+        margin: 10px 0 4px;
+        border: 1px solid var(--line, #d5d8dd);
+        border-radius: 8px;
+        padding: 4px 0;
+      }
+      .tpl {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+      }
+      .tpl + .tpl { border-top: 1px solid var(--line, #eceef1); }
+      .tpl .meta { flex: 1; min-width: 0; }
+      .tpl .name { font-weight: 600; }
+      .tpl .desc { font-size: 12px; opacity: 0.75; }
+      .tpl .added { font-size: 12px; opacity: 0.6; flex: none; }
       .rule {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -268,13 +286,17 @@
       <section>
         <div class="row">
           <h2>Custom rules</h2>
-          <button id="add-rule" class="btn">+ Add rule</button>
+          <span class="row-actions">
+            <button id="add-template" class="btn">Add from library</button>
+            <button id="add-rule" class="btn">+ Add rule</button>
+          </span>
         </div>
         <p class="muted">
           Redact your own terms — internal code names, client names, domains. Kept local and
           restored in the reply, exactly like the built-in types. Plain text by default (whole-word);
           tick <strong>Regex</strong> for a pattern. Rules never leave your browser.
         </p>
+        <div id="templates" hidden></div>
         <div id="rules"></div>
       </section>
 
