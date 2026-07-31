@@ -265,3 +265,45 @@ test("past MAX_SURROGATES new values fall back to bracket tokens and still rehyd
   assert.match(out, /^\[EMAIL_\d+\]$/, "beyond the cap we degrade to a bracket token");
   assert.equal(s.rehydrate(out), overflow, "and it still restores");
 });
+
+// --- pool integrity: the properties any future addition must preserve --------
+//
+// The pools grew from 8/6 to 24/18 so a document with many identifiers reads naturally instead
+// of falling to `alice.morgan2@example.org` after the eighth address. These pin the invariants
+// that made that safe, so the next person to add a name gets a failing test rather than a
+// subtle collision.
+
+test("no pool value is duplicated, within a pool or across them", () => {
+  const all = Object.values(SURROGATE_POOLS).flat();
+  assert.equal(new Set(all).size, all.length, "a duplicate would map two real values to one stand-in");
+});
+
+test("no email local part is a prefix of another", () => {
+  // Guards the suffix scheme: if "sam" and "sam.iras" both existed, minting past the pool could
+  // produce a value that word-boundary rehydration cannot tell apart from the other base.
+  const locals = SURROGATE_POOLS.email.map((e) => e.slice(0, e.indexOf("@")));
+  for (const a of locals) {
+    for (const b of locals) {
+      if (a !== b) assert.equal(b.startsWith(a), false, `${b} starts with ${a}`);
+    }
+  }
+});
+
+test("a suffixed stand-in can never collide with another pool base", () => {
+  // mintSurrogate folds the round into the local part past the end of the pool. That value must
+  // not happen to BE one of the vendored addresses, or two ordinals would mint the same string.
+  const bases = new Set<string>(SURROGATE_POOLS.email);
+  for (let n = SURROGATE_POOLS.email.length + 1; n <= SURROGATE_POOLS.email.length * 3; n++) {
+    const v = mintSurrogate("email", n);
+    assert.ok(v);
+    assert.equal(bases.has(v), false, `ordinal ${n} minted ${v}, which is already a pool base`);
+  }
+});
+
+test("every pool is big enough to be worth having", () => {
+  // Not arbitrary: the whole point of the pools is that a realistic document does not exhaust
+  // them. A pool of one or two would read worse than a bracket token.
+  for (const [category, pool] of Object.entries(SURROGATE_POOLS)) {
+    assert.ok(pool.length >= 8, `${category} pool has only ${pool.length} entries`);
+  }
+});
