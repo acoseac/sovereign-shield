@@ -171,3 +171,86 @@ export function canaryVerdict(
   if (!missedSend(baseline, seenNow)) return "inspected";
   return elapsedMs >= windowMs ? "missed" : "waiting";
 }
+
+/** The two things a watch does to the outside world. Injected, so the state machine below has
+ *  no DOM and no banner knowledge — and so a test can assert exactly when each one fires. */
+export interface CanaryWatchDeps {
+  /** Raise the warning. MUST report whether THIS call is what put the bar on screen: with one
+   *  bar per page, `false` means an earlier missed send already raised it, and that send's
+   *  warning is not ours to take back. */
+  warn: () => boolean;
+  /** Take our own bar back down. */
+  retract: () => void;
+}
+
+/** Everything a tick reads from the world, passed in rather than sampled, so the machine is
+ *  deterministic and needs no fake timers. */
+export interface CanaryWatchInput {
+  now: number;
+  seenNow: number;
+  /** The shell's latest send-intent stamp — a new value means another send has begun. */
+  lastIntentAt: number;
+}
+
+/** `done` means the caller should stop polling; the watch will not be ticked again. */
+export type CanaryTick = "continue" | "done";
+
+/**
+ * The post-drain watch, as a state machine with its effects injected.
+ *
+ * This lives here rather than inside the `setInterval` in indicator.ts because that is where it
+ * used to live, and every one of the four defects found in this logic hid there: the shell has no
+ * test harness, so `warned`, `retractable` and `intentAtArm` — three interacting flags with
+ * order-dependent updates — were the only untested decisions left in the canary. Moving them
+ * behind an injectable seam costs one factory call and makes the whole sequence assertable in
+ * plain Node. What remains in the shell is reading three values and stopping a timer.
+ *
+ * The four behaviours it encodes, each with a shipped bug behind it — see `canary-watch.test.ts`,
+ * where every one is pinned by a test that provably fails without it:
+ *
+ *  1. `baseline` comes from the send INTENT (`sendBaseline`), because the inspect can land before
+ *     the drain — the false alarm that started all of this.
+ *  2. Retract only a bar THIS send raised (`warn()`'s return). An earlier genuinely-missed send's
+ *     warning is still true, and this send turning out fine must not erase it.
+ *  3. A new send intent abandons the watch only AFTER we have warned. `noteIntent` fires on any
+ *     button in composer scope — attach, mic, stop — so abandoning on every intent made the canary
+ *     systematically silent for anyone who habitually stops long answers.
+ *  4. On warning, re-baseline onto a stray intent we can PROVE was not a send (one older than
+ *     `SEND_INTENT_WINDOW_MS`, since a real send drains inside that window and the drain re-arms
+ *     the watch outright). Otherwise rule 3's guard fires on the very next tick and collapses the
+ *     retraction window to nothing. A *recent* intent stays put: it may still dispatch, and
+ *     misreading that as our own late inspect would erase a true warning.
+ */
+export function createCanaryWatch(
+  start: { baseline: number; drainedAt: number; intentAtArm: number },
+  deps: CanaryWatchDeps,
+): (input: CanaryWatchInput) => CanaryTick {
+  let intentAtArm = start.intentAtArm;
+  let warned = false;
+  let retractable = false;
+
+  return ({ now, seenNow, lastIntentAt }) => {
+    // (3) Only once warned: before that, a stray click leaves the counter untouched, so the
+    // verdict at CANARY_GRACE_MS is still sound and the warning still has to land.
+    if (warned && lastIntentAt !== intentAtArm) return "done";
+
+    const elapsed = now - start.drainedAt;
+    const verdict = canaryVerdict(start.baseline, seenNow, elapsed);
+    if (verdict === "waiting") return "continue";
+
+    if (verdict === "inspected") {
+      // (2) Ours to take back only if we raised it.
+      if (retractable) deps.retract();
+      return "done";
+    }
+
+    if (!warned) {
+      warned = true;
+      // (4) Forgive a stray click, never a possible send.
+      if (!isSendIntent(lastIntentAt, now)) intentAtArm = lastIntentAt;
+      retractable = deps.warn();
+    }
+    // Stay open to being wrong until the retraction budget runs out.
+    return shouldKeepWatching(elapsed) ? "continue" : "done";
+  };
+}
