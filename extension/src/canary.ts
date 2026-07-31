@@ -84,9 +84,41 @@ export function isSendIntent(
  * monotonic, so "did not strictly advance" is exactly "no generate body passed through the
  * rewriter". Equality rather than `<=` so a counter that somehow went backwards (a page script
  * scribbling on the attribute) still reads as a miss and warns.
+ *
+ * `baseline` must come from `sendBaseline` — sampling it at the drain is the bug that function
+ * exists to prevent.
  */
-export function missedSend(seenAtDrain: number, seenNow: number): boolean {
-  return seenNow <= seenAtDrain;
+export function missedSend(baseline: number, seenNow: number): boolean {
+  return seenNow <= baseline;
+}
+
+/**
+ * Which counter reading this send is measured against.
+ *
+ * It MUST be the sample taken at the send **intent** (the Enter keypress / send-button press),
+ * never the one taken when the composer drains — and that distinction was a shipped false alarm.
+ *
+ * Gemini dispatches `StreamGenerate` **before** it clears the composer, and the guard's rewrite
+ * runs synchronously inside `xhr.send()`, so `data-ss-seen` has already been bumped by the time
+ * the drain is observed. Sampling at the drain therefore folds *this* send into the baseline, and
+ * the poll then waits for an advance that has by construction already happened: the verdict is
+ * `missed` no matter how long the window is. That is why raising `CANARY_GRACE_MS` from 3s to 12s
+ * did not help — no grace period can catch an event that preceded the start of the watch.
+ *
+ * It reproduced reliably on long prompts and only intermittently on short ones, which is the
+ * tell: the synchronous work inside `send()` scales with prompt size, so a big paste delays the
+ * dispatch's return past Gemini's composer clear, while a short one usually returns first.
+ * Confirmed live against gemini.google.com — the guard warned about a send it had inspected AND
+ * redacted (`data-ss-seen` 0→1, `data-ss-kept` 0→1).
+ *
+ * `Math.min` rather than a bare `seenAtIntent`: the two are equal in every ordinary flow (the
+ * counter is monotonic), and taking the lower of the pair keeps a counter the page scribbled
+ * *downward* between the two samples from raising the bar this send has to clear. Erring toward
+ * an observable advance is the right direction — a false alarm costs the warning its
+ * credibility, and the canary never had to fire on the first broken send anyway.
+ */
+export function sendBaseline(seenAtIntent: number, seenAtDrain: number): number {
+  return Math.min(seenAtIntent, seenAtDrain);
 }
 
 export type CanaryVerdict = "inspected" | "waiting" | "missed";
@@ -101,11 +133,11 @@ export type CanaryVerdict = "inspected" | "waiting" | "missed";
  * real timers. `missedSend` is still the "did it advance?" primitive underneath.
  */
 export function canaryVerdict(
-  seenAtDrain: number,
+  baseline: number,
   seenNow: number,
   elapsedMs: number,
   windowMs: number = CANARY_GRACE_MS,
 ): CanaryVerdict {
-  if (!missedSend(seenAtDrain, seenNow)) return "inspected";
+  if (!missedSend(baseline, seenNow)) return "inspected";
   return elapsedMs >= windowMs ? "missed" : "waiting";
 }

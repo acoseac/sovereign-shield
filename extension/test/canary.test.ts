@@ -16,6 +16,7 @@ import {
   isSendIntent,
   missedSend,
   readSeen,
+  sendBaseline,
 } from "../src/canary.ts";
 
 // --- readSeen: the MAIN world is shared with the page, so this input is untrusted ---
@@ -105,4 +106,68 @@ test("a slow generate that lands at 8s is caught, where the old 3s deadline miss
   // Walk the poll: waiting through the first ticks, then inspected once the counter moves.
   assert.equal(canaryVerdict(2, 2, 3_000), "waiting", "old fixed deadline would have fired here");
   assert.equal(canaryVerdict(2, 3, 8_000), "inspected", "the late inspect cancels the warning");
+});
+
+// --- sendBaseline: WHICH reading the send is measured against ---
+//
+// The inspect can land on either side of the composer drain, so the reading taken at the drain
+// is not a "before" at all. These pin the fix for a shipped false alarm; see sendBaseline().
+
+test("the baseline is the intent sample, not the drain sample", () => {
+  // Counter moved between the two: that movement IS this send, and must stay measurable.
+  assert.equal(sendBaseline(0, 1), 0);
+  assert.equal(sendBaseline(4, 7), 4);
+});
+
+test("the baseline is unchanged when nothing was inspected between intent and drain", () => {
+  assert.equal(sendBaseline(3, 3), 3);
+});
+
+test("a counter scribbled downward between the samples cannot raise the bar", () => {
+  // Page scripts share the MAIN world and can write data-ss-seen. Taking the lower of the pair
+  // errs toward an observable advance, which is the cheap direction (see the file header).
+  assert.equal(sendBaseline(5, 0), 0);
+});
+
+test("REGRESSION: an inspect that lands BEFORE the drain does not warn", () => {
+  // The exact sequence measured live on gemini.google.com, Thinking model, ~20KB pasted prompt:
+  //
+  //   1. Enter                      data-ss-seen absent  -> seenAtIntent = 0
+  //   2. StreamGenerate dispatched, guard rewrites synchronously inside xhr.send()
+  //                                 data-ss-seen = "1"   (and data-ss-kept = "1": it REDACTED)
+  //   3. Gemini clears the composer -> drain observed, data-ss-seen already "1"
+  //   4. poll ... counter never moves again, because the move already happened
+  //
+  // Reading the counter at step 3 made every tick report "missed" and the banner accused the
+  // guard of failing on a send it had just protected. No grace window can fix that — which is
+  // why bumping CANARY_GRACE_MS 3s -> 12s did not.
+  const seenAtIntent = 0;
+  const seenAtDrain = 1; // the inspect already landed
+  const seenNow = 1; // and will never advance again for this send
+
+  assert.equal(
+    canaryVerdict(seenAtDrain, seenNow, CANARY_GRACE_MS),
+    "missed",
+    "the old drain-sampled baseline: guaranteed false alarm",
+  );
+  assert.equal(
+    canaryVerdict(sendBaseline(seenAtIntent, seenAtDrain), seenNow, 0),
+    "inspected",
+    "the intent-sampled baseline sees the advance immediately",
+  );
+});
+
+test("a genuinely uninspected send still warns after the fix", () => {
+  // The case the canary exists for: the endpoint moved, nothing was ever inspected, and the
+  // counter sits still from intent through drain to the end of the window.
+  const baseline = sendBaseline(3, 3);
+  assert.equal(canaryVerdict(baseline, 3, 0), "waiting");
+  assert.equal(canaryVerdict(baseline, 3, CANARY_GRACE_MS), "missed");
+});
+
+test("a late inspect still cancels the warning after the fix", () => {
+  // The #74 case must keep working: nothing inspected by the drain, then the counter moves at 8s.
+  const baseline = sendBaseline(2, 2);
+  assert.equal(canaryVerdict(baseline, 2, 3_000), "waiting");
+  assert.equal(canaryVerdict(baseline, 3, 8_000), "inspected");
 });
