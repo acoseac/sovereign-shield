@@ -1,18 +1,23 @@
 # Chrome Web Store listing — copy/paste reference
 
-> **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
-> 0.6.0. **0.8.3 is prepared** and is the next upload. The store will not accept a version equal
-> to or lower than the live one, and a number can never be reused.
+> **Status:** **0.8.3 is SUBMITTED for review** (31 July 2026), superseding the live 0.7.0
+> (published 29 July 2026). Host-permission review is manual and has taken ~4 days before, so
+> expect days rather than hours. **0.7.0 remains what users have until it is approved** — which is
+> why the public surfaces still say 0.7.0 (see below).
 >
 > **0.8.0, 0.8.1 and 0.8.2 were tagged but never uploaded**, so users go straight from 0.7.0 to
 > 0.8.3 and never see any of them. The "What's new" note below is therefore the changelog **since
-> 0.7.0** — write it that way. All three tags stay in git as a record of what was verified when;
-> nothing needs undoing.
+> 0.7.0**. All three tags stay in git as a record of what was verified when; nothing needs undoing.
 >
-> **The detailed description must be RE-PASTED** for this upload: the ready-made rule library is a
-> new user-facing feature and the Custom Rules clause was reworded for it. Nothing changed about
-> what is detected, redacted, stored or sent, so the privacy policy, the data disclosure and the
-> permission justifications all stay correct as written.
+> **When it goes live, the work is not finished.** Walk the table in
+> [RELEASING.md → After it goes live](RELEASING.md#after-it-goes-live): `web/app/extension/page.tsx`
+> and the ars.md blog card both still say **0.7.0**, deliberately, because that is what is live
+> today. They are wrong the moment 0.8.3 is approved. The privacy policy, the data disclosure, the
+> permission justifications and the README detector tables need no change for this release —
+> nothing about what is detected, redacted, stored or sent moved, and no permission moved.
+>
+> The detailed description **was re-pasted** for this upload: the ready-made rule library is a new
+> user-facing feature and the Custom Rules clause was reworded for it.
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
