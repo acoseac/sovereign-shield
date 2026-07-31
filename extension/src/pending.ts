@@ -14,7 +14,7 @@
 //
 // Bonus: this deletes the second detection pipeline. summarize() is now called once, in one
 // world, with the full picture.
-import { findComposer } from "./composer.ts";
+import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import type { CustomMatcher } from "./custom.ts";
 import type { Session } from "./tokenize.ts";
@@ -73,6 +73,96 @@ export function refreshPending(): void {
   publishNow?.();
 }
 
+/** Just enough of an element to read text from, so this is drivable in Node without a DOM. */
+export interface ComposerTextSource {
+  innerText: string;
+  textContent: string | null;
+}
+
+/**
+ * Cache for the layout-forcing read, keyed on the cheap one.
+ *
+ * A closure-private WeakMap, **not** a property on the element. The MAIN world is shared with the
+ * page, so an own-property cache would be readable and — the part that matters — spoofable, and a
+ * spoofed entry would make the pill promise a count the guard will not deliver. That is precisely
+ * the threat the pending attribute is already treated as untrusted against. Same rule, and the
+ * same reason, as the XHR url map in interceptor.ts.
+ */
+const composerTextCache = new WeakMap<ComposerTextSource, { key: string; text: string }>();
+
+/**
+ * The composer's text with its block boundaries intact.
+ *
+ * **innerText, never textContent**, and this is the whole bug this function exists to prevent. A
+ * composer wraps each line in its own block — Gemini's Quill emits one `<p>` per line — so
+ * textContent concatenates them with no separator and every value that ENDS a line loses the
+ * boundary its pattern needs:
+ *
+ *   textContent  "…MRTMTT25D09F205ZNIR (FR): 2 69 05 49 588 157 80…"   -> 1 identifier found
+ *   innerText    "…MRTMTT25D09F205Z\n\nNIR (FR): 2 69 05 49 588 157 80…" -> 8 found
+ *
+ * Measured on a real eight-identifier prompt, where the pill read "1 item" while the inspector
+ * (which reads innerText) correctly showed 8. The guard was redacting all 8 either way — it parses
+ * the request body, whose newlines survive — so only the displayed count was ever wrong, and it
+ * was wrong in the direction that under-claims protection.
+ *
+ * innerText forces a synchronous layout, and `publish` runs on every `focusin` anywhere in the
+ * document, so most calls see text that has not changed at all. Hence the cache — but textContent
+ * alone is NOT a sound key, and assuming it was is a mistake worth recording: splitting a line
+ * changes the structure without changing the concatenation. Pressing Enter turns `<p>AB</p>` into
+ * `<p>A</p><p>B</p>`; textContent stays `"AB"` while innerText becomes `"A\nB"`. Serving the
+ * cached `"AB"` would hand back exactly the concatenated form this function exists to avoid, on
+ * the commonest edit there is. So every edit invalidates — see `invalidateComposerText`, which the
+ * `input` listener calls — and the cache only ever spans focus changes, which cannot restructure
+ * anything.
+ */
+export function composerText(el: ComposerTextSource | null | undefined): string {
+  if (!el) return "";
+  const key = el.textContent ?? "";
+  const hit = composerTextCache.get(el);
+  if (hit && hit.key === key) return hit.text;
+  const text = el.innerText;
+  composerTextCache.set(el, { key, text });
+  return text;
+}
+
+/**
+ * Drop the cached read for `el`, so the next `composerText` re-reads innerText.
+ *
+ * Called on every `input`, because an edit is the one thing that can change innerText while
+ * leaving textContent identical (see above). Cheap: a WeakMap delete, and the expensive re-read
+ * only happens on the next debounced publish, not here.
+ *
+ * The residual gap is a *programmatic* restructure that fires no input event and leaves textContent
+ * byte-identical — a site reformatting the composer's blocks by itself. Nothing on the three
+ * supported sites does that, and the cost would be one stale count until the next keystroke.
+ */
+export function invalidateComposerText(el: ComposerTextSource | null | undefined): void {
+  if (el) composerTextCache.delete(el);
+}
+
+/**
+ * The attribute value for `el`'s current contents — `""` when there is nothing worth publishing.
+ *
+ * Every decision `publish()` makes lives here: which text to read, what to pass summarize, and how
+ * it is encoded. That leaves publish() as DOM plumbing (find the composer, write the attribute),
+ * which is the same split canary.ts uses and for the same reason — a decision sitting inside a
+ * listener is a decision nothing can test. Reviewers of #92 pointed out, correctly and twice, that
+ * asserting on summarize() or even composerText() still let a publisher regression through.
+ *
+ * `excused` is taken as a bare set rather than a Session so a test can drive this with nothing but
+ * two plain objects.
+ */
+export function pendingFor(
+  el: ComposerTextSource | null | undefined,
+  excused: ReadonlySet<string> | undefined,
+  deps: PendingDeps,
+): string {
+  const text = composerText(el);
+  if (!text.trim()) return "";
+  return encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), excused));
+}
+
 export function installPendingSummary(session: Session, deps: PendingDeps): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let last = "";
@@ -80,19 +170,9 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
   const publish = (): void => {
     let next = "";
     try {
-      const composer = findComposer();
-      // textContent, not innerText: this runs (debounced) on every keystroke, and innerText
-      // forces a full-document layout reflow each time — costly on heavy chat DOMs. textContent
-      // needs no layout. indicator.ts's drain check made the same choice for the same reason. The
-      // trade-off is marginal and preview-only: textContent drops the line breaks innerText would
-      // insert between blocks, which could only matter if an identifier were split across a block
-      // boundary (a newline mid-value) — and even then this feeds the pre-send COUNT, never the
-      // redaction, which the guard does on the actual request body regardless.
-      const text = composer?.textContent ?? "";
-      if (text.trim()) {
-        // The excused set is the whole reason this runs here rather than in the pill.
-        next = encode(summarize(text, deps.allowedCategories(), deps.customMatcher(), session.excused));
-      }
+      // The excused set is the whole reason this runs in the MAIN world; everything else about
+      // what gets published is decided in pendingFor, where it can be tested.
+      next = pendingFor(findComposer(), session.excused, deps);
     } catch {
       // Never let the pre-send hint break the page. An empty attribute makes the isolated side
       // fall back to computing its own summary, which is the pre-0.7.0 behaviour.
@@ -109,7 +189,20 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
     timer = setTimeout(publish, DEBOUNCE_MS);
   };
 
-  document.addEventListener("input", schedule, { capture: true, passive: true });
+  // An edit can change innerText while leaving textContent identical (splitting a line), so the
+  // cached read must be dropped before the next publish. Uses the event target rather than
+  // findComposer() — it is the element that actually changed, and this runs on every keystroke.
+  document.addEventListener(
+    "input",
+    (e) => {
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        invalidateComposerText(target.closest<HTMLElement>(COMPOSER_SELECTOR));
+      }
+      schedule();
+    },
+    { capture: true, passive: true },
+  );
   document.addEventListener("focusin", schedule, { capture: true, passive: true });
   // Settings and the excused set both change outside any input event — a category toggled in
   // options, or "stop redacting this" clicked in the panel. Cheap: one attribute observer on
