@@ -193,12 +193,20 @@ export function rehydrateFlavour(
 }
 
 /**
- * Patch navigator.clipboard.write(ClipboardItem[]) — the API every "Copy" button on Gemini
- * actually uses, confirmed live: the button fires
- * `write([ClipboardItem{types:["text/html","text/plain"]}])`, never writeText and never a `copy`
- * event. Until this existed, every copy of a reply bypassed rehydration, which with smokescreen on
- * hands the user a FABRICATED address they have no way to spot — the precise failure ADR 0004
- * warns about, on the one path that carries it out of the tab.
+ * Patch navigator.clipboard.write(ClipboardItem[]) — the API every "Copy" button on ALL THREE
+ * supported sites actually uses. Confirmed live by instrumenting each real button; none of them
+ * calls writeText, and none fires a `copy` event:
+ *
+ *   Gemini   Copy (reply)          write  ["text/html", "text/plain"]
+ *   ChatGPT  Copy response         write  ["text/plain", "text/html"]
+ *   ChatGPT  Copy message (user's) write  ["text/plain"]
+ *   Claude   Copy                  write  ["text/plain", "text/html"]
+ *
+ * So until this existed, every copy of a reply on every site bypassed rehydration — not a
+ * Gemini quirk, the norm. With smokescreen on that hands the user a FABRICATED address they have
+ * no way to spot: the precise failure ADR 0004 warns about, on the one path that carries it out
+ * of the tab. Both observed flavours are rewritten (see TEXT_FLAVOURS); anything else passes
+ * through untouched.
  *
  * This was previously left unpatched on the grounds that reading a Blob needs an `await` before
  * the native call and would lose the transient user activation. That reasoning does not hold:
