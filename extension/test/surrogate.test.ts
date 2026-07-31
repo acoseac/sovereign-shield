@@ -307,3 +307,17 @@ test("every pool is big enough to be worth having", () => {
     assert.ok(pool.length >= 8, `${category} pool has only ${pool.length} entries`);
   }
 });
+
+test("no pool base ends with a digit, so no suffix can ever collide", () => {
+  // Stronger than walking a few rounds of mintSurrogate, and it covers every category rather
+  // than just email: the suffix scheme appends a round number, so a base already ending in a
+  // digit is the ONLY way a suffixed mint could land on another base. Ruling that out is a
+  // proof for all rounds rather than a spot check. (Raised in review of #87.)
+  for (const [category, pool] of Object.entries(SURROGATE_POOLS)) {
+    for (const base of pool) {
+      const at = base.indexOf("@");
+      const stem = at === -1 ? base : base.slice(0, at);
+      assert.equal(/\d$/.test(stem), false, `${category}: "${base}" ends with a digit`);
+    }
+  }
+});
