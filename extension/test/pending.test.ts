@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { composerText, decodePending } from "../src/pending.ts";
+import { composerText, decodePending, invalidateComposerText } from "../src/pending.ts";
 import { summarize } from "../src/summarize.ts";
 
 const good = JSON.stringify({ c: 2, k: ["Email", "Swiss AHV / AVS"], s: 1 });
@@ -147,4 +147,44 @@ test("the cache invalidates when the text actually changes", () => {
   el.textContent = "abc";
   el.innerText = "a\nb\nc";
   assert.equal(composerText(el), "a\nb\nc", "a real edit must not serve a stale count");
+});
+
+test("REGRESSION: splitting a line changes innerText but NOT textContent", () => {
+  // The cache bug this pins, and the reason textContent alone is not a sound key. Pressing Enter
+  // turns <p>AB</p> into <p>A</p><p>B</p>: the concatenation is identical, the rendered text is
+  // not. Serving the cached value would hand back exactly the run-together form composerText
+  // exists to avoid — on the commonest edit there is. (Raised in review of #92.)
+  const el = { textContent: "AB", innerText: "AB" };
+  assert.equal(composerText(el), "AB");
+
+  el.innerText = "A\nB"; // the split; textContent deliberately left untouched
+  assert.equal(composerText(el), "AB", "stale by design until the edit is announced");
+
+  invalidateComposerText(el); // what the input listener does
+  assert.equal(composerText(el), "A\nB", "after an edit the re-read must win");
+});
+
+test("invalidating is safe on a missing composer and on one never cached", () => {
+  assert.doesNotThrow(() => invalidateComposerText(null));
+  assert.doesNotThrow(() => invalidateComposerText(undefined));
+  assert.doesNotThrow(() => invalidateComposerText({ textContent: "x", innerText: "x" }));
+});
+
+test("invalidation does not leak across composers", () => {
+  // Two composers exist while editing an earlier message; clearing one must not force the other
+  // to pay a reflow it did not need.
+  let readsB = 0;
+  const a = { textContent: "a", innerText: "a" };
+  const b = {
+    textContent: "b",
+    get innerText() {
+      readsB++;
+      return "b";
+    },
+  };
+  composerText(a);
+  composerText(b);
+  invalidateComposerText(a);
+  composerText(b);
+  assert.equal(readsB, 1, "b should still be served from cache");
 });

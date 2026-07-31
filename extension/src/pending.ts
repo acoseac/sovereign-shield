@@ -14,7 +14,7 @@
 //
 // Bonus: this deletes the second detection pipeline. summarize() is now called once, in one
 // world, with the full picture.
-import { findComposer } from "./composer.ts";
+import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import type { CustomMatcher } from "./custom.ts";
 import type { Session } from "./tokenize.ts";
@@ -107,11 +107,14 @@ const composerTextCache = new WeakMap<ComposerTextSource, { key: string; text: s
  * was wrong in the direction that under-claims protection.
  *
  * innerText forces a synchronous layout, and `publish` runs on every `focusin` anywhere in the
- * document, so most calls see text that has not changed at all. Hence the cache: textContent is
- * free to read and changes whenever the typed text does, which makes it a sound key. A CSS change
- * that altered innerText without touching textContent would go unnoticed until the next edit —
- * irrelevant in a composer, and the cost is a stale count for one keystroke, never a wrong
- * redaction.
+ * document, so most calls see text that has not changed at all. Hence the cache — but textContent
+ * alone is NOT a sound key, and assuming it was is a mistake worth recording: splitting a line
+ * changes the structure without changing the concatenation. Pressing Enter turns `<p>AB</p>` into
+ * `<p>A</p><p>B</p>`; textContent stays `"AB"` while innerText becomes `"A\nB"`. Serving the
+ * cached `"AB"` would hand back exactly the concatenated form this function exists to avoid, on
+ * the commonest edit there is. So every edit invalidates — see `invalidateComposerText`, which the
+ * `input` listener calls — and the cache only ever spans focus changes, which cannot restructure
+ * anything.
  */
 export function composerText(el: ComposerTextSource | null | undefined): string {
   if (!el) return "";
@@ -121,6 +124,21 @@ export function composerText(el: ComposerTextSource | null | undefined): string 
   const text = el.innerText;
   composerTextCache.set(el, { key, text });
   return text;
+}
+
+/**
+ * Drop the cached read for `el`, so the next `composerText` re-reads innerText.
+ *
+ * Called on every `input`, because an edit is the one thing that can change innerText while
+ * leaving textContent identical (see above). Cheap: a WeakMap delete, and the expensive re-read
+ * only happens on the next debounced publish, not here.
+ *
+ * The residual gap is a *programmatic* restructure that fires no input event and leaves textContent
+ * byte-identical — a site reformatting the composer's blocks by itself. Nothing on the three
+ * supported sites does that, and the cost would be one stale count until the next keystroke.
+ */
+export function invalidateComposerText(el: ComposerTextSource | null | undefined): void {
+  if (el) composerTextCache.delete(el);
 }
 
 export function installPendingSummary(session: Session, deps: PendingDeps): void {
@@ -153,7 +171,20 @@ export function installPendingSummary(session: Session, deps: PendingDeps): void
     timer = setTimeout(publish, DEBOUNCE_MS);
   };
 
-  document.addEventListener("input", schedule, { capture: true, passive: true });
+  // An edit can change innerText while leaving textContent identical (splitting a line), so the
+  // cached read must be dropped before the next publish. Uses the event target rather than
+  // findComposer() — it is the element that actually changed, and this runs on every keystroke.
+  document.addEventListener(
+    "input",
+    (e) => {
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        invalidateComposerText(target.closest<HTMLElement>(COMPOSER_SELECTOR));
+      }
+      schedule();
+    },
+    { capture: true, passive: true },
+  );
   document.addEventListener("focusin", schedule, { capture: true, passive: true });
   // Settings and the excused set both change outside any input event — a category toggled in
   // options, or "stop redacting this" clicked in the panel. Cheap: one attribute observer on
