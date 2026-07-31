@@ -35,7 +35,11 @@ test("every template respects the editor's own limits", () => {
   for (const t of RULE_TEMPLATES) {
     assert.ok(t.rule.pattern.length <= MAX_PATTERN, `${t.id} pattern too long`);
     assert.ok((t.rule.label ?? "").length <= MAX_LABEL, `${t.id} label too long`);
-    assert.ok(t.name && t.description && t.example, `${t.id} is missing display copy`);
+    // One condition per assertion: a composite hides which field is missing, which for vendored
+    // display copy is the only thing the failure needed to tell you (SonarCloud S9073).
+    assert.ok(t.name, `${t.id} has no name`);
+    assert.ok(t.description, `${t.id} has no description`);
+    assert.ok(t.example, `${t.id} has no example`);
   }
 });
 
