@@ -264,7 +264,7 @@ test("text/html is rehydrated with the value HTML-escaped", () => {
   // A custom blocklist term is arbitrary user text and can carry markup-significant bytes;
   // splicing it raw into the html flavour would corrupt whatever it lands in.
   const s = new Session();
-  s.customMatcher = compileRules([{ kind: "keyword", pattern: `Ben & "Jerry" <co>` }]);
+  s.customMatcher = compileRules([{ pattern: `Ben & "Jerry" <co>`, isRegex: false }]);
   const token = s.tokenize(`ship to Ben & "Jerry" <co> today`);
   const out = rehydrateFlavour(s, "text/html", `<p>${token}</p>`);
   assert.equal(out, `<p>ship to Ben &amp; &quot;Jerry&quot; &lt;co&gt; today</p>`);
