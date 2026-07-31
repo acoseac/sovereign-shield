@@ -3,6 +3,12 @@
 import { CATEGORIES, type Category, CATEGORY_LABEL } from "./categories";
 import { KEYS, LOG_CAP, getSettings, readLog } from "./storage";
 import { lintRegex, MAX_LABEL, MAX_PATTERN, MAX_RULES, type CustomRule } from "./custom";
+import {
+  RULE_TEMPLATES,
+  instantiateTemplate,
+  templateAlreadyAdded,
+  type RuleTemplate,
+} from "./templates";
 import { notifyWorker } from "./runtime";
 
 const byId = (id: string): HTMLElement => {
@@ -161,6 +167,10 @@ function renderRules(): void {
     return;
   }
   draft.forEach((rule, i) => box.append(ruleRow(rule, i)));
+  // Keep the library's "Added" labels honest while it is open — removing a rule here has to
+  // make its template offerable again. Safe from recursion: renderTemplates never calls back.
+  const templates = byId("templates");
+  if (!templates.hidden) renderTemplates();
 }
 
 async function loadRules(): Promise<void> {
@@ -173,6 +183,66 @@ byId("add-rule").addEventListener("click", () => {
   draft.push({ pattern: "", isRegex: false, wholeWord: true });
   renderRules();
   byId("rules").querySelector<HTMLInputElement>(".rule:last-child input[type=text]")?.focus();
+});
+
+// --- ready-made rules -----------------------------------------------------
+// The blocklist was regex-or-nothing for anything beyond a literal word, which made the most
+// powerful setting here the least reachable one. A template lands as an ordinary CustomRule in
+// the same draft — editable, deletable, and indistinguishable once added — so nothing new has to
+// be stored, matched or migrated. See templates.ts for what may go in the library.
+
+function templateRow(template: RuleTemplate): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "tpl";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = template.name;
+  const desc = document.createElement("div");
+  desc.className = "desc";
+  desc.textContent = template.description;
+  meta.append(name, desc);
+
+  const added = templateAlreadyAdded(template, draft);
+  const action = document.createElement(added ? "span" : "button");
+  if (added) {
+    action.className = "added";
+    action.textContent = "Added";
+  } else {
+    action.className = "btn";
+    (action as HTMLButtonElement).type = "button";
+    action.textContent = "Add";
+    action.addEventListener("click", () => {
+      if (draft.length >= MAX_RULES) return;
+      draft.push(instantiateTemplate(template));
+      renderRules(); // re-renders the library too, so this row becomes "Added"
+      void persistRules();
+    });
+  }
+
+  row.append(meta, action);
+  return row;
+}
+
+function renderTemplates(): void {
+  const box = byId("templates");
+  box.replaceChildren();
+  RULE_TEMPLATES.forEach((t) => box.append(templateRow(t)));
+}
+
+byId("add-template").addEventListener("click", () => {
+  const box = byId("templates");
+  const open = !box.hidden;
+  if (open) {
+    box.hidden = true;
+    return;
+  }
+  // Rendered on open, not once at load: "Added" has to reflect rules the user may have deleted
+  // or hand-typed since the page was opened.
+  renderTemplates();
+  box.hidden = false;
 });
 
 enabledEl.addEventListener("change", () => {
