@@ -38,6 +38,22 @@ export const CANARY_GRACE_MS = 12000;
 /** Poll cadence while waiting for the inspect. Just a couple of dataset reads per tick. */
 export const CANARY_POLL_MS = 500;
 
+/**
+ * How long after the drain to keep watching **even once the warning is up**, so an inspect that
+ * lands later can take the banner back down.
+ *
+ * The warning is an accusation — "this went out as you typed it" — and leaving a wrong one on
+ * screen is the failure this whole file is organised against. Before this, `warnMissedSend` was
+ * one-way: the poll stopped the instant it warned, so a genuinely slow endpoint could be
+ * inspected at 15 s and the banner would sit there for the rest of the page's life, contradicted
+ * by the guard's own counter.
+ *
+ * Cheap to extend because the watch costs two dataset reads per tick and stops the moment it
+ * resolves either way. Kept finite rather than unbounded so a page that never sends again isn't
+ * polling forever.
+ */
+export const CANARY_RETRACT_MS = 45000;
+
 /** How long a send-intent signal (Enter, or a click on a button by the composer) stays valid.
  *  The drain follows the intent by a frame or two on every site we support. */
 export const SEND_INTENT_WINDOW_MS = 500;
@@ -119,6 +135,20 @@ export function missedSend(baseline: number, seenNow: number): boolean {
  */
 export function sendBaseline(seenAtIntent: number, seenAtDrain: number): number {
   return Math.min(seenAtIntent, seenAtDrain);
+}
+
+/**
+ * Once the verdict is `missed` and the banner is up: keep polling, in case the inspect is merely
+ * late and the warning needs taking back?
+ *
+ * Split out so the "how long do we stay open to being wrong" budget is one named, tested number
+ * rather than a literal buried in a timer callback.
+ */
+export function shouldKeepWatching(
+  elapsedMs: number,
+  windowMs: number = CANARY_RETRACT_MS,
+): boolean {
+  return elapsedMs < windowMs;
 }
 
 export type CanaryVerdict = "inspected" | "waiting" | "missed";

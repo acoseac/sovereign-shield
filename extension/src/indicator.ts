@@ -13,13 +13,22 @@ import { decodePending, PENDING_ATTR } from "./pending.ts";
 import { notifyWorker } from "./runtime.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
-import { showBanner, type BannerAction } from "./banner.ts";
+import { dismissBanner, showBanner, type BannerAction } from "./banner.ts";
 import { buildReportLinks } from "./report.ts";
-import { CANARY_POLL_MS, canaryVerdict, isSendIntent, readSeen, sendBaseline } from "./canary.ts";
+import {
+  CANARY_POLL_MS,
+  canaryVerdict,
+  isSendIntent,
+  readSeen,
+  sendBaseline,
+  shouldKeepWatching,
+} from "./canary.ts";
 import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { Z_PILL } from "./layers.ts";
 
 const PILL_ID = "ss-indicator-pill";
+/** Shared by the warning and its retraction, so the two can never drift apart. */
+const MISSED_SEND_BANNER = "ss-missed-send";
 const DEBOUNCE_MS = 200;
 const CLIP_TOP_PX = 56; // hide if the composer scrolls above this (behind Gemini's header)
 
@@ -247,17 +256,46 @@ function armCanary(): void {
   // a single fixed-deadline check false-fired on a send that WAS redacted, just later (see
   // CANARY_GRACE_MS). Cancel the instant the counter advances; warn only if it never does within
   // the window. A fresh send supersedes any pending poll.
+  // The intent this poll belongs to. If a NEW one arrives, the next counter movement is that
+  // send's dispatch, not a late inspect of ours, so we must neither credit nor blame this send
+  // for it. armCanary's own stopCanary() below only supersedes at the next DRAIN, which is too
+  // late — the dispatch precedes the drain, which is the whole lesson of sendBaseline().
+  const intentAtArm = lastIntentAt;
+  let warned = false;
+  // Only a bar THIS send raised is this send's to take down. There is one bar per page, so if an
+  // earlier send was genuinely missed its warning is already up and still true — this send later
+  // turning out fine says nothing about that one, and erasing it would leave the user believing
+  // a prompt was guarded when it was not. `showBanner` reports exactly this: false means the bar
+  // was already there. (Caught in review of #81.)
+  let retractable = false;
   stopCanary();
   canaryPoll = setInterval(() => {
+    if (lastIntentAt !== intentAtArm) return stopCanary(); // a new send began; not our movement
     const seenNow = readSeen(document.documentElement.dataset.ssSeen);
-    const verdict = canaryVerdict(baseline, seenNow, Date.now() - drainedAt);
+    const elapsed = Date.now() - drainedAt;
+    const verdict = canaryVerdict(baseline, seenNow, elapsed);
     if (verdict === "waiting") return;
-    stopCanary();
-    if (verdict === "missed") warnMissedSend();
+    if (verdict === "inspected") {
+      stopCanary();
+      // The inspect landed after we had already accused the guard of missing it. Take the
+      // accusation back rather than leave a banner the guard's own counter contradicts.
+      if (retractable) dismissBanner(MISSED_SEND_BANNER);
+      return;
+    }
+    // "missed": warn once, then stay open to being wrong for a while longer.
+    if (!warned) {
+      warned = true;
+      retractable = warnMissedSend();
+    }
+    if (!shouldKeepWatching(elapsed)) stopCanary();
   }, CANARY_POLL_MS);
 }
 
-function warnMissedSend(): void {
+/**
+ * Raise the warning. Returns whether THIS call is what put the bar on screen — false means an
+ * earlier missed send had already raised it, and that send's warning is not ours to retract.
+ */
+function warnMissedSend(): boolean {
   // Offer a way to tell us. There is no telemetry — by design — so this banner is the only
   // place a moved transport can become a maintainer signal, and until now that signal stopped
   // at the user. Both links are user-initiated and carry metadata only: site, version, build.
@@ -289,8 +327,8 @@ function warnMissedSend(): void {
   // per-site chip selectors, exactly the rot-prone thing the canary avoids, so we name the
   // likely benign cause instead of asserting "the API changed" — which was often just wrong —
   // and leave "Report this" for the case the user rules out.
-  showBanner({
-    id: "ss-missed-send",
+  const raised = showBanner({
+    id: MISSED_SEND_BANNER,
     tone: "warning",
     text:
       "🛡️ Sovereign Shield didn't inspect that message — it was sent as you typed it. " +
@@ -300,7 +338,11 @@ function warnMissedSend(): void {
   // notifyWorker, not a bare sendMessage().catch(): a missed send very often coincides with an
   // invalidated context (the extension was just updated), where sendMessage throws SYNCHRONOUSLY
   // and .catch() can't see it. See runtime.ts.
+  //
+  // Fired per missed SEND, not per bar raised: the bar dedups to one per page, but the badge and
+  // activity log want to know that a second message also went out uninspected.
   notifyWorker({ type: "ss-missed" });
+  return raised;
 }
 
 // --- composer binding (no leaked listeners) -------------------------------
