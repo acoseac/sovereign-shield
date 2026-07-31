@@ -106,30 +106,43 @@ transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test
   `interceptor.ts` bumps `data-ss-seen` per inspected body and `indicator.ts` warns when a
   composer drains with no counter movement (`canary.ts`). Corroborators are deliberately
   generic — a list of per-site send-button selectors would rot on the same schedule as the
-  endpoints, and a canary that stops warning is worse than none. Three edges learned the hard way,
-  all in `canary.ts`: the baseline it measures a send against is sampled at the **send intent**,
-  never at the drain (`sendBaseline`) — Gemini dispatches `StreamGenerate` *before* clearing the
-  composer and the rewrite is synchronous inside `xhr.send()`, so a drain-sampled baseline already
-  counts the send and the verdict is `missed` at every tick, which no grace window can fix; it
-  **polls** `data-ss-seen` for up to `CANARY_GRACE_MS` (12 s) rather than
-  checking once, because Gemini's Thinking model issues the generate request seconds after the
-  composer clears and a fixed 3 s deadline false-fired on redacted sends; and it does **not** try
-  to detect **file attachments** (out of scope — the guard rewrites the typed prompt, never
-  uploads), so the warning names attachments as the likely cause instead of asserting the API
-  moved. Detecting attachments would need per-site chip selectors — the same rot the canary
-  avoids.
-  **The warning is retractable.** The poll keeps running for `CANARY_RETRACT_MS` (45 s) *after*
-  it warns, and `dismissBanner` takes the bar down if the counter moves after all — a one-way
-  accusation the guard's own counter disproves is the failure mode this file exists to avoid.
-  Retraction also clears the once-per-page registration, so a genuine miss later can still warn;
-  a send may retract only a bar **it** raised (`showBanner`'s return value), since with one bar
-  per page an earlier genuinely-missed send's warning is still true and a later send turning out
-  fine must not erase it; and once it *has* warned, the poll abandons ship on the next **send
-  intent**, because the counter movement after that belongs to the new send's dispatch.
-  That abandon is gated on having warned for a reason: `noteIntent` fires on **any** button in
-  composer scope — attach, mic, the stop-generating button — so abandoning on every intent gave
-  anyone who habitually stops long answers a canary that was silently killed before it could
-  warn, on every message. A systematic blind spot, not the random miss this design tolerates.
+  endpoints, and a canary that stops warning is worse than none. It **polls** `data-ss-seen` for up
+  to `CANARY_GRACE_MS` (12 s) rather than checking once, because Gemini's Thinking model issues the
+  generate request seconds after the composer clears and a fixed 3 s deadline false-fired on
+  redacted sends; and it does **not** try to detect **file attachments** (out of scope — the guard
+  rewrites the typed prompt, never uploads), so the warning names attachments as the likely cause
+  instead of asserting the API moved. Detecting attachments would need per-site chip selectors —
+  the same rot the canary avoids.
+
+  **Every decision the poll makes lives in `createCanaryWatch` (`canary.ts`), not in the timer.**
+  Four separate defects hid in that logic while it sat inside `indicator.ts`'s `setInterval`, where
+  no test could reach it — three interacting flags with order-dependent updates, in the one part of
+  the canary that had no harness. It is now a state machine with its two effects (`warn`, `retract`)
+  injected, and [`canary-watch.test.ts`](extension/test/canary-watch.test.ts) pins all four rules
+  with tests that provably fail when each is reverted:
+  1. the **baseline** comes from the send **intent**, never the drain (`sendBaseline`) — Gemini
+     dispatches `StreamGenerate` *before* clearing the composer and the rewrite is synchronous
+     inside `xhr.send()`, so a drain-sampled baseline already counts the send and the verdict is
+     `missed` at every tick, which no grace window can fix;
+  2. a send may **retract only a bar it raised** (`warn()`'s return, i.e. `showBanner`'s) — with one
+     bar per page, an earlier genuinely-missed send's warning is still true;
+  3. a new send intent abandons the watch **only after warning** — `noteIntent` fires on any button
+     in composer scope (attach, mic, stop), so abandoning on every intent silently killed the canary
+     for anyone who habitually stops long answers: a systematic blind spot, not the random miss this
+     design tolerates;
+  4. on warning, **re-baseline only onto an intent provably not a send** (older than
+     `SEND_INTENT_WINDOW_MS`), or rule 3 fires on the next tick and collapses the retraction window
+     — while forgiving a *recent* intent would credit its dispatch as our own late inspect and erase
+     a true warning.
+
+  The retraction itself: the poll keeps running until `CANARY_RETRACT_MS` (45 s) **after the
+  drain** — the warning fires at `CANARY_GRACE_MS` (12 s), so the window in which it can still be
+  taken back is the 33 s between them, not a further 45 s. `dismissBanner` takes the bar down, and
+  `dismissBanner` takes the bar down if the counter moves after all — a one-way accusation the
+  guard's own counter disproves is the failure this file is organised against. It also clears the
+  once-per-page registration, so a genuine miss later can still warn.
+  **When the two errors conflict, leave a warning standing rather than take one back**: a stale
+  banner is cheaper than one that erases a true warning.
   **The warning also reaches the maintainer, but only if the user says so.** The banner offers
   a prefilled GitHub issue and a `mailto:` fallback ([`report.ts`](extension/src/report.ts)),
   carrying site + version + `data-ss-build` and **nothing else** — pinned by
