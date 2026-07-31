@@ -7,9 +7,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { escapeHtml, planClipboardRewrite, rehydrateClipboardText } from "../src/clipboard.ts";
+import {
+  escapeHtml,
+  planClipboardRewrite,
+  rehydrateClipboardText,
+  rehydrateFlavour,
+} from "../src/clipboard.ts";
 import { Session } from "../src/tokenize.ts";
 import { SURROGATE_POOLS } from "../src/surrogate.ts";
+import { compileRules } from "../src/custom.ts";
 
 const AHV = "756.1234.5678.97";
 const EMAIL = "hans.muster@bluewin.ch";
@@ -237,4 +243,63 @@ test("the html selection is never serialised on the common no-op path", () => {
 
 test("escapeHtml covers both quote forms", () => {
   assert.equal(escapeHtml(`O'Brien & "Co" <x>`), "O&#39;Brien &amp; &quot;Co&quot; &lt;x&gt;");
+});
+
+// --- rehydrateFlavour: which clipboard flavours write() rewrites --------------
+//
+// Gemini's Copy button calls navigator.clipboard.write([ClipboardItem]) with
+// types ["text/html","text/plain"] — confirmed against the live site. It fires neither
+// writeText nor a `copy` event, so until the write() hook existed every copy of a reply
+// left the tab unrehydrated: with smokescreen on, a FABRICATED address the user cannot
+// tell from a real one. These pin which flavours we touch and how each is encoded; the
+// ClipboardItem plumbing itself is shell (ClipboardItem does not exist in Node).
+
+test("text/plain is rehydrated verbatim", () => {
+  const s = new Session();
+  const token = s.tokenize("mail hans.muster@bluewin.ch now");
+  assert.equal(rehydrateFlavour(s, "text/plain", token), "mail hans.muster@bluewin.ch now");
+});
+
+test("text/html is rehydrated with the value HTML-escaped", () => {
+  // A custom blocklist term is arbitrary user text and can carry markup-significant bytes;
+  // splicing it raw into the html flavour would corrupt whatever it lands in.
+  const s = new Session();
+  s.customMatcher = compileRules([{ pattern: `Ben & "Jerry" <co>`, isRegex: false }]);
+  const token = s.tokenize(`ship to Ben & "Jerry" <co> today`);
+  const out = rehydrateFlavour(s, "text/html", `<p>${token}</p>`);
+  assert.equal(out, `<p>ship to Ben &amp; &quot;Jerry&quot; &lt;co&gt; today</p>`);
+});
+
+test("a flavour we have no model of is left alone", () => {
+  // Images and `web ` custom types pass through untouched — same byte-faithful rule the
+  // request rewriter follows: never rewrite a payload we did not need to touch.
+  const s = new Session();
+  const token = s.tokenize("hans.muster@bluewin.ch");
+  for (const type of ["image/png", "text/uri-list", "web text/custom", "application/json"]) {
+    assert.equal(rehydrateFlavour(s, type, token), null, type);
+  }
+});
+
+test("an unchanged flavour returns null so the original blob is reused", () => {
+  // null is the "leave it alone" signal: the hook hands back the caller's own Blob rather
+  // than constructing an identical one, keeping the no-op path allocation-free.
+  const s = new Session();
+  s.tokenize("hans.muster@bluewin.ch");
+  assert.equal(rehydrateFlavour(s, "text/plain", "nothing sensitive here"), null);
+  assert.equal(rehydrateFlavour(s, "text/html", "<p>nothing sensitive here</p>"), null);
+});
+
+test("a stand-in copied from a Gemini reply is restored on both flavours", () => {
+  // The end-to-end shape of the bug: smokescreen on, the reply carries the stand-in, the user
+  // hits Copy. Both flavours must come back real or the paste is fabricated data.
+  const s = new Session();
+  s.smokescreen = true;
+  const sent = s.tokenize("write to hans.muster@bluewin.ch");
+  const standIn = SURROGATE_POOLS.email.find((e) => sent.includes(e));
+  assert.ok(standIn, "smokescreen should have minted an email stand-in");
+  assert.equal(rehydrateFlavour(s, "text/plain", sent), "write to hans.muster@bluewin.ch");
+  assert.equal(
+    rehydrateFlavour(s, "text/html", `<p>${sent}</p>`),
+    "<p>write to hans.muster@bluewin.ch</p>",
+  );
 });

@@ -168,6 +168,95 @@ function handleCopy(session: Rehydrator, event: ClipboardEvent): void {
 }
 
 /**
+ * The clipboard flavours we rewrite, and how a substituted value must be encoded for each.
+ * Anything else (images, `web ` custom types) is passed through untouched — we have no model of
+ * those bytes, and the rule here is the same byte-faithful one the request rewriter follows.
+ */
+const TEXT_FLAVOURS: Readonly<Record<string, ((value: string) => string) | undefined>> = {
+  "text/plain": undefined,
+  "text/html": escapeHtml,
+};
+
+/**
+ * Rehydrate one clipboard flavour, or null when it should be left exactly as it is.
+ *
+ * Split out from the ClipboardItem plumbing so the decision — which types we touch and which
+ * escaper each one needs — is unit-testable in Node, where `ClipboardItem` does not exist.
+ */
+export function rehydrateFlavour(
+  session: Rehydrator,
+  type: string,
+  text: string,
+): string | null {
+  if (!Object.prototype.hasOwnProperty.call(TEXT_FLAVOURS, type)) return null;
+  return rehydrateClipboardText(session, text, TEXT_FLAVOURS[type]);
+}
+
+/**
+ * Patch navigator.clipboard.write(ClipboardItem[]) — the API every "Copy" button on Gemini
+ * actually uses, confirmed live: the button fires
+ * `write([ClipboardItem{types:["text/html","text/plain"]}])`, never writeText and never a `copy`
+ * event. Until this existed, every copy of a reply bypassed rehydration, which with smokescreen on
+ * hands the user a FABRICATED address they have no way to spot — the precise failure ADR 0004
+ * warns about, on the one path that carries it out of the tab.
+ *
+ * This was previously left unpatched on the grounds that reading a Blob needs an `await` before
+ * the native call and would lose the transient user activation. That reasoning does not hold:
+ * `ClipboardItem` accepts **promises** as values for exactly this case. We build the replacement
+ * items and call the native `write` **synchronously**, so the activation is intact; the rewrite
+ * resolves afterwards inside the promise the browser is already waiting on.
+ *
+ * Fails open at every level — a throw while mapping hands the original array straight through,
+ * and a throw inside a flavour's promise resolves to that flavour's original blob. A copy that
+ * is merely unrehydrated beats a copy button that does nothing.
+ */
+function rehydrateItem(session: Rehydrator, item: ClipboardItem): ClipboardItem {
+  const entries: Record<string, Promise<Blob>> = {};
+  for (const type of item.types) {
+    // Call getType ONCE per flavour and reuse the promise: it is not guaranteed to be replayable,
+    // and the fail-open path below has to hand back this same blob.
+    const source = item.getType(type);
+    entries[type] = (async () => {
+      const blob = await source;
+      try {
+        const restored = rehydrateFlavour(session, type, await blob.text());
+        return restored === null ? blob : new Blob([restored], { type });
+      } catch {
+        return blob;
+      }
+    })();
+  }
+  // Preserve presentationStyle: dropping it can change how a paste target renders the item.
+  return new ClipboardItem(entries, { presentationStyle: item.presentationStyle });
+}
+
+function installWriteHook(session: Rehydrator): void {
+  try {
+    const clipboard = navigator.clipboard;
+    if (!clipboard || typeof clipboard.write !== "function") return;
+    if (typeof ClipboardItem !== "function") return;
+    const original = clipboard.write.bind(clipboard);
+    Object.defineProperty(clipboard, "write", {
+      value: function (items: ClipboardItem[]): Promise<void> {
+        let next = items;
+        try {
+          // Synchronous: no await before the native call, so the user activation survives.
+          next = Array.from(items, (item) => rehydrateItem(session, item));
+        } catch {
+          next = items; // fail open with the caller's own items
+        }
+        return original(next);
+      },
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  } catch {
+    /* degrade to unpatched — see installWriteTextHook */
+  }
+}
+
+/**
  * Patch navigator.clipboard.writeText — button-driven copies call it directly and fire no
  * `copy` event, so the listener above never sees them.
  *
@@ -176,10 +265,8 @@ function handleCopy(session: Rehydrator, event: ClipboardEvent): void {
  * prototype method fine), but because it keeps the patch explicitly `configurable` and still
  * works if the page has already redefined or frozen the property.
  *
- * write(ClipboardItem[]) is deliberately NOT patched: reading a Blob needs an await before
- * the native call, which risks losing transient user activation and breaking the site's copy
- * button outright. Failing open there costs an unrehydrated copy; failing closed would cost
- * the user their copy button.
+ * Kept alongside the write() hook above rather than folded into it: writeText is a separate
+ * WebIDL operation, and a site that calls it directly never reaches write().
  */
 function installWriteTextHook(session: Rehydrator): void {
   try {
@@ -220,4 +307,5 @@ export function installClipboardRehydrator(session: Rehydrator): void {
     }
   });
   installWriteTextHook(session);
+  installWriteHook(session);
 }
