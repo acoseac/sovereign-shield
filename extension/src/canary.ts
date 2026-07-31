@@ -42,6 +42,11 @@ export const CANARY_POLL_MS = 500;
  * How long after the drain to keep watching **even once the warning is up**, so an inspect that
  * lands later can take the banner back down.
  *
+ * Measured from the **drain**, like every other elapsed check here — not from the warning. Since
+ * the warning fires at `CANARY_GRACE_MS`, the window in which it can still be retracted is the
+ * difference between the two (33 s at the current values), which is the number to reason about
+ * when changing either constant.
+ *
  * The warning is an accusation — "this went out as you typed it" — and leaving a wrong one on
  * screen is the failure this whole file is organised against. Before this, `warnMissedSend` was
  * one-way: the poll stopped the instant it warned, so a genuinely slow endpoint could be

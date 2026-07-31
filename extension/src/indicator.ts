@@ -253,7 +253,14 @@ function armCanary(): void {
   // inside a timer callback, and four separate defects here proved it.
   const tick = createCanaryWatch(
     { baseline, drainedAt, intentAtArm: lastIntentAt },
-    { warn: warnMissedSend, retract: () => void dismissBanner(MISSED_SEND_BANNER) },
+    {
+      warn: warnMissedSend,
+      // Block body, not `void dismissBanner(...)`: the arrow only needs to discard the boolean,
+      // and the void operator reads as if the result mattered (SonarCloud S3735).
+      retract: () => {
+        dismissBanner(MISSED_SEND_BANNER);
+      },
+    },
   );
   stopCanary(); // a fresh send supersedes any pending poll
   canaryPoll = setInterval(() => {

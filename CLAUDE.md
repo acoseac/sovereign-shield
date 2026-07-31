@@ -135,7 +135,9 @@ transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test
      — while forgiving a *recent* intent would credit its dispatch as our own late inspect and erase
      a true warning.
 
-  The retraction itself: the poll keeps running for `CANARY_RETRACT_MS` (45 s) after it warns, and
+  The retraction itself: the poll keeps running until `CANARY_RETRACT_MS` (45 s) **after the
+  drain** — the warning fires at `CANARY_GRACE_MS` (12 s), so the window in which it can still be
+  taken back is the 33 s between them, not a further 45 s. `dismissBanner` takes the bar down, and
   `dismissBanner` takes the bar down if the counter moves after all — a one-way accusation the
   guard's own counter disproves is the failure this file is organised against. It also clears the
   once-per-page registration, so a genuine miss later can still warn.
