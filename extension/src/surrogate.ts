@@ -28,6 +28,9 @@
  * address can never belong to a real person.
  */
 export const SURROGATE_POOLS: Readonly<Record<string, readonly string[]>> = {
+  // Appended to, never reordered: mintSurrogate is deterministic on (category, ordinal), so
+  // moving an entry would silently change every stand-in an existing conversation had minted.
+  // New names are added at the END for that reason.
   email: [
     "alice.morgan@example.org",
     "ben.walker@example.com",
@@ -37,9 +40,26 @@ export const SURROGATE_POOLS: Readonly<Record<string, readonly string[]>> = {
     "felix.jansen@example.net",
     "greta.novak@example.org",
     "henri.dubois@example.com",
+    "iris.lindqvist@example.org",
+    "jonas.becker@example.com",
+    "karin.andersen@example.net",
+    "lucas.ferreira@example.org",
+    "maja.kowalski@example.com",
+    "noah.oconnell@example.net",
+    "olivia.tanaka@example.org",
+    "pieter.devries@example.com",
+    "quentin.moreau@example.net",
+    "rosa.iglesias@example.org",
+    "samir.haddad@example.com",
+    "tessa.bergman@example.net",
+    "ulrich.vogel@example.org",
+    "vera.stanescu@example.com",
+    "willem.bakker@example.net",
+    "yusuf.demir@example.org",
   ],
   // User-defined blocklist terms (project/client code names). Neutral, obviously-generic
-  // stand-ins — they read as real code names without naming a real company.
+  // stand-ins — they read as real code names without naming a real company. Constructed from
+  // ordinary nouns rather than borrowed from anywhere, so none of them lands on a trademark.
   custom: [
     "Project Northwind",
     "Project Larkspur",
@@ -47,6 +67,18 @@ export const SURROGATE_POOLS: Readonly<Record<string, readonly string[]>> = {
     "Brightwater Group",
     "Meridian Partners",
     "Cobalt Systems",
+    "Project Kestrel",
+    "Project Sandpiper",
+    "Project Hollowbrook",
+    "Ridgeline Holdings",
+    "Silverbirch Group",
+    "Tallgrass Ventures",
+    "Ironwood Labs",
+    "Blue Harbour Partners",
+    "Quarrystone Group",
+    "Fernbank Systems",
+    "Thornfield Industries",
+    "Wintermoor Associates",
   ],
 };
 
