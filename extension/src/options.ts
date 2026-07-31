@@ -164,11 +164,14 @@ function renderRules(): void {
     p.style.margin = "8px 0 0";
     p.textContent = "No custom rules yet.";
     box.append(p);
-    return;
+  } else {
+    draft.forEach((rule, i) => box.append(ruleRow(rule, i)));
   }
-  draft.forEach((rule, i) => box.append(ruleRow(rule, i)));
-  // Keep the library's "Added" labels honest while it is open — removing a rule here has to
-  // make its template offerable again. Safe from recursion: renderTemplates never calls back.
+  // Keep the library's "Added" labels honest while it is open — removing a rule here has to make
+  // its template offerable again. This MUST run on the empty branch too: deleting the last rule
+  // is precisely the case that leaves a stale "Added" next to "No custom rules yet.", and an
+  // early return above is what caused exactly that. Safe from recursion: renderTemplates never
+  // calls back into here.
   const templates = byId("templates");
   if (!templates.hidden) renderTemplates();
 }
