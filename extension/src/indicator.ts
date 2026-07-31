@@ -262,6 +262,12 @@ function armCanary(): void {
   // late — the dispatch precedes the drain, which is the whole lesson of sendBaseline().
   const intentAtArm = lastIntentAt;
   let warned = false;
+  // Only a bar THIS send raised is this send's to take down. There is one bar per page, so if an
+  // earlier send was genuinely missed its warning is already up and still true — this send later
+  // turning out fine says nothing about that one, and erasing it would leave the user believing
+  // a prompt was guarded when it was not. `showBanner` reports exactly this: false means the bar
+  // was already there. (Caught in review of #81.)
+  let retractable = false;
   stopCanary();
   canaryPoll = setInterval(() => {
     if (lastIntentAt !== intentAtArm) return stopCanary(); // a new send began; not our movement
@@ -273,19 +279,23 @@ function armCanary(): void {
       stopCanary();
       // The inspect landed after we had already accused the guard of missing it. Take the
       // accusation back rather than leave a banner the guard's own counter contradicts.
-      if (warned) dismissBanner(MISSED_SEND_BANNER);
+      if (retractable) dismissBanner(MISSED_SEND_BANNER);
       return;
     }
     // "missed": warn once, then stay open to being wrong for a while longer.
     if (!warned) {
       warned = true;
-      warnMissedSend();
+      retractable = warnMissedSend();
     }
     if (!shouldKeepWatching(elapsed)) stopCanary();
   }, CANARY_POLL_MS);
 }
 
-function warnMissedSend(): void {
+/**
+ * Raise the warning. Returns whether THIS call is what put the bar on screen — false means an
+ * earlier missed send had already raised it, and that send's warning is not ours to retract.
+ */
+function warnMissedSend(): boolean {
   // Offer a way to tell us. There is no telemetry — by design — so this banner is the only
   // place a moved transport can become a maintainer signal, and until now that signal stopped
   // at the user. Both links are user-initiated and carry metadata only: site, version, build.
@@ -317,7 +327,7 @@ function warnMissedSend(): void {
   // per-site chip selectors, exactly the rot-prone thing the canary avoids, so we name the
   // likely benign cause instead of asserting "the API changed" — which was often just wrong —
   // and leave "Report this" for the case the user rules out.
-  showBanner({
+  const raised = showBanner({
     id: MISSED_SEND_BANNER,
     tone: "warning",
     text:
@@ -328,7 +338,11 @@ function warnMissedSend(): void {
   // notifyWorker, not a bare sendMessage().catch(): a missed send very often coincides with an
   // invalidated context (the extension was just updated), where sendMessage throws SYNCHRONOUSLY
   // and .catch() can't see it. See runtime.ts.
+  //
+  // Fired per missed SEND, not per bar raised: the bar dedups to one per page, but the badge and
+  // activity log want to know that a second message also went out uninspected.
   notifyWorker({ type: "ss-missed" });
+  return raised;
 }
 
 // --- composer binding (no leaked listeners) -------------------------------
