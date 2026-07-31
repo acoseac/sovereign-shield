@@ -78,9 +78,14 @@ test("the grace window is generous enough for a slow (thinking-model) dispatch",
   // seconds after the composer drains, so a short deadline warned about a send that had actually
   // been redacted. The shell polls and cancels the moment the guard inspects, so a generous
   // ceiling only slows a warning on a truly dead endpoint — it can't cause a false alarm.
-  assert.ok(CANARY_GRACE_MS >= 8_000 && CANARY_GRACE_MS <= 30_000);
-  assert.ok(SEND_INTENT_WINDOW_MS < CANARY_GRACE_MS);
-  assert.ok(CANARY_POLL_MS > 0 && CANARY_POLL_MS < CANARY_GRACE_MS);
+  // One condition per assertion, each with the reason it exists. A composite `a && b` reports
+  // only "expected true" — for a pair of bounds that is the least useful thing it could say,
+  // since the whole question is *which* bound moved and why that matters.
+  assert.ok(CANARY_GRACE_MS >= 8_000, "too short: a slow thinking-model dispatch would false-fire");
+  assert.ok(CANARY_GRACE_MS <= 30_000, "too long: a dead endpoint must still warn promptly");
+  assert.ok(SEND_INTENT_WINDOW_MS < CANARY_GRACE_MS, "the intent window must close first");
+  assert.ok(CANARY_POLL_MS > 0, "a non-positive poll interval would never tick");
+  assert.ok(CANARY_POLL_MS < CANARY_GRACE_MS, "the poll must tick inside the grace window");
 });
 
 // --- canaryVerdict: the poll's three-state decision each tick ---
