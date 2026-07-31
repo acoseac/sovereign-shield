@@ -71,8 +71,8 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 
 ## Release notes — 0.8.3 (dashboard "What's new" field)
 
-Written as the changelog **since 0.7.0**, because neither 0.8.0 nor 0.8.1 was ever uploaded and
-no user ran either. Paste into the version's "What's new" note:
+Written as the changelog **since 0.7.0**, because none of 0.8.0, 0.8.1 or 0.8.2 was ever
+uploaded and no user ran any of them. Paste into the version's "What's new" note:
 
 > 0.8.3 — accurate counts and warnings, safer copying, easier rules
 > • The counter above the chat box now counts every identifier in a multi-line prompt. It was only counting the last one, so a prompt with eight IDs could read "1 item" — everything was always redacted correctly, but the number understated it.
