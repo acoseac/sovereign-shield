@@ -32,73 +32,81 @@ export interface RuleTemplate {
 }
 
 /**
+ * Build one regex template.
+ *
+ * Every entry in the library is a regex rule, so the `isRegex: true` / nested-`rule` shape was
+ * spelled out identically five times — which is both noise and, at 48% of the file, enough
+ * duplication to fail the quality gate. Declaring the shape once here is the honest fix: a
+ * data table should have one definition and N rows, not N copies of the definition.
+ *
+ * Positional on purpose — a named-argument object would just reinstate the repeated keys. The
+ * order is: identity, then the two strings the user reads, then the fixture, then the two the
+ * matcher uses.
+ */
+function regexTemplate(
+  id: string,
+  name: string,
+  description: string,
+  example: string,
+  label: string,
+  pattern: string,
+): RuleTemplate {
+  return { id, name, description, example, rule: { pattern, isRegex: true, label } };
+}
+
+/**
  * The library. Ordered roughly by how widely useful each one is, since the UI renders them in
  * this order and most people will take the first one or two that apply to them.
  */
 export const RULE_TEMPLATES: readonly RuleTemplate[] = [
-  {
-    id: "us-ssn",
-    name: "US Social Security number",
-    description: "Nine digits written as 123-45-6789.",
-    example: "SSN 123-45-6789 on file",
-    rule: {
-      pattern: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
-      isRegex: true,
-      label: "US SSN",
-    },
-  },
-  {
-    id: "uk-nino",
-    name: "UK National Insurance number",
-    description: "Two letters, six digits and a final letter, e.g. AB 12 34 56 C.",
+  regexTemplate(
+    "us-ssn",
+    "US Social Security number",
+    "Nine digits written as 123-45-6789.",
+    "SSN 123-45-6789 on file",
+    "US SSN",
+    String.raw`\b\d{3}-\d{2}-\d{4}\b`,
+  ),
+  regexTemplate(
+    "uk-nino",
+    "UK National Insurance number",
+    "Two letters, six digits and a final letter, e.g. AB 12 34 56 C.",
     // Deliberately NOT the familiar QQ123456C: QQ is one of the prefixes HMRC reserves as
     // permanently invalid precisely so it can be used in examples, and the letter classes below
     // correctly refuse it. Using it here would have asserted the opposite of the real rule.
-    example: "NI number AB 12 34 56 C",
-    rule: {
-      // The letter classes are the real ones: D, F, I, Q, U and V never start a NINo, O is not
-      // used second, and the suffix is only A-D. That is what keeps it off ordinary words.
-      pattern: String.raw`\b[A-CEGHJ-PR-TW-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b`,
-      isRegex: true,
-      label: "UK NINo",
-    },
-  },
-  {
-    id: "private-ip",
-    name: "Internal IP address",
-    description: "Private network addresses (10.x, 192.168.x, 172.16–31.x).",
-    example: "deploy target 10.4.12.9",
-    rule: {
-      pattern: String.raw`\b(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){1,3}\b`,
-      isRegex: true,
-      label: "Internal IP",
-    },
-  },
-  {
-    id: "internal-hostname",
-    name: "Internal hostname",
-    description: "Machine and site names on a private domain (.corp, .internal, .intranet, .lan).",
-    example: "see wiki.corp.internal for the runbook",
-    rule: {
-      // One character class, one quantifier. The obvious `(?:\.[\w-]+)*` form is a nested
-      // quantifier and lintRegex rejects it outright — the rule would look added and never
-      // persist. Flattening the label part into the class keeps it linear.
-      pattern: String.raw`\b[\w.-]+\.(?:corp|internal|intranet|lan)\b`,
-      isRegex: true,
-      label: "Internal host",
-    },
-  },
-  {
-    id: "mac-address",
-    name: "MAC address",
-    description: "Hardware addresses like d4:3d:7e:9a:1b:2c.",
-    example: "adapter d4:3d:7e:9a:1b:2c",
-    rule: {
-      pattern: String.raw`\b[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}\b`,
-      isRegex: true,
-      label: "MAC address",
-    },
-  },
+    "NI number AB 12 34 56 C",
+    "UK NINo",
+    // The letter classes are the real ones: D, F, I, Q, U and V never start a NINo, and the
+    // suffix is only A-D. That is what keeps it off ordinary words.
+    String.raw`\b[A-CEGHJ-PR-TW-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b`,
+  ),
+  regexTemplate(
+    "private-ip",
+    "Internal IP address",
+    "Private network addresses (10.x, 192.168.x, 172.16–31.x).",
+    "deploy target 10.4.12.9",
+    "Internal IP",
+    String.raw`\b(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){1,3}\b`,
+  ),
+  regexTemplate(
+    "internal-hostname",
+    "Internal hostname",
+    "Machine and site names on a private domain (.corp, .internal, .intranet, .lan).",
+    "see wiki.corp.internal for the runbook",
+    "Internal host",
+    // One character class, one quantifier. The obvious `(?:\.[\w-]+)*` form is a nested
+    // quantifier and lintRegex rejects it outright — the rule would look added and never
+    // persist. Flattening the label part into the class keeps it linear.
+    String.raw`\b[\w.-]+\.(?:corp|internal|intranet|lan)\b`,
+  ),
+  regexTemplate(
+    "mac-address",
+    "MAC address",
+    "Hardware addresses like d4:3d:7e:9a:1b:2c.",
+    "adapter d4:3d:7e:9a:1b:2c",
+    "MAC address",
+    String.raw`\b[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}\b`,
+  ),
 ];
 
 /**
