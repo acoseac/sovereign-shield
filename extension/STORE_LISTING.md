@@ -1,11 +1,16 @@
 # Chrome Web Store listing — copy/paste reference
 
 > **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
-> 0.6.0. **0.8.0 is prepared** and is the next upload — a correctness release for the breakage
+> 0.6.0. **0.8.1 is prepared** and is the next upload — a correctness release for the breakage
 > warning (see the release notes below). The store will not accept a version equal to or lower
 > than the live one, and a number can never be reused.
 >
-> The detailed description below still applies unchanged: 0.8.0 adds no feature, changes no
+> **0.8.0 was tagged but never uploaded**, so users go straight from 0.7.0 to 0.8.1 and never see
+> a 0.8.0. Its "What's new" note is therefore the changelog **since 0.7.0**, not a delta from
+> 0.8.0 — write it that way. `extension-v0.8.0` stays in git as a record of what was verified
+> when; nothing needs undoing.
+>
+> The detailed description below still applies unchanged: 0.8.1 adds no feature, changes no
 > permission, and changes nothing about what is detected, redacted or sent. It only stops the
 > "wasn't inspected" banner from appearing on sends that *were* inspected.
 
@@ -64,12 +69,13 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 
 ---
 
-## Release notes — 0.8.0 (dashboard "What's new" field)
+## Release notes — 0.8.1 (dashboard "What's new" field)
 
 A correctness release for the breakage warning. Nothing about detection or redaction changed.
+Written as the changelog **since 0.7.0**, because 0.8.0 was never uploaded and no user ran it.
 Paste into the version's "What's new" note:
 
-> 0.8.0 — accurate breakage warnings
+> 0.8.1 — accurate breakage warnings
 > • Fixed a false alarm: the "this message wasn't inspected" banner could appear on messages that had in fact been redacted correctly. Long prompts were most affected, and Gemini's Thinking model most of all.
 > • If that warning ever does appear and then turns out to be wrong, it now takes itself back down.
 > • Tapping stop, attach or the mic no longer silences the warning when it is genuine.
