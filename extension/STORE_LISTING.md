@@ -1,8 +1,13 @@
 # Chrome Web Store listing — copy/paste reference
 
 > **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
-> 0.6.0. The copy below is what is published. The next upload must be **0.7.1 or higher** — the
-> store will not accept an equal or lower version, and a number can never be reused.
+> 0.6.0. **0.8.0 is prepared** and is the next upload — a correctness release for the breakage
+> warning (see the release notes below). The store will not accept a version equal to or lower
+> than the live one, and a number can never be reused.
+>
+> The detailed description below still applies unchanged: 0.8.0 adds no feature, changes no
+> permission, and changes nothing about what is detected, redacted or sent. It only stops the
+> "wasn't inspected" banner from appearing on sends that *were* inspected.
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
@@ -56,6 +61,19 @@ are preserved). The field allows ~16,000 chars, so length is not a real constrai
 >
 > Open Source
 > Review the source code on GitHub: https://github.com/acoseac/sovereign-shield
+
+---
+
+## Release notes — 0.8.0 (dashboard "What's new" field)
+
+A correctness release for the breakage warning. Nothing about detection or redaction changed.
+Paste into the version's "What's new" note:
+
+> 0.8.0 — accurate breakage warnings
+> • Fixed a false alarm: the "this message wasn't inspected" banner could appear on messages that had in fact been redacted correctly. Long prompts were most affected, and Gemini's Thinking model most of all.
+> • If that warning ever does appear and then turns out to be wrong, it now takes itself back down.
+> • Tapping stop, attach or the mic no longer silences the warning when it is genuine.
+> No new permissions, and no change to what is detected, redacted or sent. Still 100% local — no account, no servers, no analytics.
 
 ---
 
@@ -153,7 +171,8 @@ For **each update** the moving parts are:
       be **strictly greater** than what is live — the store will not accept an equal or lower
       number, and a number can never be reused).
 - [ ] Paste that version's **"What's new"** note into the version.
-- [ ] Description: re-paste only if a user-facing clause changed.
+- [ ] Description: re-paste only if a user-facing clause changed. **Not needed for 0.8.0** — no
+      clause moved.
 - [ ] Screenshots: only if a pictured surface moved. Still outstanding from 0.7.0 — the refreshed
       inspector-panel and all-secrets options captures need a 1280×800 landscape pass before they
       can replace tiles 4 and 6.
