@@ -256,10 +256,19 @@ function armCanary(): void {
   // a single fixed-deadline check false-fired on a send that WAS redacted, just later (see
   // CANARY_GRACE_MS). Cancel the instant the counter advances; warn only if it never does within
   // the window. A fresh send supersedes any pending poll.
-  // The intent this poll belongs to. If a NEW one arrives, the next counter movement is that
-  // send's dispatch, not a late inspect of ours, so we must neither credit nor blame this send
-  // for it. armCanary's own stopCanary() below only supersedes at the next DRAIN, which is too
-  // late — the dispatch precedes the drain, which is the whole lesson of sendBaseline().
+  // The intent this poll belongs to. Once we have WARNED, a new intent means the next counter
+  // movement is that send's dispatch rather than a late inspect of ours, and crediting it would
+  // retract a warning that is still true. armCanary's own stopCanary() below only supersedes at
+  // the next DRAIN, which is too late — the dispatch precedes the drain, the whole lesson of
+  // sendBaseline().
+  //
+  // Only after warning, though. `noteIntent` fires on ANY button in composer scope — attach, mic,
+  // and the stop-generating button that replaces Send mid-answer — so abandoning on every intent
+  // meant a user who habitually stops long answers would have their canary silently killed before
+  // it could warn, on every message. That is a systematic blind spot, not the random miss this
+  // design tolerates; it is the same objection the Enter-on-send-button handler below exists to
+  // answer. Before we warn, a stray click leaves the counter untouched, so the verdict at
+  // CANARY_GRACE_MS is still sound and the warning still lands.
   const intentAtArm = lastIntentAt;
   let warned = false;
   // Only a bar THIS send raised is this send's to take down. There is one bar per page, so if an
@@ -270,7 +279,7 @@ function armCanary(): void {
   let retractable = false;
   stopCanary();
   canaryPoll = setInterval(() => {
-    if (lastIntentAt !== intentAtArm) return stopCanary(); // a new send began; not our movement
+    if (warned && lastIntentAt !== intentAtArm) return stopCanary(); // not our movement to read
     const seenNow = readSeen(document.documentElement.dataset.ssSeen);
     const elapsed = Date.now() - drainedAt;
     const verdict = canaryVerdict(baseline, seenNow, elapsed);
