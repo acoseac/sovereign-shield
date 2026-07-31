@@ -269,7 +269,7 @@ function armCanary(): void {
   // design tolerates; it is the same objection the Enter-on-send-button handler below exists to
   // answer. Before we warn, a stray click leaves the counter untouched, so the verdict at
   // CANARY_GRACE_MS is still sound and the warning still lands.
-  const intentAtArm = lastIntentAt;
+  let intentAtArm = lastIntentAt;
   let warned = false;
   // Only a bar THIS send raised is this send's to take down. There is one bar per page, so if an
   // earlier send was genuinely missed its warning is already up and still true — this send later
@@ -294,6 +294,17 @@ function armCanary(): void {
     // "missed": warn once, then stay open to being wrong for a while longer.
     if (!warned) {
       warned = true;
+      // Re-baseline onto a stray click that happened before we warned, so it doesn't make the
+      // guard below fire on the very next tick and collapse the 45s retraction watch to nothing.
+      //
+      // Only onto one we can PROVE was not a send: a real send drains within
+      // SEND_INTENT_WINDOW_MS, and that drain would have re-armed this poll entirely. An intent
+      // older than that window with no re-arm was a stop/attach/mic press, so it has no dispatch
+      // pending that we could misread as our own late inspect. A *recent* intent might, so we
+      // leave it in place and let the guard abandon the watch — the conservative direction, since
+      // a banner that outlives its correction is a cheaper error than one that erases a warning
+      // which is still true. (Caught in review of #82.)
+      if (!isSendIntent(lastIntentAt, Date.now())) intentAtArm = lastIntentAt;
       retractable = warnMissedSend();
     }
     if (!shouldKeepWatching(elapsed)) stopCanary();
