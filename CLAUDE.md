@@ -118,6 +118,12 @@ transports. Pinned by [`extension/test/sites.test.ts`](extension/test/sites.test
   uploads), so the warning names attachments as the likely cause instead of asserting the API
   moved. Detecting attachments would need per-site chip selectors — the same rot the canary
   avoids.
+  **The warning is retractable.** The poll keeps running for `CANARY_RETRACT_MS` (45 s) *after*
+  it warns, and `dismissBanner` takes the bar down if the counter moves after all — a one-way
+  accusation the guard's own counter disproves is the failure mode this file exists to avoid.
+  Retraction also clears the once-per-page registration, so a genuine miss later can still warn;
+  and the poll abandons ship the moment a **new** send intent arrives, since the next counter
+  movement is that send's dispatch rather than a late inspect of this one.
   **The warning also reaches the maintainer, but only if the user says so.** The banner offers
   a prefilled GitHub issue and a `mailto:` fallback ([`report.ts`](extension/src/report.ts)),
   carrying site + version + `data-ss-build` and **nothing else** — pinned by

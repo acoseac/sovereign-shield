@@ -11,12 +11,14 @@ import test from "node:test";
 import {
   CANARY_GRACE_MS,
   CANARY_POLL_MS,
+  CANARY_RETRACT_MS,
   SEND_INTENT_WINDOW_MS,
   canaryVerdict,
   isSendIntent,
   missedSend,
   readSeen,
   sendBaseline,
+  shouldKeepWatching,
 } from "../src/canary.ts";
 
 // --- readSeen: the MAIN world is shared with the page, so this input is untrusted ---
@@ -170,4 +172,39 @@ test("a late inspect still cancels the warning after the fix", () => {
   const baseline = sendBaseline(2, 2);
   assert.equal(canaryVerdict(baseline, 2, 3_000), "waiting");
   assert.equal(canaryVerdict(baseline, 3, 8_000), "inspected");
+});
+
+// --- shouldKeepWatching: staying open to being wrong after the banner is up ---
+
+test("the retraction window outlasts the grace window", () => {
+  // Otherwise there is no interval in which a warning could ever be taken back.
+  assert.ok(
+    CANARY_RETRACT_MS > CANARY_GRACE_MS,
+    "a warning must have some window in which a late inspect can retract it",
+  );
+});
+
+test("the poll keeps watching after warning, then stops", () => {
+  assert.equal(shouldKeepWatching(CANARY_GRACE_MS), true, "just warned — keep watching");
+  assert.equal(shouldKeepWatching(CANARY_RETRACT_MS - 1), true);
+  assert.equal(shouldKeepWatching(CANARY_RETRACT_MS), false, "boundary is exclusive");
+  assert.equal(shouldKeepWatching(CANARY_RETRACT_MS + 1), false);
+});
+
+test("the retraction budget is overridable, like the other windows", () => {
+  assert.equal(shouldKeepWatching(500, 1_000), true);
+  assert.equal(shouldKeepWatching(1_500, 1_000), false);
+});
+
+test("RETRACTION: an inspect at 20s flips the verdict that already warned at 12s", () => {
+  // The one-way warning this fixes: warnMissedSend() used to stop the poll, so a genuinely slow
+  // endpoint left a banner accusing the guard of a miss its own counter disproved seconds later.
+  const baseline = sendBaseline(4, 4);
+
+  // 12s: nothing inspected, warn.
+  assert.equal(canaryVerdict(baseline, 4, CANARY_GRACE_MS), "missed");
+  // ...and we are still watching, which is the part that used to be missing.
+  assert.equal(shouldKeepWatching(CANARY_GRACE_MS), true);
+  // 20s: the inspect finally lands. Verdict flips, and the shell retracts the banner.
+  assert.equal(canaryVerdict(baseline, 5, 20_000), "inspected");
 });

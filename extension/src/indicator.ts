@@ -13,13 +13,22 @@ import { decodePending, PENDING_ATTR } from "./pending.ts";
 import { notifyWorker } from "./runtime.ts";
 import { summarize, type Summary } from "./summarize.ts";
 import { compileRules, type CustomMatcher } from "./custom.ts";
-import { showBanner, type BannerAction } from "./banner.ts";
+import { dismissBanner, showBanner, type BannerAction } from "./banner.ts";
 import { buildReportLinks } from "./report.ts";
-import { CANARY_POLL_MS, canaryVerdict, isSendIntent, readSeen, sendBaseline } from "./canary.ts";
+import {
+  CANARY_POLL_MS,
+  canaryVerdict,
+  isSendIntent,
+  readSeen,
+  sendBaseline,
+  shouldKeepWatching,
+} from "./canary.ts";
 import { COMPOSER_SELECTOR, findComposer } from "./composer.ts";
 import { Z_PILL } from "./layers.ts";
 
 const PILL_ID = "ss-indicator-pill";
+/** Shared by the warning and its retraction, so the two can never drift apart. */
+const MISSED_SEND_BANNER = "ss-missed-send";
 const DEBOUNCE_MS = 200;
 const CLIP_TOP_PX = 56; // hide if the composer scrolls above this (behind Gemini's header)
 
@@ -247,13 +256,32 @@ function armCanary(): void {
   // a single fixed-deadline check false-fired on a send that WAS redacted, just later (see
   // CANARY_GRACE_MS). Cancel the instant the counter advances; warn only if it never does within
   // the window. A fresh send supersedes any pending poll.
+  // The intent this poll belongs to. If a NEW one arrives, the next counter movement is that
+  // send's dispatch, not a late inspect of ours, so we must neither credit nor blame this send
+  // for it. armCanary's own stopCanary() below only supersedes at the next DRAIN, which is too
+  // late — the dispatch precedes the drain, which is the whole lesson of sendBaseline().
+  const intentAtArm = lastIntentAt;
+  let warned = false;
   stopCanary();
   canaryPoll = setInterval(() => {
+    if (lastIntentAt !== intentAtArm) return stopCanary(); // a new send began; not our movement
     const seenNow = readSeen(document.documentElement.dataset.ssSeen);
-    const verdict = canaryVerdict(baseline, seenNow, Date.now() - drainedAt);
+    const elapsed = Date.now() - drainedAt;
+    const verdict = canaryVerdict(baseline, seenNow, elapsed);
     if (verdict === "waiting") return;
-    stopCanary();
-    if (verdict === "missed") warnMissedSend();
+    if (verdict === "inspected") {
+      stopCanary();
+      // The inspect landed after we had already accused the guard of missing it. Take the
+      // accusation back rather than leave a banner the guard's own counter contradicts.
+      if (warned) dismissBanner(MISSED_SEND_BANNER);
+      return;
+    }
+    // "missed": warn once, then stay open to being wrong for a while longer.
+    if (!warned) {
+      warned = true;
+      warnMissedSend();
+    }
+    if (!shouldKeepWatching(elapsed)) stopCanary();
   }, CANARY_POLL_MS);
 }
 
@@ -290,7 +318,7 @@ function warnMissedSend(): void {
   // likely benign cause instead of asserting "the API changed" — which was often just wrong —
   // and leave "Report this" for the case the user rules out.
   showBanner({
-    id: "ss-missed-send",
+    id: MISSED_SEND_BANNER,
     tone: "warning",
     text:
       "🛡️ Sovereign Shield didn't inspect that message — it was sent as you typed it. " +

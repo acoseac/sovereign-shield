@@ -95,3 +95,23 @@ export function showBanner(opts: {
   (document.body ?? document.documentElement).append(bar);
   return true;
 }
+
+/**
+ * Take a bar back down, and forget that it was ever shown.
+ *
+ * Clearing the `shown` entry is the point, not a detail: without it the once-per-page rule would
+ * mean a retracted warning could never be re-raised, so a genuine failure later on the same page
+ * would go silent — trading a false alarm for a missed one, which is the worse of the two for
+ * this particular bar.
+ *
+ * Returns false if that id was not showing, so a caller retracting speculatively is a no-op.
+ * Matches on the `data-ss-banner` attribute rather than a CSS selector built from `id`, so an id
+ * containing quotes could never turn into a malformed selector.
+ */
+export function dismissBanner(id: string): boolean {
+  if (!shown.delete(id)) return false;
+  for (const bar of document.querySelectorAll("[data-ss-banner]")) {
+    if (bar instanceof HTMLElement && bar.dataset.ssBanner === id) bar.remove();
+  }
+  return true;
+}
