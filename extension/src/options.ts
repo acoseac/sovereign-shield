@@ -457,6 +457,10 @@ statsResetBtn.addEventListener("click", () => {
   // Routed through the background (the single stats writer) so a reset can't race a
   // buffered flush — same reasoning as "Clear log" below.
   notifyWorker({ type: "ss-stats-reset" });
+  // The milestone cursor resets HERE, not in the background: this page is its single
+  // writer. Without this, a fresh count re-crossing an already-dismissed milestone would
+  // never celebrate again until it beat the pre-reset high-water mark (review catch).
+  chrome.storage.local.remove(STATS_SEEN_KEY).catch(() => undefined);
 });
 
 byId("milestone-dismiss").addEventListener("click", () => {
