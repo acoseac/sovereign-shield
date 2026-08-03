@@ -139,30 +139,26 @@ host-permission review.
 
 ## Screenshots (required: ≥1, 1280×800 PNG)
 
-Five are ready in `~/Desktop/sovereign-shield-store-screenshots/`, all exactly 1280×800.
-Upload in this order (the store shows the first as the primary tile):
+**The set lives in `store-assets/`, in the repo** — captured 31 Jul against the shipped 0.8.x
+build, all exactly 1280×800, all real product captures rather than mockups. Upload in filename
+order; the store shows the first as the primary tile.
 
-1. `1-gemini.png` — the pre-send pill on Gemini: "🛡️ 2 items (IBAN, Swiss AHV / AVS) will be
-   kept local when you send", above a real prompt. Leads with the headline pre-send feature.
-2. `2-chatgpt.png` — the same pill on ChatGPT (3 items: card, email, AHV).
-3. `3-claude.png` — the same pill on Claude (2 items: AHV, Swiss phone).
-4. Options UI — Guard + Smokescreen, the identifier + **all nine** "Secrets & API keys" toggles,
-   the custom-rules editor, and the value-free activity log. Recaptured 27 Jul with every secret
-   type ticked (so it shows the shipped default) and the dev URL bar cropped; the current capture
-   is portrait, so needs a 1280×800 landscape pass (or split into two halves) before upload.
-5. `5-gemini-proof.png` — a real Gemini session with DevTools showing `[AHV_1]` on the wire
-   while the reply shows the restored number (the "receipts" shot).
-6. **The inspector panel's Preview tab** — prompt beside redacted payload with the replaced spans
-   marked (captured 27 Jul, e.g. Prompt C: a project name, an email and a Google key redacted at
-   once, with the key staying a bracket token while the email becomes a stand-in). The most
-   legible single proof the extension works, and it needs no DevTools — promote it above
-   `5-gemini-proof.png`. Needs the 1280×800 pass too (current captures are 3188×2024).
+| File | What it shows |
+|---|---|
+| `01-inspector-gemini.png` | The inspector on Gemini: prompt above, payload below, five values replaced — the email as a smokescreen stand-in, the AHV/IBAN/phone/card as bracket tokens, the **name untouched**. The single most legible proof, and it needs no DevTools. |
+| `02-inspector-chatgpt-keys.png` | The same panel on ChatGPT over a deploy script — OpenAI, AWS and GitHub keys redacted, with the pre-send pill counting them. |
+| `03-inspector-claude-standins.png` | The same panel on Claude: three addresses, three different stand-ins, pill reading "(stand-ins sent instead)". |
+| `04-options-guard-and-types.png` | Options: Guard, Smokescreen with its scope note, and the "What to block" grid. |
+| `05-options-rules-and-log.png` | Options: the ready-made rule library, a user's own rule, and the value-free activity log. |
 
-Tiles 1–3 are designed 1280×800 promo images (exact pill markup/CSS from `indicator.ts`, now
-including the **Inspect** button — see PR #61 — so regenerate them with `store-assets/render.sh`
-before the next upload); 4–5 are live product captures. The two earlier web-page shots
-(`1-showcase.png`, `2-tester.png`) are archived under `_archived-stale/` — they predated the
-CWS-advertise update and still carried the "not yet on the Chrome Web Store" line.
+Between them, tiles 1–3 make the "one guard, three sites" claim visually and cover identifiers,
+secrets and smokescreen without a word of copy.
+
+**This clears the debt that stood from 0.6.0 through 0.8.3**: the live tiles are still the 0.6.0
+lineup, because the replacements only ever existed as 3188×2024 portrait captures on a Desktop
+and as designed pill promos that predated the **Inspect** button. Nothing here needs a resize
+pass, and nothing here needs `store-assets/render.sh` — that script renders the old pill promos
+and is now only useful if you want a designed tile again.
 
 ---
 
@@ -179,8 +175,8 @@ For **each update** the moving parts are:
 - [ ] Paste that version's **"What's new"** note into the version.
 - [ ] Description: re-paste only if a user-facing clause changed (done for 0.8.3 — the Custom
       Rules clause names the ready-made library).
-- [ ] Screenshots: only if a pictured surface moved. Still outstanding since 0.7.0 — the refreshed
-      inspector-panel and all-secrets options captures need a 1280×800 landscape pass before they
-      can replace tiles 4 and 6.
+- [ ] Screenshots: only if a pictured surface moved. **The live tiles are still the 0.6.0 lineup**
+      — the 0.8.x set in `store-assets/` (see above) is upload-ready and replaces all of them.
+      This can be done on the live listing without a new version upload.
 - [ ] Visibility: leave as the live listing — an update is not a first submission.
 - [ ] Submit → host-permission review is still manual and can take days (0.6.0 took ~4).
