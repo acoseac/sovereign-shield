@@ -1,6 +1,7 @@
 // Popup: a guard on/off toggle plus a "kept local" count for the current tab.
 import { KEYS } from "./storage";
 import { isSupportedHost } from "./sites";
+import { readStats } from "./stats";
 
 const KEY = KEYS.enabled;
 // Parse the URL and match on the hostname — never a substring test, or
@@ -17,6 +18,7 @@ const onSupported = (urlStr?: string): boolean => {
 
 const toggle = document.getElementById("toggle") as HTMLInputElement;
 const keptEl = document.getElementById("kept") as HTMLElement;
+const lifetimeEl = document.getElementById("lifetime") as HTMLElement;
 const statusEl = document.getElementById("status") as HTMLElement;
 
 async function activeTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -27,6 +29,11 @@ async function activeTab(): Promise<chrome.tabs.Tab | undefined> {
 async function refresh(): Promise<void> {
   const stored = await chrome.storage.local.get(KEY);
   toggle.checked = stored[KEY] !== false;
+
+  // Lifetime total is global (background-owned aggregate, counts only), so it renders
+  // before the per-tab early-return below — it's meaningful on unsupported pages too.
+  const stats = await readStats();
+  lifetimeEl.textContent = (stats?.total ?? 0).toLocaleString();
 
   const tab = await activeTab();
   if (!tab?.id || !onSupported(tab.url)) {

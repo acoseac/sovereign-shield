@@ -3,7 +3,8 @@
 // buffered and flushed in batches so a paste with many identifiers doesn't hit
 // chrome.storage's write-rate limit.
 import { ALL_CATEGORY_KEYS } from "./categories";
-import { appendLogBatch, clearLog, getSettings, KEYS, type LogEntry } from "./storage";
+import { appendLogBatch, clearLog, getSettings, KEYS, readLog, type LogEntry } from "./storage";
+import { foldStats, freshStats, readStats, writeStats } from "./stats";
 
 const BADGE_COLOR = "#0E7C66";
 const ALERT_COLOR = "#B91C1C"; // fail-open: a parse error let a request through
@@ -44,7 +45,17 @@ function flushNow(): void {
   flushScheduled = false;
   if (pending.length === 0) return;
   const batch = pending.splice(0, pending.length);
-  enqueue(() => appendLogBatch(batch));
+  enqueue(async () => {
+    // The lifetime aggregate folds in the same queued task as the log append, so ss-clear
+    // and ss-stats-reset can never interleave with a half-applied flush. On the very first
+    // fold (no stored stats) the existing log seeds the aggregate — read BEFORE this batch
+    // is appended, or the batch would count twice. That seed is why long-time users start
+    // from their rolling-log history instead of zero.
+    let stats = await readStats();
+    stats ??= foldStats(null, await readLog());
+    await appendLogBatch(batch);
+    await writeStats(foldStats(stats, batch));
+  });
 }
 function scheduleFlush(): void {
   if (pending.length >= 25) {
@@ -72,6 +83,14 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   // the same write queue as appends so a clear can't race an in-flight batch flush.
   if (msg?.type === "ss-clear") {
     enqueue(() => clearLog());
+    return;
+  }
+  if (msg?.type === "ss-stats-reset") {
+    // Reset writes a FRESH aggregate rather than removing the key: an absent key means
+    // "never counted", which would re-seed from the activity log on the next flush and
+    // resurrect up to LOG_CAP entries the user just asked to forget. `since` becomes the
+    // reset moment — exactly what the options page then shows.
+    enqueue(() => writeStats(freshStats(Date.now())));
     return;
   }
   const tabId = sender.tab?.id;
