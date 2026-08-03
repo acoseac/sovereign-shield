@@ -331,6 +331,88 @@ async function renderLog(): Promise<void> {
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
+/** Milestone line: a quiet, dismissible callout while a freshly crossed boundary is unseen;
+ *  otherwise the static "next" line. Dismissing advances the cursor, never the stats. */
+function renderMilestone(total: number, seen: number): void {
+  const milestone = byId("milestone");
+  const passed = lastMilestone(total);
+  const next = nextMilestone(total);
+  if (passed !== null && passed > seen) {
+    byId("milestone-text").textContent =
+      `🎉 Passed ${passed.toLocaleString()} identifiers kept off cloud servers.`;
+    milestone.hidden = false;
+  } else {
+    milestone.hidden = true;
+  }
+  byId("stat-next").textContent = next !== null ? `Next milestone: ${next.toLocaleString()}.` : "";
+}
+
+/** 7-day chart: plain flex divs, tallest day = full height. Zero weeks show the empty line
+ *  instead of seven bare tracks pretending to be data. The chart itself is aria-hidden
+ *  (decoration over the counts); #stat-week is the screen-reader equivalent. */
+function renderStatChart(series: ReadonlyArray<{ key: string; count: number }>): void {
+  const chart = byId("stat-chart");
+  const weekTotal = series.reduce((sum, d) => sum + d.count, 0);
+  chart.replaceChildren();
+  chart.hidden = weekTotal === 0;
+  byId("stat-chart-empty").hidden = weekTotal > 0;
+  const spoken: string[] = [];
+  if (weekTotal === 0) {
+    byId("stat-week").textContent = "";
+    return;
+  }
+  const max = Math.max(...series.map((d) => d.count));
+  for (const d of series) {
+    const weekday = WEEKDAY[new Date(`${d.key}T00:00:00`).getDay()];
+    const col = document.createElement("div");
+    col.className = "stat-day";
+    col.title = `${d.key}: ${d.count}`;
+    const bar = document.createElement("div");
+    bar.className = d.count > 0 ? "stat-bar filled" : "stat-bar";
+    bar.style.height = `${Math.round((d.count / max) * 92)}%`;
+    const label = document.createElement("div");
+    label.className = "stat-daylabel";
+    label.textContent = weekday;
+    col.append(bar, label);
+    chart.append(col);
+    spoken.push(`${weekday} ${d.count}`);
+  }
+  byId("stat-week").textContent = `Last 7 days: ${spoken.join(", ")}.`;
+}
+
+/** Per-category chips (top 6 + "+N more") and per-site rows. */
+function renderStatBreakdown(cats: Record<string, number>, sites: Record<string, number>): void {
+  const chips = byId("stat-cats");
+  chips.replaceChildren();
+  const byCount = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  for (const [key, n] of byCount.slice(0, 6)) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = `${CATEGORY_LABEL[key] ?? key}: ${n.toLocaleString()}`;
+    chips.append(chip);
+  }
+  if (byCount.length > 6) {
+    const more = document.createElement("span");
+    more.className = "chip";
+    more.textContent = `+${byCount.length - 6} more`;
+    chips.append(more);
+  }
+
+  const box = byId("stat-sites");
+  box.replaceChildren();
+  for (const [host, n] of Object.entries(sites).sort((a, b) => b[1] - a[1])) {
+    const row = document.createElement("div");
+    row.className = "stat-siterow";
+    const name = document.createElement("span");
+    name.textContent = host;
+    const count = document.createElement("span");
+    count.className = "n";
+    count.textContent = n.toLocaleString();
+    row.append(name, count);
+    box.append(row);
+  }
+}
+
 async function renderStats(): Promise<void> {
   const stats = await readStats();
   const seenRaw = (await chrome.storage.local.get(STATS_SEEN_KEY))[STATS_SEEN_KEY];
@@ -343,77 +425,9 @@ async function renderStats(): Promise<void> {
       ? `identifiers kept off cloud servers since ${new Date(stats.since).toLocaleDateString()}`
       : "identifiers kept off cloud servers";
 
-  // Milestone: a quiet, dismissible callout while a freshly crossed boundary is unseen;
-  // otherwise the static "next" line. Dismissing advances the cursor, never the stats.
-  const milestone = byId("milestone");
-  const passed = lastMilestone(total);
-  const next = nextMilestone(total);
-  if (passed !== null && passed > seen) {
-    byId("milestone-text").textContent =
-      `🎉 Passed ${passed.toLocaleString()} identifiers kept off cloud servers.`;
-    milestone.hidden = false;
-  } else {
-    milestone.hidden = true;
-  }
-  byId("stat-next").textContent = next !== null ? `Next milestone: ${next.toLocaleString()}.` : "";
-
-  // 7-day chart: plain flex divs, tallest day = full height. Zero weeks show the empty
-  // line instead of seven bare tracks pretending to be data.
-  const chart = byId("stat-chart");
-  const series = stats ? lastNDays(stats, 7) : [];
-  const weekTotal = series.reduce((sum, d) => sum + d.count, 0);
-  chart.replaceChildren();
-  chart.hidden = weekTotal === 0;
-  byId("stat-chart-empty").hidden = weekTotal > 0;
-  if (weekTotal > 0) {
-    const max = Math.max(...series.map((d) => d.count));
-    for (const d of series) {
-      const col = document.createElement("div");
-      col.className = "stat-day";
-      col.title = `${d.key}: ${d.count}`;
-      const bar = document.createElement("div");
-      bar.className = d.count > 0 ? "stat-bar filled" : "stat-bar";
-      bar.style.height = `${Math.round((d.count / max) * 92)}%`;
-      const weekday = WEEKDAY[new Date(`${d.key}T00:00:00`).getDay()];
-      bar.setAttribute("aria-label", `${weekday}: ${d.count}`);
-      const label = document.createElement("div");
-      label.className = "stat-daylabel";
-      label.textContent = weekday;
-      col.append(bar, label);
-      chart.append(col);
-    }
-  }
-
-  // Per-category chips (top 6 + "+N more") and per-site rows.
-  const cats = byId("stat-cats");
-  cats.replaceChildren();
-  const byCount = Object.entries(stats?.cats ?? {}).sort((a, b) => b[1] - a[1]);
-  for (const [key, n] of byCount.slice(0, 6)) {
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.textContent = `${CATEGORY_LABEL[key] ?? key}: ${n.toLocaleString()}`;
-    cats.append(chip);
-  }
-  if (byCount.length > 6) {
-    const more = document.createElement("span");
-    more.className = "chip";
-    more.textContent = `+${byCount.length - 6} more`;
-    cats.append(more);
-  }
-
-  const sites = byId("stat-sites");
-  sites.replaceChildren();
-  for (const [host, n] of Object.entries(stats?.sites ?? {}).sort((a, b) => b[1] - a[1])) {
-    const row = document.createElement("div");
-    row.className = "stat-siterow";
-    const name = document.createElement("span");
-    name.textContent = host;
-    const count = document.createElement("span");
-    count.className = "n";
-    count.textContent = n.toLocaleString();
-    row.append(name, count);
-    sites.append(row);
-  }
+  renderMilestone(total, seen);
+  renderStatChart(stats ? lastNDays(stats, 7) : []);
+  renderStatBreakdown(stats?.cats ?? {}, stats?.sites ?? {});
 }
 
 // Two-step confirm: this wipes a lifetime number, so a single misclick must not do it.

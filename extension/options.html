@@ -289,6 +289,17 @@
       .stat-siterow .n {
         color: var(--muted);
       }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
     </style>
   </head>
   <body>
@@ -386,7 +397,10 @@
           <span class="muted" id="stat-sub" style="margin: 0">identifiers kept off cloud servers</span>
         </div>
         <p class="muted" id="stat-next" style="margin: 2px 0 0"></p>
-        <div id="stat-chart" class="stat-chart" role="img" aria-label="Identifiers kept local, last 7 days"></div>
+        <!-- The bars are decoration over the counts; the sr-only line below is the
+             screen-reader equivalent (a div chart with role="img" fails Sonar S6819). -->
+        <div id="stat-chart" class="stat-chart" aria-hidden="true"></div>
+        <p id="stat-week" class="sr-only"></p>
         <p class="muted" id="stat-chart-empty" style="margin: 6px 0 0" hidden>Nothing redacted in the last 7 days.</p>
         <div id="stat-cats" class="chips"></div>
         <div id="stat-sites" class="stat-sites"></div>

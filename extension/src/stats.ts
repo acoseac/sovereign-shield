@@ -106,8 +106,10 @@ export function foldStats(prev: unknown, entries: readonly LogEntry[], now = Dat
     out.days[day] = (out.days[day] ?? 0) + 1;
     if (e.t < out.since) out.since = e.t;
   }
-  // Prune the day window. ISO-shaped keys sort lexicographically = chronologically.
-  const keys = Object.keys(out.days).sort();
+  // Prune the day window. ISO-shaped keys sort lexicographically = chronologically; the
+  // explicit ASCII comparator (not localeCompare — these are machine keys, not words)
+  // keeps that independent of any locale and satisfies the type-dependent-sort rule.
+  const keys = Object.keys(out.days).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   for (let i = 0; i < keys.length - DAY_RETENTION; i++) delete out.days[keys[i]];
   return out;
 }
