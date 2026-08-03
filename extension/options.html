@@ -281,7 +281,9 @@
         </p>
         <div class="row" style="margin-top: 12px">
           <label for="theme" style="font-size: 14px">Stand-in theme</label>
-          <select id="theme" aria-label="Stand-in theme">
+          <!-- Named by the <label for>; described by the live example line so AT announces
+               what the theme actually sounds like. -->
+          <select id="theme" aria-describedby="theme-preview">
             <option value="plain">Plain — everyday names</option>
             <option value="scifi">Sci-Fi</option>
             <option value="fantasy">Fantasy — myth &amp; legend</option>
