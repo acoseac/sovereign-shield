@@ -46,87 +46,90 @@ export interface Preset {
   caseSensitive?: boolean;
 }
 
+/** Positional on purpose, mirroring templates.ts's regexTemplate: eight object literals
+ *  with identical key skeletons trip the duplicate-code gate, and a data table earns its
+ *  compactness. Every shipped preset is case-sensitive (admission rule 3); a future
+ *  case-insensitive one should extend the factory rather than flip a silent default. */
+function preset(
+  id: string,
+  name: string,
+  description: string,
+  example: string,
+  label: string,
+  pattern: string,
+): Preset {
+  return { id, name, description, example, label, pattern, caseSensitive: true };
+}
+
 export const PRESETS: readonly Preset[] = [
-  {
-    id: "twilio-sid",
-    name: "Twilio Account SID",
-    description: "Account identifier for the Twilio API — AC followed by 32 hex characters.",
-    example: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    label: "Twilio SID",
-    pattern: String.raw`\bAC[0-9a-fA-F]{32}\b`,
-    caseSensitive: true,
-  },
-  {
-    id: "sendgrid-key",
-    name: "SendGrid API key",
-    description: "Mail-sending credential — SG. followed by two base64url segments.",
-    example: "SG.AAAAAAAAAAAAAAAAAAAAAA.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    label: "SendGrid key",
-    pattern: String.raw`\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b`,
-    caseSensitive: true,
-  },
-  {
-    id: "npm-token",
-    name: "npm access token",
-    description: "Registry credential — npm_ followed by 36 alphanumerics.",
-    example: "npm_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    label: "npm token",
-    pattern: String.raw`\bnpm_[A-Za-z0-9]{36}\b`,
-    caseSensitive: true,
-  },
-  {
-    id: "databricks-token",
-    name: "Databricks personal access token",
-    description: "Workspace credential — dapi followed by 32 hex characters.",
-    example: "dapiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    label: "Databricks PAT",
-    pattern: String.raw`\bdapi[0-9a-f]{32}\b`,
-    caseSensitive: true,
-  },
-  {
-    id: "azure-storage-key",
-    name: "Azure storage account key",
-    description: "88-character base64 account key ending in == — grants full storage access.",
-    example:
-      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-    label: "Azure storage key",
-    pattern: String.raw`\b[A-Za-z0-9+/]{86}==(?![A-Za-z0-9+/=])`,
-    caseSensitive: true,
-  },
-  {
-    id: "slack-webhook",
-    name: "Slack incoming-webhook URL",
-    description:
-      "Anyone holding this URL can post into the channel. Distinct from Slack xox… tokens, which the extension already detects.",
+  preset(
+    "twilio-sid",
+    "Twilio Account SID",
+    "Account identifier for the Twilio API — AC followed by 32 hex characters.",
+    "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "Twilio SID",
+    String.raw`\bAC[0-9a-fA-F]{32}\b`,
+  ),
+  preset(
+    "sendgrid-key",
+    "SendGrid API key",
+    "Mail-sending credential — SG. followed by two base64url segments.",
+    "SG.AAAAAAAAAAAAAAAAAAAAAA.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "SendGrid key",
+    String.raw`\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b`,
+  ),
+  preset(
+    "npm-token",
+    "npm access token",
+    "Registry credential — npm_ followed by 36 alphanumerics.",
+    "npm_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "npm token",
+    String.raw`\bnpm_[A-Za-z0-9]{36}\b`,
+  ),
+  preset(
+    "databricks-token",
+    "Databricks personal access token",
+    "Workspace credential — dapi followed by 32 hex characters.",
+    "dapiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "Databricks PAT",
+    String.raw`\bdapi[0-9a-f]{32}\b`,
+  ),
+  preset(
+    "azure-storage-key",
+    "Azure storage account key",
+    "88-character base64 account key ending in == — grants full storage access.",
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "Azure storage key",
+    String.raw`\b[A-Za-z0-9+/]{86}==(?![A-Za-z0-9+/=])`,
+  ),
+  preset(
+    "slack-webhook",
+    "Slack incoming-webhook URL",
+    "Anyone holding this URL can post into the channel. Distinct from Slack xox… tokens, which the extension already detects.",
     // Slack's own documentation placeholder (all zeros, X'd token) — assembled from parts
     // because GitHub push protection flags ANY contiguous hooks.slack.com/services URL as a
     // live webhook, canonical zeros included. The joined value is what the site shows and
     // what the cross-check test asserts against; it is not and never was a credential.
-    example: ["https://hooks.slack.com", "/services/T00000000", "/B00000000", "/XXXXXXXXXXXXXXXXXXXXXXXX"].join(""),
-    label: "Slack webhook",
-    pattern: String.raw`https://hooks\.slack\.com/services/T[A-Z0-9]{8,12}/B[A-Z0-9]{8,12}/[A-Za-z0-9]{24}`,
-    caseSensitive: true,
-  },
-  {
-    id: "us-dea",
-    name: "US DEA registration number",
-    description:
-      "Prescriber/dispenser registration — two letters (registrant type, then initial) and seven digits.",
-    example: "AB1234563",
-    label: "DEA number",
-    pattern: String.raw`\b[ABFGMPRX][A-Z]\d{7}\b`,
-    caseSensitive: true,
-  },
-  {
-    id: "us-medicare-mbi",
-    name: "US Medicare Beneficiary Identifier",
-    description:
-      "The MBI on every US Medicare card — 11 characters in a rigid letter/digit alternation (no S, L, O, I, B, Z), with or without dashes.",
-    example: "1EG4-TE5-MK73",
-    label: "Medicare MBI",
-    pattern: String.raw`\b[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y]{2}\d{2}\b`,
-    caseSensitive: true,
-  },
+    ["https://hooks.slack.com", "/services/T00000000", "/B00000000", "/XXXXXXXXXXXXXXXXXXXXXXXX"].join(""),
+    "Slack webhook",
+    String.raw`https://hooks\.slack\.com/services/T[A-Z0-9]{8,12}/B[A-Z0-9]{8,12}/[A-Za-z0-9]{24}`,
+  ),
+  preset(
+    "us-dea",
+    "US DEA registration number",
+    "Prescriber/dispenser registration — two letters (registrant type, then initial) and seven digits.",
+    "AB1234563",
+    "DEA number",
+    String.raw`\b[ABFGMPRX][A-Z]\d{7}\b`,
+  ),
+  preset(
+    "us-medicare-mbi",
+    "US Medicare Beneficiary Identifier",
+    "The MBI on every US Medicare card — 11 characters in a rigid letter/digit alternation (no S, L, O, I, B, Z), with or without dashes.",
+    "1EG4-TE5-MK73",
+    "Medicare MBI",
+    String.raw`\b[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y]{2}\d{2}\b`,
+  ),
 ];
 
 /**
