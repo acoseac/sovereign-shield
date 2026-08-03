@@ -68,7 +68,8 @@ export default function Page() {
             <p>
               A client name, a code name, a domain, a regex. Or add one from the{" "}
               <strong>ready-made library</strong> in a click: US SSN, UK NI, internal IPs,
-              hostnames, MAC addresses.
+              hostnames, MAC addresses — and more in the{" "}
+              <a href="/extension/presets">preset library</a>.
             </p>
           </div>
         </div>

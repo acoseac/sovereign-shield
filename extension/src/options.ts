@@ -10,6 +10,7 @@ import {
   type RuleTemplate,
 } from "./templates";
 import { notifyWorker } from "./runtime";
+import { parsePresetCode } from "./preset-import";
 
 const byId = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -124,10 +125,25 @@ function ruleRow(rule: CustomRule, index: number): HTMLElement {
     err.textContent = ruleError(rule) ?? "";
   }
   function sync(): void {
+    // Hand-editing the PATTERN disowns the preset: the rule is the user's from here on, and
+    // a later re-import of the same preset must add alongside rather than overwrite their
+    // edit. Label/flag tweaks keep the link — they don't change what the rule matches.
+    if (rule.presetId !== undefined && pat.value !== rule.pattern) {
+      delete rule.presetId;
+      tag?.remove();
+      tag = null;
+    }
     rule.pattern = pat.value;
     rule.label = label.value.trim() || undefined;
     refresh();
     void persistRules();
+  }
+  let tag: HTMLSpanElement | null = null;
+  if (rule.presetId !== undefined) {
+    tag = document.createElement("span");
+    tag.className = "preset-tag";
+    tag.textContent = "Preset";
+    tag.title = `Imported preset (${rule.presetId}). Editing the pattern makes it a regular rule.`;
   }
   const rx = optCheckbox("Regex", rule.isRegex, (v) => {
     rule.isRegex = v;
@@ -150,6 +166,7 @@ function ruleRow(rule: CustomRule, index: number): HTMLElement {
   });
 
   opts.append(rx, cs, ww, label);
+  if (tag) opts.append(tag);
   row.append(pat, rm, opts, err);
   refresh();
   return row;
@@ -246,6 +263,92 @@ byId("add-template").addEventListener("click", () => {
   // or hand-typed since the page was opened.
   renderTemplates();
   box.hidden = false;
+});
+
+// --- preset import ----------------------------------------------------------
+// The paste side of the shield.ars.md preset library. The code arrives via the user's own
+// clipboard — deliberately the ONLY transport (no site↔extension channel exists) — and is
+// validated by parsePresetCode (same lint and caps as hand-typed rules; see its threat
+// model). An imported rule is an ordinary CustomRule plus a presetId, which is what lets a
+// revised preset UPDATE the stale copy in place instead of stacking a duplicate.
+
+const importBox = byId("import-box");
+const importCode = byId("import-code") as HTMLInputElement;
+const importStatus = byId("import-status");
+
+function setImportStatus(text: string, tone: "" | "ok" | "err"): void {
+  importStatus.textContent = text; // textContent only — pasted display copy never renders as markup
+  importStatus.className = tone ? `import-status ${tone}` : "import-status";
+}
+
+type ImportAssessment =
+  | { kind: "err"; message: string }
+  | { kind: "dupe" }
+  | { kind: "cap" }
+  | { kind: "update"; rule: CustomRule; index: number; display: string }
+  | { kind: "add"; rule: CustomRule; display: string };
+
+/** What clicking Add would do for the current input — shared by the live hint and the click
+ *  handler so the promise and the action can never disagree. */
+function assessImport(): ImportAssessment {
+  const parsed = parsePresetCode(importCode.value);
+  if (!parsed.ok) return { kind: "err", message: parsed.error };
+  const display = parsed.name ?? parsed.rule.label ?? "preset";
+  const id = parsed.rule.presetId;
+  const existing = id === undefined ? -1 : draft.findIndex((r) => r.presetId === id);
+  if (existing !== -1) return { kind: "update", rule: parsed.rule, index: existing, display };
+  // Pattern dedupe second: it protects against colliding with a HAND-TYPED rule (or a
+  // disowned preset, which is by then the user's own rule and must not be overwritten).
+  if (draft.some((r) => r.pattern.trim() === parsed.rule.pattern.trim())) return { kind: "dupe" };
+  if (draft.length >= MAX_RULES) return { kind: "cap" };
+  return { kind: "add", rule: parsed.rule, display };
+}
+
+function renderImportHint(): void {
+  if (!importCode.value.trim()) {
+    setImportStatus("Copy a preset code from shield.ars.md/extension/presets and paste it here.", "");
+    return;
+  }
+  const a = assessImport();
+  if (a.kind === "err") setImportStatus(a.message, "err");
+  else if (a.kind === "dupe") setImportStatus("Already in your rules.", "err");
+  else if (a.kind === "cap") {
+    setImportStatus(`Can't import: you've reached the ${MAX_RULES}-rule limit. Remove a rule first.`, "err");
+  } else if (a.kind === "update") setImportStatus(`Ready to update: ${a.display}`, "ok");
+  else setImportStatus(`Ready to add: ${a.display}`, "ok");
+}
+
+byId("import-preset").addEventListener("click", () => {
+  if (!importBox.hidden) {
+    importBox.hidden = true;
+    return;
+  }
+  importBox.hidden = false;
+  renderImportHint();
+  importCode.focus();
+});
+
+importCode.addEventListener("input", renderImportHint);
+importCode.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") byId("import-add").click();
+});
+
+byId("import-add").addEventListener("click", () => {
+  const a = assessImport();
+  if (a.kind === "err" || a.kind === "dupe" || a.kind === "cap") {
+    renderImportHint(); // the hint already says exactly why — just make sure it's current
+    return;
+  }
+  if (a.kind === "update") {
+    draft[a.index] = a.rule;
+    setImportStatus(`Updated: ${a.display}`, "ok");
+  } else {
+    draft.push(a.rule);
+    setImportStatus(`Added: ${a.display}`, "ok");
+  }
+  importCode.value = "";
+  renderRules();
+  void persistRules();
 });
 
 enabledEl.addEventListener("change", () => {

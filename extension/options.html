@@ -221,6 +221,47 @@
         border-color: var(--brand);
         background: color-mix(in srgb, var(--brand) 8%, transparent);
       }
+      /* --- preset import ------------------------------------------------ */
+      #import-box {
+        margin: 10px 0 4px;
+      }
+      .import-row {
+        display: flex;
+        gap: 8px;
+      }
+      .import-row input {
+        flex: 1;
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      .import-status {
+        font-size: 12px;
+        margin-top: 6px;
+        min-height: 1em;
+        color: var(--muted);
+      }
+      .import-status.err {
+        color: #d33;
+      }
+      .import-status.ok {
+        color: var(--brand);
+      }
+      .preset-tag {
+        background: color-mix(in srgb, var(--brand) 14%, transparent);
+        color: var(--brand);
+        border-radius: 999px;
+        padding: 1px 8px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .muted a {
+        color: var(--brand);
+      }
     </style>
   </head>
   <body>
@@ -288,6 +329,7 @@
           <h2>Custom rules</h2>
           <span class="row-actions">
             <button id="add-template" class="btn">Add from library</button>
+            <button id="import-preset" class="btn">Import preset</button>
             <button id="add-rule" class="btn">+ Add rule</button>
           </span>
         </div>
@@ -295,7 +337,15 @@
           Redact your own terms — internal code names, client names, domains. Kept local and
           restored in the reply, exactly like the built-in types. Plain text by default (whole-word);
           tick <strong>Regex</strong> for a pattern. Rules never leave your browser.
+          <a href="https://shield.ars.md/extension/presets" target="_blank" rel="noreferrer noopener">More presets ↗</a>
         </p>
+        <div id="import-box" hidden>
+          <div class="import-row">
+            <input type="text" id="import-code" placeholder='paste a preset code — {"v":1,…}' aria-label="Preset code" />
+            <button id="import-add" class="btn">Add</button>
+          </div>
+          <div id="import-status" class="import-status"></div>
+        </div>
         <div id="templates" hidden></div>
         <div id="rules"></div>
       </section>
