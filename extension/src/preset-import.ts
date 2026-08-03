@@ -27,11 +27,77 @@ export const MAX_CODE = 2000;
 /** Slugs only — this travels into storage and back out into "Added/Updated" UI copy. */
 const PRESET_ID_RE = /^[a-z0-9-]{1,64}$/;
 
+/** The catch-all refusal for anything that is not a well-formed v1 code. Deliberately
+ *  content-free: refusals must be safe to render verbatim, so they never echo the paste. */
+const INVALID = "Not a valid preset code.";
+
 export type PresetParse =
   | { ok: true; rule: CustomRule; name?: string }
   | { ok: false; error: string };
 
-const fail = (error: string): PresetParse => ({ ok: false, error });
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Envelope checks: JSON, object shape, version. Returns the outer object or a refusal. */
+function parseEnvelope(text: string): Record<string, unknown> | string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return INVALID;
+  }
+  if (!isPlainObject(parsed)) return INVALID;
+  if (parsed.v !== 1) {
+    // A larger integer means the site is emitting a format this build doesn't know yet —
+    // tell the user the fix is an update, not a re-paste. Anything else is just not a code.
+    return typeof parsed.v === "number" && parsed.v > 1
+      ? "This preset needs a newer version of the extension."
+      : INVALID;
+  }
+  return parsed;
+}
+
+/** Optional-field type checks, split out of buildRule to keep both under the CC budget. */
+function optionalFieldsError(r: Record<string, unknown>): string | null {
+  if (r.label !== undefined && typeof r.label !== "string") return INVALID;
+  for (const flag of [r.caseSensitive, r.wholeWord]) {
+    if (flag !== undefined && typeof flag !== "boolean") return INVALID;
+  }
+  const id = r.presetId;
+  if (id !== undefined && (typeof id !== "string" || !PRESET_ID_RE.test(id))) return INVALID;
+  return null;
+}
+
+/** Validate the rule payload and whitelist-copy it (see the threat model above). Optional
+ *  fields are set only when present and meaningful, so an imported rule serializes as lean
+ *  as a hand-typed one. */
+function buildRule(value: unknown): CustomRule | string {
+  if (!isPlainObject(value)) return INVALID;
+  const pattern = typeof value.pattern === "string" ? value.pattern : "";
+  if (!pattern.trim()) return "The preset has no pattern.";
+  if (pattern.length > MAX_PATTERN) return `Pattern is too long (max ${MAX_PATTERN}).`;
+  if (typeof value.isRegex !== "boolean") return INVALID;
+  const optErr = optionalFieldsError(value);
+  if (optErr) return optErr;
+  const label = typeof value.label === "string" ? value.label.trim() : "";
+  if (label.length > MAX_LABEL) return `Label is too long (max ${MAX_LABEL}).`;
+  if (value.isRegex) {
+    const lint = lintRegex(pattern);
+    if (lint) return lint; // the exact message a hand-typed rule would get
+  }
+  const out: CustomRule = { pattern, isRegex: value.isRegex };
+  if (label) out.label = label;
+  if (value.caseSensitive === true) out.caseSensitive = true;
+  if (value.wholeWord === false) out.wholeWord = false;
+  if (typeof value.presetId === "string") out.presetId = value.presetId;
+  return out;
+}
+
+/** The optional display name ("Ready to add: X"); over-long or absent degrades to none. */
+function displayName(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() && v.length <= 100 ? v.trim() : undefined;
+}
 
 /**
  * Parse one pasted preset code into a CustomRule, or a human-readable refusal. Every
@@ -40,64 +106,13 @@ const fail = (error: string): PresetParse => ({ ok: false, error });
  */
 export function parsePresetCode(raw: string): PresetParse {
   const text = raw.trim();
-  if (!text) return fail("Paste a preset code first.");
-  if (text.length > MAX_CODE) return fail("That doesn't look like a preset code (too long).");
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return fail("Not a valid preset code.");
+  if (!text) return { ok: false, error: "Paste a preset code first." };
+  if (text.length > MAX_CODE) {
+    return { ok: false, error: "That doesn't look like a preset code (too long)." };
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return fail("Not a valid preset code.");
-  }
-  const outer = parsed as Record<string, unknown>;
-
-  if (outer.v !== 1) {
-    // A larger integer means the site is emitting a format this build doesn't know yet —
-    // tell the user the fix is an update, not a re-paste. Anything else is just not a code.
-    return typeof outer.v === "number" && outer.v > 1
-      ? fail("This preset needs a newer version of the extension.")
-      : fail("Not a valid preset code.");
-  }
-
-  const name =
-    typeof outer.name === "string" && outer.name.trim() && outer.name.length <= 100
-      ? outer.name.trim()
-      : undefined;
-
-  const rule = outer.rule;
-  if (typeof rule !== "object" || rule === null || Array.isArray(rule)) {
-    return fail("Not a valid preset code.");
-  }
-  const r = rule as Record<string, unknown>;
-
-  const pattern = typeof r.pattern === "string" ? r.pattern : "";
-  if (!pattern.trim()) return fail("The preset has no pattern.");
-  if (pattern.length > MAX_PATTERN) return fail(`Pattern is too long (max ${MAX_PATTERN}).`);
-  if (typeof r.isRegex !== "boolean") return fail("Not a valid preset code.");
-  if (r.label !== undefined && typeof r.label !== "string") return fail("Not a valid preset code.");
-  const label = typeof r.label === "string" ? r.label.trim() : "";
-  if (label.length > MAX_LABEL) return fail(`Label is too long (max ${MAX_LABEL}).`);
-  for (const flag of [r.caseSensitive, r.wholeWord]) {
-    if (flag !== undefined && typeof flag !== "boolean") return fail("Not a valid preset code.");
-  }
-  if (r.presetId !== undefined && (typeof r.presetId !== "string" || !PRESET_ID_RE.test(r.presetId))) {
-    return fail("Not a valid preset code.");
-  }
-
-  if (r.isRegex === true) {
-    const lint = lintRegex(pattern);
-    if (lint) return fail(lint); // the exact message a hand-typed rule would get
-  }
-
-  // Whitelist copy — see the threat model above. Optional fields are set only when present
-  // and meaningful, so an imported rule serializes as lean as a hand-typed one.
-  const out: CustomRule = { pattern, isRegex: r.isRegex };
-  if (label) out.label = label;
-  if (r.caseSensitive === true) out.caseSensitive = true;
-  if (r.wholeWord === false) out.wholeWord = false;
-  if (typeof r.presetId === "string") out.presetId = r.presetId;
-  return { ok: true, rule: out, name };
+  const outer = parseEnvelope(text);
+  if (typeof outer === "string") return { ok: false, error: outer };
+  const rule = buildRule(outer.rule);
+  if (typeof rule === "string") return { ok: false, error: rule };
+  return { ok: true, rule, name: displayName(outer.name) };
 }

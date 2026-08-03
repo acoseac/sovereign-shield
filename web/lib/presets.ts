@@ -53,7 +53,7 @@ export const PRESETS: readonly Preset[] = [
     description: "Account identifier for the Twilio API — AC followed by 32 hex characters.",
     example: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     label: "Twilio SID",
-    pattern: "\\bAC[0-9a-fA-F]{32}\\b",
+    pattern: String.raw`\bAC[0-9a-fA-F]{32}\b`,
     caseSensitive: true,
   },
   {
@@ -62,7 +62,7 @@ export const PRESETS: readonly Preset[] = [
     description: "Mail-sending credential — SG. followed by two base64url segments.",
     example: "SG.AAAAAAAAAAAAAAAAAAAAAA.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     label: "SendGrid key",
-    pattern: "\\bSG\\.[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}\\b",
+    pattern: String.raw`\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b`,
     caseSensitive: true,
   },
   {
@@ -71,7 +71,7 @@ export const PRESETS: readonly Preset[] = [
     description: "Registry credential — npm_ followed by 36 alphanumerics.",
     example: "npm_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     label: "npm token",
-    pattern: "\\bnpm_[A-Za-z0-9]{36}\\b",
+    pattern: String.raw`\bnpm_[A-Za-z0-9]{36}\b`,
     caseSensitive: true,
   },
   {
@@ -80,7 +80,7 @@ export const PRESETS: readonly Preset[] = [
     description: "Workspace credential — dapi followed by 32 hex characters.",
     example: "dapiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     label: "Databricks PAT",
-    pattern: "\\bdapi[0-9a-f]{32}\\b",
+    pattern: String.raw`\bdapi[0-9a-f]{32}\b`,
     caseSensitive: true,
   },
   {
@@ -90,7 +90,7 @@ export const PRESETS: readonly Preset[] = [
     example:
       "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
     label: "Azure storage key",
-    pattern: "\\b[A-Za-z0-9+/]{86}==(?![A-Za-z0-9+/=])",
+    pattern: String.raw`\b[A-Za-z0-9+/]{86}==(?![A-Za-z0-9+/=])`,
     caseSensitive: true,
   },
   {
@@ -104,7 +104,7 @@ export const PRESETS: readonly Preset[] = [
     // what the cross-check test asserts against; it is not and never was a credential.
     example: ["https://hooks.slack.com", "/services/T00000000", "/B00000000", "/XXXXXXXXXXXXXXXXXXXXXXXX"].join(""),
     label: "Slack webhook",
-    pattern: "https://hooks\\.slack\\.com/services/T[A-Z0-9]{8,12}/B[A-Z0-9]{8,12}/[A-Za-z0-9]{24}",
+    pattern: String.raw`https://hooks\.slack\.com/services/T[A-Z0-9]{8,12}/B[A-Z0-9]{8,12}/[A-Za-z0-9]{24}`,
     caseSensitive: true,
   },
   {
@@ -114,7 +114,7 @@ export const PRESETS: readonly Preset[] = [
       "Prescriber/dispenser registration — two letters (registrant type, then initial) and seven digits.",
     example: "AB1234563",
     label: "DEA number",
-    pattern: "\\b[ABFGMPRX][A-Z]\\d{7}\\b",
+    pattern: String.raw`\b[ABFGMPRX][A-Z]\d{7}\b`,
     caseSensitive: true,
   },
   {
@@ -124,8 +124,7 @@ export const PRESETS: readonly Preset[] = [
       "The MBI on every US Medicare card — 11 characters in a rigid letter/digit alternation (no S, L, O, I, B, Z), with or without dashes.",
     example: "1EG4-TE5-MK73",
     label: "Medicare MBI",
-    pattern:
-      "\\b[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\\d-?[AC-HJKMNP-RT-Y]{2}\\d{2}\\b",
+    pattern: String.raw`\b[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y]{2}\d{2}\b`,
     caseSensitive: true,
   },
 ];
