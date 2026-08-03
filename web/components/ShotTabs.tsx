@@ -12,29 +12,41 @@ interface Shot {
   cap: string;
 }
 
+// Real captures of the shipped 0.8.x build, not mockups. The PNG originals are the store
+// upload set (extension/store-assets/); these are near-lossless WebP copies at the same
+// 1280×800 — pixel-identical text, roughly half the bytes.
 const SHOTS: Shot[] = [
   {
-    id: "pill",
-    tab: "Before you send",
-    src: "/ss-pill-chatgpt.png",
-    alt: "The Sovereign Shield pre-send count above the ChatGPT composer, reading '3 items (Credit card, Email, Swiss AHV / AVS) will be kept local when you send'",
+    id: "gemini",
+    tab: "On Gemini",
+    src: "/ss-inspector-gemini.webp",
+    alt: "The Sovereign Shield inspector open beside a Gemini composer. The 'You typed' pane shows a name, an AHV number, an IBAN, a mobile number, an email and a card number; the 'What the provider receives' pane shows the same text with [AHV_1], [IBAN_1], [PHONE_1], [CARD_1] and the stand-in address alice.morgan@example.org in their place",
     w: 1280,
     h: 800,
-    cap: "A live count sits above the chat box and names what stays local — before you hit send.",
+    cap: "Your prompt on top, what Gemini would actually receive below — five values replaced. Smokescreen is on here, so the email left as a stand-in while the checksum-validated ones stay bracket tokens. The name is untouched: names have no check digit to verify, so the guard doesn't guess.",
   },
   {
-    id: "inspect",
-    tab: "Inspect it",
-    src: "/ss-inspector.png",
-    alt: "The Sovereign Shield inspector panel open beside a Gemini composer: a 'You typed' pane showing a client project name, an email address and a Google API key, and a 'What the provider receives' pane where the project name and email have become realistic stand-ins and the API key has become the placeholder [GOOGLE_1]",
-    w: 1600,
-    h: 1016,
-    cap: "Your prompt beside the payload the provider actually receives, every replaced span marked. Smokescreen is on here — which is why the email and the project name became stand-ins while the API key stayed [GOOGLE_1].",
+    id: "chatgpt",
+    tab: "On ChatGPT",
+    src: "/ss-inspector-chatgpt.webp",
+    alt: "The same inspector on ChatGPT, showing a deploy script whose OpenAI, AWS and GitHub keys have become [OPENAI_1], [AWS_1] and [GITHUB_1], with the pre-send count reading '4 items (AWS access key, Email, GitHub token, OpenAI API key) will be kept local'",
+    w: 1280,
+    h: 800,
+    cap: "A deploy script pasted into ChatGPT. Three live-looking credentials and an address, counted before the send and swapped on the way out.",
+  },
+  {
+    id: "claude",
+    tab: "On Claude",
+    src: "/ss-inspector-claude.webp",
+    alt: "The same inspector on Claude: a prompt addressed to three colleagues, where each real address has been replaced by a different plausible stand-in, and the pre-send count reads '3 items (Email) will be kept local (stand-ins sent instead) when you send'",
+    w: 1280,
+    h: 800,
+    cap: "Three addresses in one prompt, each sent as its own plausible stand-in. Claude drafts against something that reads like a real email; the actual recipients never leave the tab, and come back in the reply.",
   },
   {
     id: "wire",
     tab: "On the wire",
-    src: "/gemini-redaction-proof.png",
+    src: "/gemini-redaction-proof.webp",
     alt: "A Gemini chat drafting an email that contains a Swiss AHV number, beside Chrome DevTools showing the outgoing StreamGenerate request carries the placeholder [AHV_1] instead of the real number",
     w: 3040,
     h: 1678,
@@ -43,20 +55,20 @@ const SHOTS: Shot[] = [
   {
     id: "controls",
     tab: "Your controls",
-    src: "/ss-options.png",
-    alt: "The Sovereign Shield options page showing a 'What to block' grid of 20 identifier types — Swiss AHV/AVS, IBAN, credit card and national IDs across Europe, the Americas and Asia — each with its own checkbox",
+    src: "/ss-options.webp",
+    alt: "The Sovereign Shield options page: a Guard enabled switch, a Smokescreen mode switch explaining that stand-ins apply to emails and custom terms only, and a 'What to block' grid of identifier types — Swiss AHV/AVS, IBAN, credit card, and national IDs across Europe, the Americas and Asia — each with its own checkbox",
     w: 1280,
     h: 800,
-    cap: "Twenty identifier types, each its own toggle. Anything unchecked passes through untouched.",
+    cap: "The guard, smokescreen, and twenty identifier types each on their own toggle. Anything unchecked passes through untouched.",
   },
   {
     id: "rules",
-    tab: "Secrets & your rules",
-    src: "/ss-secrets-rules.png",
-    alt: "Further down the same options page: a 'Secrets & API keys' group with nine toggles (AWS, Anthropic, Google, Stripe, PEM private key, OpenAI, GitHub, Slack, JWT), a 'Custom rules' editor holding a client project name with regex / case-sensitive / whole-word options, and the value-free activity log",
-    w: 1530,
-    h: 1628,
-    cap: "Nine secret types, your own terms as text or regex, and the activity log — which records type, time and site, and never the value.",
+    tab: "Your own terms",
+    src: "/ss-rules-library.webp",
+    alt: "Further down the options page: a 'Custom rules' section offering ready-made rules for a US Social Security number, UK National Insurance number, internal IP address, internal hostname and MAC address, above a user's own rule for a client project name, and an Activity log reading '113 identifiers kept local' broken down by type",
+    w: 1280,
+    h: 800,
+    cap: "Ready-made rules in a click — US SSN, UK NI, internal IPs, hostnames, MACs — beside your own terms. Below them the activity log, which counts type, time and site and never the value.",
   },
 ];
 
