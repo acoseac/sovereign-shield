@@ -35,7 +35,8 @@ export default function Page() {
           and <code>claude.ai</code>, it inspects the request the page is about to send to its
           model, replaces any checksum-validated identifier, secret/API key, or custom term you
           configure with a placeholder <em>before</em> the request leaves your browser, and restores
-          the real value in the reply you read. This all happens locally, in the page.
+          the real value in the reply you read — and in what you copy from it, so the clipboard
+          matches the screen. This all happens locally, in the page.
         </p>
         <p>
           Before you send, a small counter above the chat box previews how many identifiers will be
@@ -117,7 +118,7 @@ export default function Page() {
 
       <footer className="foot">
         <p>
-          <a href="/extension">← Back to the extension</a>
+          <a href="/">← Back to the extension</a>
         </p>
       </footer>
     </main>

@@ -111,7 +111,8 @@ Draft a reply to [PERSON_1] ([AHV_1], [IBAN_1])
         <p>Defence in depth, deliberately dumb — the outer layer, not the only one.</p>
 
         <p className="cta">
-          <a href="/">← Try the live gateway</a> &nbsp;·&nbsp; <a href="/benchmark">Does it cost utility? →</a>
+          <a href="/gateway">← Try the live gateway</a> &nbsp;·&nbsp;{" "}
+          <a href="/benchmark">Does it cost utility? →</a>
         </p>
       </article>
     </main>

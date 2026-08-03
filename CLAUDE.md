@@ -211,7 +211,7 @@ npm run package     # → sovereign-shield-<version>.zip for the store
   | Surface | What goes stale |
   |---|---|
   | `extension/STORE_LISTING.md` | status header, "What's new" note, description, screenshots, permission justifications |
-  | `web/app/extension/page.tsx` | version string + feature copy + meta description + screenshots |
+  | `web/app/page.tsx` | version string + feature copy + meta description + screenshot captions. **This is the site's front door** — the extension page *is* `/`, and `/extension` 308-redirects to it (`web/next.config.mjs`) because that path is the manifest's `homepage_url`. The gateway demo lives at `/gateway`. |
   | `web/app/extension/privacy/page.tsx` | **what the extension collects, stores or sends** + the `metadata.description` |
   | `README.md` | the detector tables under *What it detects* |
   | ars.md blog — `src/pages/sovereign-shield.astro` | the extension card's version + blurb |
@@ -230,8 +230,11 @@ npm run package     # → sovereign-shield-<version>.zip for the store
 
 - **Proxy** — root [README.md](README.md). Dev: `pip install -e ".[dev]"`, then
   `ruff check . && ruff format --check . && mypy && pytest`.
-- **Web** — [web/README.md](web/README.md). Dev: `npm run dev`; CI runs
-  `npm run parity && npm run build`.
+- **Web** — [web/README.md](web/README.md) (route map at the top). Dev: `npm run dev`; CI runs
+  `npm run parity && npm run build`. `/` is the **extension** page; the gateway demo is
+  `/gateway`. Two paths are load-bearing outside this repo and must not move:
+  `/extension` (the manifest's `homepage_url`; redirected, not deleted) and
+  `/extension/privacy` (the URL on the store listing).
 
 ## Conventions
 

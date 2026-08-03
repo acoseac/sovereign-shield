@@ -1,18 +1,17 @@
 # Chrome Web Store listing — copy/paste reference
 
-> **Status:** 0.7.0 is **live** on the Chrome Web Store (published 29 July 2026), superseding
-> 0.6.0. **0.8.3 is prepared** and is the next upload. The store will not accept a version equal
+> **Status:** 0.8.3 is **live** on the Chrome Web Store (published 3 August 2026), superseding
+> 0.7.0. The next upload must be **0.8.4 or higher** — the store will not accept a version equal
 > to or lower than the live one, and a number can never be reused.
 >
-> **0.8.0, 0.8.1 and 0.8.2 were tagged but never uploaded**, so users go straight from 0.7.0 to
-> 0.8.3 and never see any of them. The "What's new" note below is therefore the changelog **since
-> 0.7.0** — write it that way. All three tags stay in git as a record of what was verified when;
-> nothing needs undoing.
+> **0.8.0, 0.8.1 and 0.8.2 were tagged but never uploaded**, so users went straight from 0.7.0 to
+> 0.8.3 and never saw any of them. That is why the 0.8.3 "What's new" note below reads as the
+> changelog **since 0.7.0**. All three tags stay in git as a record of what was verified when.
 >
-> **The detailed description must be RE-PASTED** for this upload: the ready-made rule library is a
-> new user-facing feature and the Custom Rules clause was reworded for it. Nothing changed about
-> what is detected, redacted, stored or sent, so the privacy policy, the data disclosure and the
-> permission justifications all stay correct as written.
+> The detailed description was re-pasted for 0.8.3 (the ready-made rule library is a new
+> user-facing feature and the Custom Rules clause names it). Nothing changed about what is
+> detected, redacted, stored or sent, so the privacy policy, the data disclosure and the
+> permission justifications all stayed correct as written.
 
 Everything you paste into the Developer Dashboard when submitting the extension.
 Not shipped in the package (the build only copies manifest + HTML + icons into `dist/`).
@@ -178,9 +177,9 @@ For **each update** the moving parts are:
       be **strictly greater** than what is live — the store will not accept an equal or lower
       number, and a number can never be reused).
 - [ ] Paste that version's **"What's new"** note into the version.
-- [ ] Description: re-paste only if a user-facing clause changed. **REQUIRED for 0.8.3** — the
-      Custom Rules clause now names the ready-made library.
-- [ ] Screenshots: only if a pictured surface moved. Still outstanding from 0.7.0 — the refreshed
+- [ ] Description: re-paste only if a user-facing clause changed (done for 0.8.3 — the Custom
+      Rules clause names the ready-made library).
+- [ ] Screenshots: only if a pictured surface moved. Still outstanding since 0.7.0 — the refreshed
       inspector-panel and all-secrets options captures need a 1280×800 landscape pass before they
       can replace tiles 4 and 6.
 - [ ] Visibility: leave as the live listing — an update is not a first submission.

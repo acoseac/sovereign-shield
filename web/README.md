@@ -1,7 +1,22 @@
-# The Sovereign AI Gateway (shield.ars.md)
+# shield.ars.md
 
-A live demo of [Sovereign Shield](../README.md): let a team use any public LLM
-(Gemini, Claude, DeepSeek) while **no personal data ever leaves Switzerland**.
+The public site for [Sovereign Shield](../README.md). It leads with the **browser
+extension** — the shipped, installable product — and keeps the gateway demo behind it.
+
+| Route | What it is |
+|---|---|
+| `/` | The extension: install CTA, a **live preview** of what the guard would send (`components/ExtensionDemo.tsx` over `lib/demo.ts`), tabbed screenshots, and the fine print in `<details>` |
+| `/extension` | 308 → `/`. Must keep resolving: it is the manifest's `homepage_url` and is printed in the store listing. The redirect lives in `next.config.mjs` |
+| `/extension/privacy` | Privacy policy (the URL the Chrome Web Store points at — **never move it**) |
+| `/gateway` | The proxy demo below |
+| `/scan`, `/how-it-works`, `/benchmark`, `/governance` | Leak Radar, explainer, utility benchmark, governance |
+
+`lib/demo.ts` reproduces two **extension-only** behaviours (custom-term matching and
+smokescreen stand-ins) rather than importing them: Vercel's root directory is `web/`, so
+`../extension` is not on disk at build time. Detection itself is the real thing —
+`lib/shield.ts` is the module the extension bundles.
+
+## The gateway demo (`/gateway`)
 
 Pick a business document full of Swiss PII, pick a model, and watch the pipeline:
 

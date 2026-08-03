@@ -30,18 +30,22 @@ export interface Gateway {
 
 export const gateway = gatewayData as Gateway;
 
+// Kept in step with `extension/src/categories.ts` so a category reads the same here as it
+// does in the extension's pill, options page and activity log. `name` / `address` are
+// extra: they exist only in the recorded gateway corpus (an NER model annotated them),
+// never in the deterministic detector.
 export const CATEGORY_LABEL: Record<string, string> = {
   name: "Name",
   address: "Address",
-  ch_ahv: "AHV / AVS no.",
+  ch_ahv: "Swiss AHV / AVS",
   iban: "IBAN",
-  it_cf: "Codice fiscale",
-  es_dni: "DNI / NIE",
-  fr_nir: "NIR / SSN",
-  nl_bsn: "BSN",
-  ch_phone: "Phone",
+  credit_card: "Credit card",
+  ch_phone: "Swiss phone",
   email: "Email",
-  credit_card: "Card",
+  it_cf: "Codice fiscale (IT)",
+  es_dni: "DNI / NIE (ES)",
+  fr_nir: "NIR (FR)",
+  nl_bsn: "BSN (NL)",
   de_steuerid: "Steuer-ID (DE)",
   pl_pesel: "PESEL (PL)",
   pt_nif: "NIF (PT)",
@@ -62,6 +66,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
   google_api_key: "Google API key",
   slack_token: "Slack token",
   stripe_key: "Stripe secret key",
+  custom: "Custom terms",
 };
 
 export function responseFor(docId: string, modelId: string): string | null {
@@ -98,7 +103,10 @@ export function auditFor(doc: GDoc): { items: AuditItem[]; total: number } {
   return auditOf(doc.entities);
 }
 
-const TOKEN_PREFIX: Record<string, string> = {
+/** Category → placeholder prefix. One map, because `lib/demo.ts` mints the same tokens for
+ *  the home page's preview and two of them drifting would put a different placeholder on
+ *  the site than the one the extension produces. */
+export const TOKEN_PREFIX: Record<string, string> = {
   name: "PERSON",
   address: "ADDRESS",
   ch_ahv: "AHV",
@@ -131,6 +139,8 @@ const TOKEN_PREFIX: Record<string, string> = {
   google_api_key: "GOOGLE",
   slack_token: "SLACK",
   stripe_key: "STRIPE",
+  // Extension-only: user-defined custom rules (see extension/src/custom.ts).
+  custom: "CUSTOM",
 };
 
 /** Live, client-side tokenization of arbitrary text (deterministic; structured
