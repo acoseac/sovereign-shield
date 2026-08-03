@@ -133,8 +133,8 @@ export interface Preview {
   surrogatable: number;
 }
 
-const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const isWordChar = (c: string | undefined): boolean => c !== undefined && /[A-Za-z0-9_]/.test(c);
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+const isWordChar = (c: string | undefined): boolean => c !== undefined && /\w/.test(c);
 
 /** Literal, case-insensitive, whole-word matches of a custom term — the extension's
  *  default for a plain keyword rule (regex is an explicit opt-in there). */

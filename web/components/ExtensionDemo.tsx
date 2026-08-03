@@ -29,7 +29,7 @@ const SCENARIOS: Scenario[] = [
     term: "",
     text:
       "Why does this fail with 401? The deploy uses AKIAIOSFODNN7EXAMPLE and the service " +
-      "account key AIzaSyD8fXcVb2N1qLpR4tGh7JkM0sWxYzA3Bcd. Reply to dev@example-corp.ch.",
+      "account key AIzaSyEXAMPLE_NOT_A_REAL_KEY_0000000000. Reply to dev@example-corp.ch.",
   },
   {
     id: "brief",
@@ -66,15 +66,15 @@ const SITES = ["ChatGPT", "Gemini", "Claude"];
 function renderOutgoing(text: string, spans: PreviewSpan[]): ReactNode {
   const out: ReactNode[] = [];
   let cursor = 0;
-  spans.forEach((s, i) => {
+  for (const s of spans) {
     if (s.start > cursor) out.push(text.slice(cursor, s.start));
     out.push(
-      <mark className={s.surrogate ? "sur" : "tok"} key={i}>
+      <mark className={s.surrogate ? "sur" : "tok"} key={`${s.start}-${s.category}`}>
         {s.replacement}
       </mark>,
     );
     cursor = s.end;
-  });
+  }
   out.push(text.slice(cursor));
   return out;
 }
@@ -100,6 +100,7 @@ export default function ExtensionDemo() {
           {SCENARIOS.map((s) => (
             <button
               key={s.id}
+              type="button"
               className={`chip ${scenario === s.id ? "active" : ""}`}
               onClick={() => loadScenario(s)}
             >
@@ -150,7 +151,7 @@ export default function ExtensionDemo() {
 
         <section className="demo-pane out">
           <h3 className="demo-pane-h">
-            What the provider receives
+            <span>What the provider receives</span>
             <span className="demo-sites">
               {SITES.map((s) => (
                 <span key={s}>{s}</span>
@@ -166,8 +167,8 @@ export default function ExtensionDemo() {
           )}
           {preview.count > 0 && (
             <ul className="demo-hits">
-              {preview.spans.map((s, i) => (
-                <li key={`${s.start}-${i}`}>
+              {preview.spans.map((s) => (
+                <li key={`${s.start}-${s.category}`}>
                   <b>{s.label}</b>
                   <code>{s.marker}</code>
                   {s.checksummed ? <span className="ok">✓ checksum</span> : null}
@@ -184,6 +185,7 @@ export default function ExtensionDemo() {
           {MORE_TYPES.map((t) => (
             <button
               key={t.label}
+              type="button"
               className="demo-chip"
               onClick={() => {
                 setText((prev) => `${prev.trimEnd()} ${t.sample}`);

@@ -70,6 +70,7 @@ export default function ShotTabs() {
         {SHOTS.map((s) => (
           <button
             key={s.id}
+            type="button"
             role="tab"
             aria-selected={s.id === active}
             aria-controls="shot-panel"
