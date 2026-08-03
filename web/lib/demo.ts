@@ -13,41 +13,8 @@
 //     of the shipped ones and mint by the same rule, so the first dozen of each match
 //     the extension exactly; past that the demo repeats sooner than the real thing.
 
-import { CATEGORY_LABEL } from "@/lib/gateway";
+import { CATEGORY_LABEL, TOKEN_PREFIX } from "@/lib/gateway";
 import { detectPii } from "@/lib/shield";
-
-const TOKEN_PREFIX: Record<string, string> = {
-  ch_ahv: "AHV",
-  iban: "IBAN",
-  credit_card: "CARD",
-  ch_phone: "PHONE",
-  email: "EMAIL",
-  it_cf: "CF",
-  es_dni: "DNI",
-  fr_nir: "NIR",
-  nl_bsn: "BSN",
-  de_steuerid: "STEUERID",
-  pl_pesel: "PESEL",
-  pt_nif: "NIF",
-  be_nrn: "NRN",
-  uk_nhs: "NHS",
-  br_cpf: "CPF",
-  br_cnpj: "CNPJ",
-  za_id: "ZAID",
-  cn_resident: "CNID",
-  ca_sin: "SIN",
-  in_aadhaar: "AADHAAR",
-  private_key: "PEM",
-  jwt: "JWT",
-  aws_key: "AWS",
-  anthropic_key: "ANTHROPIC",
-  openai_key: "OPENAI",
-  github_token: "GITHUB",
-  google_api_key: "GOOGLE",
-  slack_token: "SLACK",
-  stripe_key: "STRIPE",
-  custom: "CUSTOM",
-};
 
 // Checksum-validated categories — the ones where a match means shape AND check digit
 // agreed. Secrets match on a structured credential pattern instead, and email/phone on

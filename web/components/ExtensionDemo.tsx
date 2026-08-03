@@ -144,7 +144,10 @@ export default function ExtensionDemo() {
               value={term}
               placeholder="a client, a code name, a domain…"
               aria-label="A custom term to redact"
-              onChange={(e) => setTerm(e.target.value)}
+              onChange={(e) => {
+                setTerm(e.target.value);
+                setScenario("");
+              }}
             />
           </label>
         </section>

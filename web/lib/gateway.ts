@@ -103,7 +103,10 @@ export function auditFor(doc: GDoc): { items: AuditItem[]; total: number } {
   return auditOf(doc.entities);
 }
 
-const TOKEN_PREFIX: Record<string, string> = {
+/** Category → placeholder prefix. One map, because `lib/demo.ts` mints the same tokens for
+ *  the home page's preview and two of them drifting would put a different placeholder on
+ *  the site than the one the extension produces. */
+export const TOKEN_PREFIX: Record<string, string> = {
   name: "PERSON",
   address: "ADDRESS",
   ch_ahv: "AHV",
@@ -136,6 +139,8 @@ const TOKEN_PREFIX: Record<string, string> = {
   google_api_key: "GOOGLE",
   slack_token: "SLACK",
   stripe_key: "STRIPE",
+  // Extension-only: user-defined custom rules (see extension/src/custom.ts).
+  custom: "CUSTOM",
 };
 
 /** Live, client-side tokenization of arbitrary text (deterministic; structured

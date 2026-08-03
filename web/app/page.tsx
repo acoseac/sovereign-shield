@@ -145,8 +145,8 @@ export default function Page() {
           </details>
         </div>
         <p className="fine-more">
-          <a href="/extension/privacy">Privacy policy</a> — what is stored, and the one thing that
-          can ever be sent.
+          <Link href="/extension/privacy">Privacy policy</Link> — what is stored, and the one thing
+          that can ever be sent.
         </p>
       </section>
 
