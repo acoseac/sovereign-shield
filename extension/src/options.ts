@@ -362,14 +362,20 @@ function renderStatChart(series: ReadonlyArray<{ key: string; count: number }>):
     return;
   }
   const max = Math.max(...series.map((d) => d.count));
+  // Pixels, not a percentage: the bar's flex column has no definite height (it stretches),
+  // and 84px chart − label − gap leaves ~58px of drawable track. A percentage of the
+  // stretched column made the tallest bar overlap the copy above (review catch).
+  const BAR_MAX_PX = 58;
   for (const d of series) {
-    const weekday = WEEKDAY[new Date(`${d.key}T00:00:00`).getDay()];
+    // Split rather than Date.parse — same explicit local-date construction as lastNDays.
+    const [y, m, day] = d.key.split("-").map(Number);
+    const weekday = WEEKDAY[new Date(y, m - 1, day).getDay()];
     const col = document.createElement("div");
     col.className = "stat-day";
     col.title = `${d.key}: ${d.count}`;
     const bar = document.createElement("div");
     bar.className = d.count > 0 ? "stat-bar filled" : "stat-bar";
-    bar.style.height = `${Math.round((d.count / max) * 92)}%`;
+    bar.style.height = `${Math.max(3, Math.round((d.count / max) * BAR_MAX_PX))}px`;
     const label = document.createElement("div");
     label.className = "stat-daylabel";
     label.textContent = weekday;
