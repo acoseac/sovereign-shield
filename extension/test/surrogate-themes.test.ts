@@ -203,6 +203,18 @@ test("every themed pool is big enough to be worth having, and mints no bracket l
 
 // --- helpers -------------------------------------------------------------------------
 
+test("prototype-key categories and themes never resolve through Object.prototype", () => {
+  // "constructor" as a bare index would hand back the Object constructor instead of a pool
+  // and mintSurrogate would return undefined — the own-property guard refuses it instead.
+  for (const cat of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
+    assert.equal(surrogateEligible(cat), false, `${cat} must not be eligible`);
+    assert.equal(mintSurrogate(cat, 1), null, `${cat} must not mint`);
+  }
+  // A garbage theme (even a prototype key) degrades to plain, never to a function lookup.
+  assert.equal(mintSurrogate("email", 1, "toString" as ThemeId), THEME_POOLS.plain.email[0]);
+  assert.deepEqual(themePreview("toString" as ThemeId), themePreview("plain"));
+});
+
 test("isThemeId accepts exactly the theme ids", () => {
   for (const theme of THEME_IDS) assert.ok(isThemeId(theme));
   for (const junk of ["", "PLAIN", "tolkien", 7, null, undefined, {}]) {

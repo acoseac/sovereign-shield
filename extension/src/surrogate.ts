@@ -230,7 +230,7 @@ export const SURROGATE_POOLS = PLAIN_POOLS;
 /** First entry of each pool, for the options page's live "e.g. …" hint next to the theme
  *  picker. Derived from the pools so the hint can never drift from what would be minted. */
 export function themePreview(theme: ThemeId): { email: string; custom: string } {
-  const pools = THEME_POOLS[theme] ?? PLAIN_POOLS;
+  const pools = isThemeId(theme) ? THEME_POOLS[theme] : PLAIN_POOLS;
   return { email: pools.email?.[0] ?? "", custom: pools.custom?.[0] ?? "" };
 }
 
@@ -272,9 +272,12 @@ export function mintSurrogate(
   theme: ThemeId = "plain",
 ): string | null {
   // Defensive fallback: theme reaches the guard via a data-* attribute a page script could
-  // scribble on. Callers validate with isThemeId, but an unknown value degrading to plain
-  // beats trusting the cast.
-  const pool = (THEME_POOLS[theme] ?? PLAIN_POOLS)[category];
+  // scribble on, and category is an open string. Both lookups therefore refuse anything not
+  // an OWN property — a bare index would resolve "constructor"/"toString" through
+  // Object.prototype and hand back a function instead of a pool (review catch). Callers
+  // validate with isThemeId/surrogateEligible already; this makes the function safe alone.
+  const pools = isThemeId(theme) ? THEME_POOLS[theme] : PLAIN_POOLS;
+  const pool = Object.prototype.hasOwnProperty.call(pools, category) ? pools[category] : undefined;
   if (!pool || pool.length === 0 || !Number.isInteger(ordinal) || ordinal < 1) return null;
   const base = pool[(ordinal - 1) % pool.length];
   const round = Math.floor((ordinal - 1) / pool.length);
