@@ -14,6 +14,8 @@ export default function PresetCopy({ code }: Readonly<{ code: string }>) {
       type="button"
       className="preset-copy"
       onClick={() => {
+        // Absent outside secure contexts — degrade to a no-op rather than a throwing handler.
+        if (!navigator.clipboard) return;
         navigator.clipboard.writeText(code).then(() => {
           setCopied(true);
           clearTimeout(timer.current);

@@ -129,7 +129,9 @@ function ruleRow(rule: CustomRule, index: number): HTMLElement {
     // a later re-import of the same preset must add alongside rather than overwrite their
     // edit. Label/flag tweaks keep the link — they don't change what the rule matches.
     if (rule.presetId !== undefined && pat.value !== rule.pattern) {
-      delete rule.presetId;
+      // Assignment, not delete: same serialization (chrome.storage drops undefined), and
+      // it keeps the object's shape stable for the engine.
+      rule.presetId = undefined;
       tag?.remove();
       tag = null;
     }
@@ -296,10 +298,14 @@ function assessImport(): ImportAssessment {
   const display = parsed.name ?? parsed.rule.label ?? "preset";
   const id = parsed.rule.presetId;
   const existing = id === undefined ? -1 : draft.findIndex((r) => r.presetId === id);
+  // Pattern dedupe runs for updates too (excluding the rule being replaced): a revised
+  // preset whose new pattern now equals a HAND-TYPED rule — or a disowned preset, which is
+  // by then the user's own rule — must refuse rather than plant a duplicate (review catch).
+  const pattern = parsed.rule.pattern.trim();
+  if (draft.some((r, i) => i !== existing && r.pattern.trim() === pattern)) {
+    return { kind: "dupe" };
+  }
   if (existing !== -1) return { kind: "update", rule: parsed.rule, index: existing, display };
-  // Pattern dedupe second: it protects against colliding with a HAND-TYPED rule (or a
-  // disowned preset, which is by then the user's own rule and must not be overwritten).
-  if (draft.some((r) => r.pattern.trim() === parsed.rule.pattern.trim())) return { kind: "dupe" };
   if (draft.length >= MAX_RULES) return { kind: "cap" };
   return { kind: "add", rule: parsed.rule, display };
 }
