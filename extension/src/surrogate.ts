@@ -16,21 +16,39 @@
 //      minting one is worse than the problem it solves.
 //   2. Minting must be DETERMINISTIC given (category, ordinal) — never random — so tests are
 //      stable and the same conversation always produces the same stand-ins.
+//
+// THEMES are presentation inside those constraints, never an exception to them (see the
+// amendment in ADR 0004). Every theme re-skins the SAME category set as the plain pools —
+// eligibility is keyed off the plain pools alone, so "which categories may take a stand-in"
+// can never depend on a cosmetic choice. Pool-content rules that apply to every theme:
+//
+//   - Emails use only reserved, unroutable suffixes: the RFC 2606 domains
+//     (example.org/.com/.net) or a label under the RFC 6761 `.example` TLD
+//     (e.g. camelot.example). A stand-in address can never belong to a real person.
+//   - Names come from the public domain (pre-1900 legend, myth, Shakespeare) or are
+//     invented originals. NO franchise marks: Tolkien, Star Wars/Trek, Doctor Who etc.
+//     are actively trademarked, and a redaction tool must not paste someone's mark into
+//     users' prompts. Pinned by a denylist test.
+//   - Within every pool: no duplicate values anywhere across ALL themes, no local-part
+//     prefix pairs, no stem ending in a digit (the overflow suffix scheme depends on it),
+//     at least 8 entries. Appended to, never reordered — minting is deterministic on
+//     (category, ordinal), so moving an entry would silently change every stand-in an
+//     existing conversation had minted.
+
+/** The selectable stand-in themes. `plain` is the default and the back-compat behaviour. */
+export const THEME_IDS = ["plain", "scifi", "fantasy", "shakespeare"] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
+
+export function isThemeId(v: unknown): v is ThemeId {
+  return typeof v === "string" && (THEME_IDS as readonly string[]).includes(v);
+}
 
 /**
- * Vendored pools of guaranteed-fake but natural-reading values, keyed by category key
- * (see categories.ts). **A category is surrogate-eligible iff it appears here.** That single
- * rule is the safety property — adding a pool is the only way to opt a category in, so a
- * checksum category can never acquire a synthetic value by accident.
- *
- * Email addresses use only RFC 2606 reserved domains (example.org / example.com / example.net),
- * which are permanently reserved for documentation and cannot route mail — so a surrogate
- * address can never belong to a real person.
+ * The original pools, byte-identical and order-preserved (append-only forever). These stay
+ * a named object because they are load-bearing twice over: `surrogateEligible` is keyed off
+ * THIS object alone, and `web/lib/demo.ts` mirrors its head entries.
  */
-export const SURROGATE_POOLS: Readonly<Record<string, readonly string[]>> = {
-  // Appended to, never reordered: mintSurrogate is deterministic on (category, ordinal), so
-  // moving an entry would silently change every stand-in an existing conversation had minted.
-  // New names are added at the END for that reason.
+const PLAIN_POOLS: Readonly<Record<string, readonly string[]>> = {
   email: [
     "alice.morgan@example.org",
     "ben.walker@example.com",
@@ -82,6 +100,140 @@ export const SURROGATE_POOLS: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 
+/** Invented originals — spacefaring register, no franchise names. */
+const SCIFI_POOLS: Readonly<Record<string, readonly string[]>> = {
+  email: [
+    "astra.venn@starhaven.example",
+    "cael.morrow@orbital-relay.example",
+    "dax.holloway@deepfield.example",
+    "elara.quill@nova-terminus.example",
+    "juno.calder@voidrunner.example",
+    "kai.sterling@outer-arm.example",
+    "lyra.vance@astral-freight.example",
+    "mira.solano@redshift-labs.example",
+    "nix.harrow@ion-drive.example",
+    "orin.bellweather@stellar-cartography.example",
+    "petra.skye@gravity-well.example",
+    "rhea.calloway@moonside.example",
+    "sable.antares@warpline.example",
+    "talia.marsh@cometary.example",
+    "ursa.pendrell@darkmatter.example",
+    "zephyr.locke@heliopause.example",
+  ],
+  custom: [
+    "Project Redshift",
+    "Project Ionwake",
+    "Project Cryosleep",
+    "Project Heliopause",
+    "Orbital Dynamics Group",
+    "Deepfield Systems",
+    "Nova Circuit Labs",
+    "Asteria Logistics",
+    "Project Gravity Well",
+    "Outer Arm Ventures",
+    "Starfall Holdings",
+    "Project Umbriel",
+  ],
+};
+
+/** Pre-1900 public domain only: Arthurian legend, Grimm, Norse and Greek myth.
+ *  Deliberately NOT Tolkien or any modern fantasy — those names are trademarked. */
+const FANTASY_POOLS: Readonly<Record<string, readonly string[]>> = {
+  email: [
+    "arthur.pendragon@camelot.example",
+    "morgana.lefay@avalon.example",
+    "merlin.ambrosius@broceliande.example",
+    "lancelot.dulac@roundtable.example",
+    "elaine.astolat@astolat.example",
+    "tristan.lyonesse@cornwall.example",
+    "isolde.whitehands@brittany.example",
+    "gawain.orkney@greenchapel.example",
+    "percival.gales@grailquest.example",
+    "gretel.tannenwald@gingerbread.example",
+    "rapunzel.turmfrau@briarrose.example",
+    "freya.vanadis@asgard.example",
+    "sigurd.volsung@rhinegold.example",
+    "circe.aiaia@aegean.example",
+    "atalanta.arcadia@calydon.example",
+    "nimue.lakemaiden@lakecourt.example",
+  ],
+  custom: [
+    "Project Excalibur",
+    "Project Grail",
+    "Round Table Group",
+    "Avalon Holdings",
+    "Project Briar Rose",
+    "Gingerbread Labs",
+    "Project Rhinegold",
+    "Camelot Systems",
+    "Project Wyvern",
+    "Broceliande Partners",
+    "Project Selkie",
+    "Nine Realms Ventures",
+  ],
+};
+
+/** The plays are four centuries into the public domain. */
+const SHAKESPEARE_POOLS: Readonly<Record<string, readonly string[]>> = {
+  email: [
+    "hamlet.dane@elsinore.example",
+    "ophelia.polonia@elsinore.example",
+    "viola.cesario@illyria.example",
+    "rosalind.ganymede@arden.example",
+    "beatrice.messina@muchado.example",
+    "benedick.padua@muchado.example",
+    "prospero.milan@tempestisle.example",
+    "miranda.naples@tempestisle.example",
+    "portia.belmont@venicecourt.example",
+    "cordelia.lear@albion.example",
+    "titania.moonwood@midsummer.example",
+    "oberon.nightcourt@midsummer.example",
+    "macduff.fife@dunsinane.example",
+    "hermione.sicilia@winterstale.example",
+    "orlando.deboys@ardenforest.example",
+    "imogen.cymbeline@britaincourt.example",
+  ],
+  custom: [
+    "Project Elsinore",
+    "Project Illyria",
+    "Globe Stage Partners",
+    "Arden Forest Group",
+    "Project Tempest",
+    "Verona Holdings",
+    "Dunsinane Systems",
+    "Project Winters Tale",
+    "Belmont Ventures",
+    "Project Birnam Wood",
+    "Padua Labs",
+    "Project Twelfth Night",
+  ],
+};
+
+/** Every theme's pools. Each theme must cover EXACTLY the plain categories — pinned by
+ *  test — so eligibility (below) answers the same for every theme by construction. */
+export const THEME_POOLS: Readonly<
+  Record<ThemeId, Readonly<Record<string, readonly string[]>>>
+> = {
+  plain: PLAIN_POOLS,
+  scifi: SCIFI_POOLS,
+  fantasy: FANTASY_POOLS,
+  shakespeare: SHAKESPEARE_POOLS,
+};
+
+/**
+ * Back-compat alias: the plain pools under their historic name. Kept exported because the
+ * pinned tests in surrogate.test.ts assert against it positionally, and because it IS the
+ * safety-property object — see surrogateEligible.
+ */
+export const SURROGATE_POOLS = PLAIN_POOLS;
+
+/** First entry of each pool, for the options page's live "e.g. …" hint next to the theme
+ *  picker. Derived from the pools so the hint can never drift from what would be minted. */
+export function themePreview(theme: ThemeId): { email: string; custom: string } {
+  const pools = THEME_POOLS[theme] ?? PLAIN_POOLS;
+  return { email: pools.email?.[0] ?? "", custom: pools.custom?.[0] ?? "" };
+}
+
 /**
  * Cap on live surrogates per session. Past this, new values fall back to bracket tokens —
  * still fully redacted, just less natural. Bounded on purpose: every minted surrogate adds
@@ -91,9 +243,14 @@ export const SURROGATE_POOLS: Readonly<Record<string, readonly string[]>> = {
  */
 export const MAX_SURROGATES = 64;
 
-/** Whether `category` can take a synthetic stand-in. See the pools above for why. */
+/**
+ * Whether `category` can take a synthetic stand-in. Keyed off the PLAIN pools alone, on
+ * purpose: eligibility is the safety property (see the header), and summarize.ts's
+ * pre-send "surrogatable" count relies on the answer being identical whatever theme the
+ * user picked. A theme can re-skin a pool; it can never opt a category in.
+ */
 export function surrogateEligible(category: string): boolean {
-  return Object.prototype.hasOwnProperty.call(SURROGATE_POOLS, category);
+  return Object.prototype.hasOwnProperty.call(PLAIN_POOLS, category);
 }
 
 /**
@@ -101,13 +258,23 @@ export function surrogateEligible(category: string): boolean {
  * token counters in tokenize.ts). Returns null when the category has no pool — the caller
  * then falls back to a bracket token.
  *
+ * `theme` defaults to plain so the pre-theme call sites and tests keep their exact
+ * behaviour: mintSurrogate(c, n) === mintSurrogate(c, n, "plain"), always.
+ *
  * Past the end of the pool the ordinal is folded back in as a numeric suffix
  * (`alice.morgan@example.org` → `alice.morgan2@example.org`), so the supply is unbounded and
  * every value stays distinct. For an email the suffix goes on the local part to keep the
  * reserved domain intact; anything else just gets it appended.
  */
-export function mintSurrogate(category: string, ordinal: number): string | null {
-  const pool = SURROGATE_POOLS[category];
+export function mintSurrogate(
+  category: string,
+  ordinal: number,
+  theme: ThemeId = "plain",
+): string | null {
+  // Defensive fallback: theme reaches the guard via a data-* attribute a page script could
+  // scribble on. Callers validate with isThemeId, but an unknown value degrading to plain
+  // beats trusting the cast.
+  const pool = (THEME_POOLS[theme] ?? PLAIN_POOLS)[category];
   if (!pool || pool.length === 0 || !Number.isInteger(ordinal) || ordinal < 1) return null;
   const base = pool[(ordinal - 1) % pool.length];
   const round = Math.floor((ordinal - 1) / pool.length);
