@@ -194,34 +194,15 @@ export default function Gateway({
 
   return (
     <main className="wrap">
-      <Nav current="home" />
+      <Nav current="gateway" />
       <header className="header">
         <h1>The Sovereign Gateway</h1>
         <p className="tag">
-          Use any LLM while <strong>no personal data leaves Switzerland</strong> — watch a Swiss
-          document get tokenized on the way out and restored on the way back, live in your browser.
+          The same boundary as the <Link href="/">browser extension</Link>, in front of your own
+          app: watch a Swiss document get tokenized on the way out and restored on the way back,
+          live in your browser.
         </p>
       </header>
-
-      <aside className="home-ext-band">
-        <p className="home-ext-band-text">
-          <strong>New</strong> — the Sovereign Shield extension is live on the Chrome Web Store:
-          redact identifiers right inside ChatGPT, Gemini and Claude.
-        </p>
-        <span className="home-ext-band-cta">
-          <a
-            className="ext-install"
-            href="https://chromewebstore.google.com/detail/sovereign-shield-%E2%80%94-llm-pi/fbdenbfhigickkdcokpchmklopkfkkbf"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Add to Chrome
-          </a>
-          <Link className="home-ext-band-link" href="/extension">
-            See how →
-          </Link>
-        </span>
-      </aside>
 
       <div className="tabs">
         <button

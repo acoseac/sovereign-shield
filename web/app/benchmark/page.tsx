@@ -98,7 +98,8 @@ export default function Page() {
         </p>
 
         <p className="cta">
-          <a href="/how-it-works">← How it works</a> &nbsp;·&nbsp; <a href="/">Try the live gateway →</a>
+          <a href="/how-it-works">← How it works</a> &nbsp;·&nbsp;{" "}
+          <a href="/gateway">Try the live gateway →</a>
         </p>
       </article>
     </main>

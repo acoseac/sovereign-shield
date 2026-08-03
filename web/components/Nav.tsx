@@ -3,15 +3,15 @@ import Link from "next/link";
 export default function Nav({
   current,
 }: {
-  current?: "home" | "how" | "bench" | "scan" | "ext" | "gov";
+  current?: "ext" | "gateway" | "how" | "bench" | "scan" | "gov";
 }) {
   return (
     <nav className="nav">
-      <Link className={current === "home" ? "active" : ""} href="/">
-        Gateway
-      </Link>
-      <Link className={current === "ext" ? "active" : ""} href="/extension">
+      <Link className={current === "ext" ? "active" : ""} href="/">
         Extension
+      </Link>
+      <Link className={current === "gateway" ? "active" : ""} href="/gateway">
+        Gateway
       </Link>
       <Link className={current === "scan" ? "active" : ""} href="/scan">
         Leak Radar
