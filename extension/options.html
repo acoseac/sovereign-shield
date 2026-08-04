@@ -221,6 +221,20 @@
         border-color: var(--brand);
         background: color-mix(in srgb, var(--brand) 8%, transparent);
       }
+      /* --- smokescreen theme picker ------------------------------------ */
+      #theme {
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      #theme:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
       /* --- stats ("Protected so far") ---------------------------------- */
       .stat-hero {
         display: flex;
@@ -344,6 +358,18 @@
           secrets always use bracket placeholders: a checksum-valid fake AHV or IBAN could be a real
           person's number, so we never invent one.
         </p>
+        <div class="row" style="margin-top: 12px">
+          <label for="theme" style="font-size: 14px">Stand-in theme</label>
+          <!-- Named by the <label for>; described by the live example line so AT announces
+               what the theme actually sounds like. -->
+          <select id="theme" aria-describedby="theme-preview">
+            <option value="plain">Plain — everyday names</option>
+            <option value="scifi">Sci-Fi</option>
+            <option value="fantasy">Fantasy — myth &amp; legend</option>
+            <option value="shakespeare">Shakespeare</option>
+          </select>
+        </div>
+        <p class="muted" id="theme-preview" style="margin: 6px 0 0"></p>
       </section>
 
       <section>

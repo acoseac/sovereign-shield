@@ -10,6 +10,7 @@ import {
   type RuleTemplate,
 } from "./templates";
 import { notifyWorker } from "./runtime";
+import { isThemeId, themePreview } from "./surrogate";
 import {
   STATS_KEY,
   STATS_SEEN_KEY,
@@ -27,6 +28,7 @@ const byId = (id: string): HTMLElement => {
 
 const enabledEl = byId("enabled") as HTMLInputElement;
 const smokescreenEl = byId("smokescreen") as HTMLInputElement;
+const themeEl = byId("theme") as HTMLSelectElement;
 
 // "custom" has no checkbox here — it is driven by whether rules exist (below), and is kept
 // enabled in the category set so its redaction events aren't dropped by the bridge/background.
@@ -51,6 +53,13 @@ async function renderSettings(): Promise<void> {
   const s = await getSettings();
   enabledEl.checked = s.enabled;
   smokescreenEl.checked = s.smokescreen;
+  // The theme only matters while smokescreen is on, so it disables with it. The example
+  // line stays visible either way — it is derived from the pools (themePreview), so it can
+  // never drift from what a send would actually mint.
+  themeEl.value = s.theme;
+  themeEl.disabled = !s.smokescreen;
+  const preview = themePreview(s.theme);
+  byId("theme-preview").textContent = `e.g. ${preview.email} · ${preview.custom}`;
   const checked = new Set(s.categories);
   const idBox = byId("categories");
   if (idBox.childElementCount === 0) {
@@ -262,6 +271,11 @@ enabledEl.addEventListener("change", () => {
 
 smokescreenEl.addEventListener("change", () => {
   chrome.storage.local.set({ [KEYS.smokescreen]: smokescreenEl.checked }).catch(() => undefined);
+});
+
+themeEl.addEventListener("change", () => {
+  const theme = isThemeId(themeEl.value) ? themeEl.value : "plain";
+  chrome.storage.local.set({ [KEYS.theme]: theme }).catch(() => undefined);
 });
 
 function fmtTime(t: number): string {
@@ -483,7 +497,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (KEYS.log in changes) void renderLog();
   if (STATS_KEY in changes || STATS_SEEN_KEY in changes) void renderStats();
-  if (KEYS.enabled in changes || KEYS.categories in changes || KEYS.smokescreen in changes) {
+  if (
+    KEYS.enabled in changes ||
+    KEYS.categories in changes ||
+    KEYS.smokescreen in changes ||
+    KEYS.theme in changes
+  ) {
     void renderSettings();
   }
 });
