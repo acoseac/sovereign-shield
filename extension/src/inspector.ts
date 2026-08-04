@@ -105,6 +105,17 @@ export class Inspector {
   /** Cache behind the innerText read in renderPreview — see there for why. */
   private lastTextContent = "";
   private lastInnerText = "";
+  /** Prev/Next state for the preview's replaced spans. Rebuilt with the preview DOM; the
+   *  signature skip in render() is what lets it survive idle ticks while the user reads.
+   *  Index 0 = the "You typed" pane, 1 = "what the provider receives" — same mark count by
+   *  construction (diffSegments emits one mark per span on both sides), but applyNav stays
+   *  bounds-safe anyway because a zero-width segment is dropped defensively in diff(). */
+  private nav: {
+    counter: HTMLElement;
+    boxes: [HTMLElement, HTMLElement];
+    marks: [HTMLElement[], HTMLElement[]];
+  } | null = null;
+  private navIndex = 0;
   private readonly session: Session;
   private readonly ctx: InspectorContext;
 
@@ -145,6 +156,8 @@ export class Inspector {
     this.body = null;
     this.tabButtons = [];
     this.signature = "";
+    this.nav = null;
+    this.navIndex = 0;
   }
 
   /** Re-render if open. Safe to call from anywhere; a no-op when closed. */
@@ -276,6 +289,44 @@ export class Inspector {
     if (this.signature === next.signature) return;
     this.signature = next.signature;
     this.body.replaceChildren(next.node);
+    // Scroll-to-mark needs layout, so it runs after the new nodes are attached — never
+    // inside renderPreview, where offsetTop would still read 0 on detached elements.
+    if (this.tab === "preview") this.applyNav();
+    else this.nav = null;
+  }
+
+  // --- prev/next over the replaced spans ------------------------------------
+  // On a long pasted prompt the two 34vh scrollboxes bury the marks; this is the "where
+  // ARE the needles" control. One index drives BOTH panes in lockstep, so what you typed
+  // and what replaces it are always on screen together.
+
+  private stepNav(delta: number): void {
+    this.navIndex += delta;
+    this.applyNav();
+  }
+
+  private applyNav(): void {
+    const nav = this.nav;
+    if (!nav) return;
+    const count = Math.max(nav.marks[0].length, nav.marks[1].length);
+    if (count === 0) return;
+    this.navIndex = ((this.navIndex % count) + count) % count; // wrap both directions
+    nav.counter.textContent = `${this.navIndex + 1} / ${count}`;
+    for (const side of [0, 1] as const) {
+      nav.marks[side].forEach((mark, i) => {
+        const active = i === this.navIndex;
+        mark.style.outline = active ? `2px solid ${BRAND}` : "";
+        mark.style.outlineOffset = active ? "1px" : "";
+        mark.style.background = active ? "rgba(14,124,102,.55)" : "rgba(14,124,102,.32)";
+      });
+      const mark = nav.marks[side][this.navIndex];
+      const box = nav.boxes[side];
+      if (!mark) continue;
+      // Manual scroll math, NOT scrollIntoView: that walks ancestor scrollers and would
+      // yank the page behind this fixed panel. offsetTop is box-relative because diff()
+      // makes the box position:relative.
+      box.scrollTop = Math.max(0, mark.offsetTop + mark.offsetHeight / 2 - box.clientHeight / 2);
+    }
   }
 
   // --- tab 1: what the provider would receive ------------------------------
@@ -309,11 +360,38 @@ export class Inspector {
       return { node: wrap, signature: key };
     }
     const preview = this.session.preview(original, this.ctx.allowedCategories());
+    const originalBox = diff(original, preview, "original");
+    const redactedBox = diff(original, preview, "redacted");
+
+    // Fresh preview DOM ⇒ fresh nav state. render() calls applyNav() after attaching, so
+    // the first mark is centred in both panes the moment the panel (re)builds.
+    this.navIndex = 0;
+    this.nav = null;
+    if (preview.spans.length > 0) {
+      const counter = el("span", `font:600 12px ${SANS};color:${FG}`, "");
+      const navRow = el("div", "display:flex;align-items:center;gap:8px;margin:0 0 10px");
+      navRow.append(
+        counter,
+        button("‹ Prev", CHIP, () => this.stepNav(-1)),
+        button("Next ›", CHIP, () => this.stepNav(1)),
+        el("span", `font:11px ${SANS};color:${MUTED}`, "replacements — both panes scroll together"),
+      );
+      this.nav = {
+        counter,
+        boxes: [originalBox, redactedBox],
+        marks: [
+          Array.from(originalBox.querySelectorAll("mark")),
+          Array.from(redactedBox.querySelectorAll("mark")),
+        ],
+      };
+      wrap.append(navRow);
+    }
+
     wrap.append(
-      section("You typed", diff(original, preview, "original")),
+      section("You typed", originalBox),
       section(
         preview.spans.length ? "What the provider receives" : "What the provider receives — unchanged",
-        diff(original, preview, "redacted"),
+        redactedBox,
       ),
     );
     wrap.append(
@@ -470,8 +548,11 @@ export function diffSegments(
 function diff(original: string, preview: Preview, side: "original" | "redacted"): HTMLElement {
   const box = el(
     "div",
-    `font:12px/1.6 ${MONO};white-space:pre-wrap;word-break:break-word;background:rgba(255,255,255,.04);` +
-      `border:1px solid ${LINE};border-radius:8px;padding:10px;max-height:34vh;overflow:auto`,
+    // position:relative so the marks' offsetTop is box-relative — the prev/next scroll
+    // math depends on it (see Inspector.applyNav).
+    `position:relative;font:12px/1.6 ${MONO};white-space:pre-wrap;word-break:break-word;` +
+      `background:rgba(255,255,255,.04);border:1px solid ${LINE};border-radius:8px;` +
+      `padding:10px;max-height:34vh;overflow:auto`,
   );
   const mark = (text: string): HTMLElement =>
     el(
