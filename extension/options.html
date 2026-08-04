@@ -235,6 +235,85 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
+      /* --- stats ("Protected so far") ---------------------------------- */
+      .stat-hero {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 8px 0 0;
+      }
+      #stat-total {
+        font-size: 34px;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+      .milestone {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: color-mix(in srgb, var(--brand) 10%, transparent);
+        border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 10px 0 0;
+        font-size: 13px;
+      }
+      .stat-chart {
+        display: flex;
+        align-items: stretch;
+        gap: 6px;
+        height: 84px;
+        margin: 14px 0 2px;
+      }
+      .stat-day {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 4px;
+      }
+      .stat-bar {
+        /* The track: even a zero day keeps a visible sliver, so all seven days stay
+           visually accountable instead of collapsing to nothing. */
+        min-height: 3px;
+        border-radius: 4px 4px 2px 2px;
+        background: color-mix(in srgb, var(--muted) 25%, transparent);
+      }
+      .stat-bar.filled {
+        background: var(--brand);
+      }
+      .stat-daylabel {
+        text-align: center;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .stat-sites {
+        margin-top: 10px;
+      }
+      .stat-siterow {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 13px;
+        padding: 5px 0;
+        border-top: 1px solid var(--line);
+      }
+      .stat-siterow .n {
+        color: var(--muted);
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
     </style>
   </head>
   <body>
@@ -324,6 +403,33 @@
         </p>
         <div id="templates" hidden></div>
         <div id="rules"></div>
+      </section>
+
+      <section>
+        <div class="row">
+          <h2>Protected so far</h2>
+          <button id="stats-reset" type="button" class="btn">Reset stats</button>
+        </div>
+        <p class="muted">
+          Lifetime counts, on this device only — <strong>never the values</strong>. Resetting
+          doesn't touch the activity log below.
+        </p>
+        <div id="milestone" class="milestone" hidden>
+          <span id="milestone-text"></span>
+          <button id="milestone-dismiss" type="button" class="btn">Nice</button>
+        </div>
+        <div class="stat-hero">
+          <span id="stat-total">0</span>
+          <span class="muted" id="stat-sub" style="margin: 0">identifiers kept off cloud servers</span>
+        </div>
+        <p class="muted" id="stat-next" style="margin: 2px 0 0"></p>
+        <!-- The bars are decoration over the counts; the sr-only line below is the
+             screen-reader equivalent (a div chart with role="img" fails Sonar S6819). -->
+        <div id="stat-chart" class="stat-chart" aria-hidden="true"></div>
+        <p id="stat-week" class="sr-only"></p>
+        <p class="muted" id="stat-chart-empty" style="margin: 6px 0 0" hidden>Nothing redacted in the last 7 days.</p>
+        <div id="stat-cats" class="chips"></div>
+        <div id="stat-sites" class="stat-sites"></div>
       </section>
 
       <section>
