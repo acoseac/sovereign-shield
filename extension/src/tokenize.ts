@@ -5,7 +5,7 @@
 // only, so clean text passes through untouched.
 import { detectPii } from "../../web/lib/shield.ts";
 import { acceptCustomHits, escapeRegExp, type CustomMatcher } from "./custom.ts";
-import { MAX_SURROGATES, mintSurrogate, surrogateEligible } from "./surrogate.ts";
+import { MAX_SURROGATES, mintSurrogate, surrogateEligible, type ThemeId } from "./surrogate.ts";
 
 const TOKEN_PREFIX: Record<string, string> = {
   ch_ahv: "AHV",
@@ -164,6 +164,15 @@ export class Session {
    * interceptor from settings. Off by default: it changes what the model actually sees.
    */
   smokescreen = false;
+
+  /**
+   * Which pools stand-ins draw from. Set alongside `smokescreen` (per send by the
+   * interceptor, per render by the inspector). Purely presentational: eligibility is
+   * theme-independent by construction (surrogate.ts), and ordinals are shared across
+   * themes — switching mid-session never reuses an ordinal, so already-minted stand-ins
+   * keep rehydrating and only FUTURE mints change wardrobe.
+   */
+  theme: ThemeId = "plain";
 
   /** Fired once per newly-minted token (distinct value), with its category only. */
   onMint?: (category: string) => void;
@@ -324,7 +333,7 @@ export class Session {
   ): string | null {
     if (!this.canMintSurrogate(liveCount)) return null;
     if (!surrogateEligible(category)) return null;
-    const surrogate = mintSurrogate(category, ordinal);
+    const surrogate = mintSurrogate(category, ordinal, this.theme);
     if (!surrogate) return null;
     // Two collisions to refuse, both of which would silently break the guard:
     //   - one we already issued: two distinct real values would rehydrate to one string.

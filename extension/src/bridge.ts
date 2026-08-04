@@ -43,6 +43,9 @@ async function applySettings(): Promise<void> {
   // Opt-in, so the guard reads "on" as the only truthy value (a missing attribute must
   // mean brackets, not stand-ins).
   root.dataset.ssSmoke = s.smokescreen ? "on" : "off";
+  // Already validated to a ThemeId by getSettings; the MAIN world re-validates anyway,
+  // because the attribute is writable by any page script.
+  root.dataset.ssTheme = s.theme;
 }
 
 applySettings().catch(() => undefined);
@@ -53,7 +56,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
     (KEYS.enabled in changes ||
       KEYS.categories in changes ||
       KEYS.custom in changes ||
-      KEYS.smokescreen in changes)
+      KEYS.smokescreen in changes ||
+      KEYS.theme in changes)
   ) {
     applySettings().catch(() => undefined);
   }

@@ -1,6 +1,6 @@
 # ADR 0004 — Smokescreen mode: synthetic stand-ins instead of bracket placeholders
 
-**Status:** Accepted · **Date:** July 2026
+**Status:** Accepted · **Date:** July 2026 · **Amended:** August 2026 (themed pools, below)
 
 ## Context
 
@@ -111,3 +111,33 @@ with the mode off is bit-identical to before this feature existed.
 - Adding a category to `SURROGATE_POOLS` is a **security-relevant** change, not a cosmetic
   one. Never add a checksum-validated category, and never add a pool whose values could
   collide with real-world data.
+
+## Amendment (August 2026): themed pools
+
+The decision above is unchanged; this records how selectable **themes** (Plain / Sci-Fi /
+Fantasy / Shakespeare, `extension/src/surrogate.ts` `THEME_POOLS`) fit inside it. Themes are
+presentation within the same rules, never an exception to them:
+
+- **Eligibility is theme-independent by construction.** `surrogateEligible` is keyed off the
+  plain pools alone, and a test asserts every theme carries exactly the plain category set.
+  A theme can re-skin a pool; it can never opt a category in — so the pre-send pill's
+  `surrogatable` count (summarize.ts) agrees with the guard whatever theme is selected, and
+  the checksum/secret prohibition cannot be bypassed cosmetically.
+- **Every themed email stays unroutable**: RFC 2606 domains or a label under the RFC 6761
+  `.example` TLD. Every themed entry must be re-detected by the shield's own email detector
+  (pinned by test), because re-detectability is what drives the no-re-tokenize guard.
+- **Names are public domain or invented.** Shakespeare and pre-1900 legend/myth (Arthurian,
+  Grimm, Norse, Greek) are fine; franchise marks (Tolkien, Star Wars/Trek, Doctor Who…) are
+  not — a redaction tool must not paste someone's trademark into users' prompts. Pinned by a
+  denylist test.
+- **Mid-session switching is safe** for the same reason mid-session toggling was: minted
+  stand-ins live in `Session.tokenValue`/`surrogates` and the rehydrate alternation is built
+  from those strings, so earlier stand-ins keep restoring; the theme is read per send and
+  affects only future mints. Ordinal counters are shared across themes and never rewound, so
+  no ordinal repeats; if two themes ever carried an identical string (they must not — global
+  uniqueness across all pools of all themes is tested), `candidateSurrogate`'s existing
+  collision checks would refuse it and degrade to a bracket token.
+- The theme is an ordinary local setting (`ssTheme`), mirrored to the MAIN world as
+  `data-ss-theme` and **re-validated on every read** — an unknown value degrades to plain.
+  It changes nothing about what is detected, stored or logged, so the privacy surface is
+  untouched.

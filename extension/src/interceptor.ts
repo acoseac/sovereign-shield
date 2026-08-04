@@ -10,6 +10,7 @@
 // script (manifest world:"MAIN", CSP-exempt) is the only way to patch the page's
 // real fetch/XHR — you cannot inject a <script> from an isolated world.
 import { Session } from "./tokenize";
+import { isThemeId, type ThemeId } from "./surrogate";
 import { rewriteBody, type BodyKind } from "./rewrite";
 import { generateKind, transportsFor } from "./sites";
 import { compileRules, type CustomMatcher, type CustomRule } from "./custom";
@@ -38,6 +39,15 @@ function guardEnabled(): boolean {
 // only turns on once the bridge has explicitly said the user asked for it.
 function smokescreenEnabled(): boolean {
   return document.documentElement.dataset.ssSmoke === "on";
+}
+
+// Which pools the stand-ins draw from. Validated on every read: the attribute lives on
+// <html> in the page's world, so any script there can scribble on it — garbage degrades
+// to plain rather than being trusted into an index. Cosmetic either way; eligibility is
+// theme-independent by construction (surrogate.ts).
+function currentTheme(): ThemeId {
+  const t = document.documentElement.dataset.ssTheme;
+  return isThemeId(t) ? t : "plain";
 }
 
 function reportCount(): void {
@@ -99,6 +109,7 @@ function currentCustomMatcher(): CustomMatcher | undefined {
 function rewriteBodyForSend(kind: BodyKind, body: string): string {
   session.customMatcher = currentCustomMatcher();
   session.smokescreen = smokescreenEnabled();
+  session.theme = currentTheme();
   const { body: out, changed, inspected } = rewriteBody(kind, body, session, allowedCategories());
   // Counted AFTER the rewrite and only when we actually read the body. Bumping it up front
   // meant an unparseable body — a recognised endpoint whose prompt we never saw — looked
@@ -328,6 +339,7 @@ installInspector(session, {
   allowedCategories,
   customMatcher: currentCustomMatcher,
   smokescreen: smokescreenEnabled,
+  theme: currentTheme,
 });
 
 // Publish what the guard would keep local for the composer's current text, for the isolated

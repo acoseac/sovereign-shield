@@ -19,6 +19,12 @@ export interface CustomRule {
   /** Literal rules only; default true. Match on ASCII word boundaries so a short code
    *  name ("Apollo") doesn't rewrite the middle of a longer identifier ("ApolloSvc"). */
   wholeWord?: boolean;
+  /** Set only on rules imported from the shield.ars.md preset library (its stable slug).
+   *  Lets a re-import of a REVISED preset update the existing rule in place instead of
+   *  stacking a duplicate with the stale pattern. Cleared the moment the user hand-edits
+   *  the pattern — the rule is theirs then, and a later re-import must not overwrite it.
+   *  Ignored by matching; never anything but a slug. */
+  presetId?: string;
 }
 
 /** One custom match. `label` is the rule's label (for the pill) — never the matched text. */

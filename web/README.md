@@ -8,6 +8,7 @@ extension** — the shipped, installable product — and keeps the gateway demo 
 | `/` | The extension: install CTA, a **live preview** of what the guard would send (`components/ExtensionDemo.tsx` over `lib/demo.ts`), tabbed screenshots, and the fine print in `<details>` |
 | `/extension` | 308 → `/`. Must keep resolving: it is the manifest's `homepage_url` and is printed in the store listing. The redirect lives in `next.config.mjs` |
 | `/extension/privacy` | Privacy policy (the URL the Chrome Web Store points at — **never move it**) |
+| `/extension/presets` | Preset library — importable custom-rule codes; data in `lib/presets.ts`, enforced by the **extension** test suite (`extension/test/presets.test.ts`) |
 | `/gateway` | The proxy demo below |
 | `/scan`, `/how-it-works`, `/benchmark`, `/governance` | Leak Radar, explainer, utility benchmark, governance |
 
