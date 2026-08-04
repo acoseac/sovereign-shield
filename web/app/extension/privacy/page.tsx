@@ -15,7 +15,7 @@ export default function Page() {
       <header className="header">
         <h1>Privacy policy</h1>
         <p className="tag">
-          Sovereign Shield — LLM PII guard (browser extension). Last updated 29 July 2026.
+          Sovereign Shield — LLM PII guard (browser extension). Last updated 3 August 2026.
         </p>
       </header>
 
@@ -63,6 +63,13 @@ export default function Page() {
             page, and it never leaves your device.
           </li>
           <li>
+            <strong>Aggregate statistics.</strong> The options page shows lifetime counters of how
+            many identifiers were kept local — per type, per site, and per day (daily counts are
+            kept for about 90 days; lifetime totals indefinitely). These are <strong>counts only,
+            never values</strong>, stored in the same on-device extension storage, resettable at any
+            time from the options page, and they never leave your device.
+          </li>
+          <li>
             <strong>Breakage reports are opt-in, one click at a time.</strong> If a site changes its
             API and a message goes out uninspected, the warning banner offers to report it. Clicking
             opens a prefilled GitHub issue — or your mail client — containing four facts: the{" "}
@@ -92,9 +99,9 @@ export default function Page() {
 
         <h2>Your control</h2>
         <p>
-          Clear the activity log any time from the options page. Removing the extension deletes all
-          of its local data. You can also disable the guard, or any individual category, from the
-          popup or options page.
+          Clear the activity log or reset the aggregate statistics any time from the options page.
+          Removing the extension deletes all of its local data. You can also disable the guard, or
+          any individual category, from the popup or options page.
         </p>
 
         <h2>Scope</h2>

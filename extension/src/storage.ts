@@ -6,12 +6,14 @@
 // even masked. The value<->token map lives in page memory and is never persisted.
 import { ALL_CATEGORY_KEYS } from "./categories";
 import type { CustomRule } from "./custom";
+import { isThemeId, type ThemeId } from "./surrogate";
 
 export const KEYS = {
   enabled: "ssEnabled", // boolean, default true
   categories: "ssCats", // string[] of enabled category keys
   custom: "ssCustom", // CustomRule[] — user keyword/regex blocklist
   smokescreen: "ssSmokescreen", // boolean, default FALSE — see Settings below
+  theme: "ssTheme", // ThemeId — which pools smokescreen stand-ins draw from
   log: "ssLog", // LogEntry[]
 } as const;
 
@@ -31,6 +33,9 @@ export interface Settings {
    *  Default FALSE — unlike `enabled`, which fails safe by defaulting ON, this one changes
    *  what the model actually sees, so it stays off until the user opts in. */
   smokescreen: boolean;
+  /** Which pools the stand-ins draw from (only meaningful while smokescreen is on).
+   *  Purely presentational — it can never change WHICH categories take stand-ins. */
+  theme: ThemeId;
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -39,12 +44,14 @@ export async function getSettings(): Promise<Settings> {
     KEYS.categories,
     KEYS.custom,
     KEYS.smokescreen,
+    KEYS.theme,
   ]);
   return {
     enabled: v[KEYS.enabled] !== false, // default ON
     categories: Array.isArray(v[KEYS.categories]) ? v[KEYS.categories] : [...ALL_CATEGORY_KEYS],
     custom: Array.isArray(v[KEYS.custom]) ? (v[KEYS.custom] as CustomRule[]) : [],
     smokescreen: v[KEYS.smokescreen] === true, // default OFF
+    theme: isThemeId(v[KEYS.theme]) ? v[KEYS.theme] : "plain", // garbage degrades to plain
   };
 }
 

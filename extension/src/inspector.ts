@@ -26,6 +26,7 @@ import { findComposer } from "./composer.ts";
 import type { CustomMatcher } from "./custom.ts";
 import { Z_PANEL } from "./layers.ts";
 import { refreshPending } from "./pending.ts";
+import type { ThemeId } from "./surrogate.ts";
 import type { Preview, Session } from "./tokenize.ts";
 
 const PANEL_ID = "ss-inspector";
@@ -53,6 +54,7 @@ export interface InspectorContext {
   allowedCategories: () => ReadonlySet<string> | undefined;
   customMatcher: () => CustomMatcher | undefined;
   smokescreen: () => boolean;
+  theme: () => ThemeId;
 }
 
 const FG = "#e2e8f0";
@@ -266,6 +268,7 @@ export class Inspector {
     // the preview is computed with exactly the configuration a send would use.
     this.session.customMatcher = this.ctx.customMatcher();
     this.session.smokescreen = this.ctx.smokescreen();
+    this.session.theme = this.ctx.theme();
     const next = this.tab === "preview" ? this.renderPreview() : this.renderMappings();
     // Rebuilding wholesale on every tick would drop focus from a button mid-interaction and
     // could even swallow a click (the element vanishing between pointerdown and pointerup), so
@@ -291,7 +294,9 @@ export class Inspector {
     }
     const original = this.lastInnerText;
     const smoke = this.ctx.smokescreen();
-    const key = `p:${smoke}:${original}`;
+    // Theme is in the signature so switching it in options re-renders an open panel with
+    // otherwise-unchanged text — the preview must show the stand-ins a send would NOW mint.
+    const key = `p:${smoke}:${this.ctx.theme()}:${original}`;
     // Detection over a long prompt four times a second is real work for no gain when the user
     // is reading rather than typing. The caller compares this signature and skips the rebuild;
     // returning the current node keeps that comparison cheap.
