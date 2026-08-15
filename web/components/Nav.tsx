@@ -25,8 +25,8 @@ export default function Nav({
       <Link className={current === "gov" ? "active" : ""} href="/governance">
         Governance
       </Link>
-      <a className="nav-home" href="https://www.ars.md/">
-        ← ars.md
+      <a className="nav-home" href="https://coseac.swiss/">
+        ← coseac.swiss
       </a>
     </nav>
   );
