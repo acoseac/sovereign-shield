@@ -1,5 +1,5 @@
 :root {
-  /* ars.md palette — light, soft-yellow wash */
+  /* coseac.swiss palette — light, soft-yellow wash */
   --bg: #fffdf2; /* warm yellow page wash */
   --card: #ffffff;
   --ink: #0a0a0a;
@@ -103,7 +103,7 @@ a:hover {
   text-decoration-thickness: 3px;
   text-underline-offset: 6px;
 }
-/* Right-aligned link back to the parent site (ars.md). */
+/* Right-aligned link back to the parent site (coseac.swiss). */
 .nav-home {
   margin-left: auto;
 }

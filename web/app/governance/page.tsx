@@ -202,7 +202,7 @@ export default function Page() {
             <a href="mailto:arsenie@odysseus.fi?subject=AI%20data-flow%20%26%20controls%20review">
               arsenie@odysseus.fi
             </a>{" "}
-            &nbsp;·&nbsp; <a href="https://www.ars.md/">who&apos;s behind this →</a>
+            &nbsp;·&nbsp; <a href="https://coseac.swiss/">who&apos;s behind this →</a>
           </p>
         </div>
 

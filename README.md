@@ -208,5 +208,5 @@ for their determination or legal advice. → [arsenie@odysseus.fi](mailto:arseni
 ## Credits & license
 
 Extracted from the [K.E.V.I.N.](https://github.com/acoseac/kevin) adversarial-testing
-project; background in the [FADP AI-gateway write-up](https://www.ars.md/blog).
+project; background in the [FADP AI-gateway write-up](https://coseac.swiss/blog).
 Licensed under [Apache-2.0](LICENSE).

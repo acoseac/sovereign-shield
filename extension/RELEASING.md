@@ -87,8 +87,8 @@ mail arrives.
 | [`web/app/extension/page.tsx`](../web/app/extension/page.tsx) | version string, feature copy, meta description, screenshots | this |
 | [`web/app/extension/privacy/page.tsx`](../web/app/extension/privacy/page.tsx) | **what the extension collects, stores or sends** — and the `metadata.description`, which is the copy search results quote | this |
 | [`README.md`](../README.md) | the detector tables under *What it detects* | this |
-| `src/pages/sovereign-shield.astro` | the extension card's version + blurb | **ars.md blog** |
-| `src/content/blog/…` post frontmatter and any "this post describes X" banner | `seoTitle`/`description` and forward-pointers outlive the post's narrative | **ars.md blog** |
+| `src/pages/sovereign-shield.astro` | the extension card's version + blurb | **coseac.swiss blog** |
+| `src/content/blog/…` post frontmatter and any "this post describes X" banner | `seoTitle`/`description` and forward-pointers outlive the post's narrative | **coseac.swiss blog** |
 
 Two of those live in a **separate repo** (`github.com/acoseac/blog`, Astro, its own
 `CLAUDE.md`) — easy to forget precisely because it is not in this working tree.

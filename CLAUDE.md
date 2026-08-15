@@ -214,8 +214,8 @@ npm run package     # → sovereign-shield-<version>.zip for the store
   | `web/app/page.tsx` | version string + feature copy + meta description + screenshot captions. **This is the site's front door** — the extension page *is* `/`, and `/extension` 308-redirects to it (`web/next.config.mjs`) because that path is the manifest's `homepage_url`. The gateway demo lives at `/gateway`. |
   | `web/app/extension/privacy/page.tsx` | **what the extension collects, stores or sends** + the `metadata.description` |
   | `README.md` | the detector tables under *What it detects* |
-  | ars.md blog — `src/pages/sovereign-shield.astro` | the extension card's version + blurb |
-  | ars.md blog — post frontmatter and "this post describes X" banners | `seoTitle`/`description` and forward-pointers outlive the post's narrative |
+  | coseac.swiss blog — `src/pages/sovereign-shield.astro` | the extension card's version + blurb |
+  | coseac.swiss blog — post frontmatter and "this post describes X" banners | `seoTitle`/`description` and forward-pointers outlive the post's narrative |
 
   The blog lives in a **separate repo** (`github.com/acoseac/blog`, Astro) with its own
   `CLAUDE.md` — easy to forget precisely because it is not in this working tree.
