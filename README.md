@@ -1,5 +1,12 @@
 # Sovereign Shield
 
+> **Status: frozen (September 2026).** Sovereign Shield is no longer maintained. The
+> [Chrome extension](https://chromewebstore.google.com/detail/sovereign-shield-%E2%80%94-llm-pi/fbdenbfhigickkdcokpchmklopkfkkbf)
+> stays available on the Web Store, [shield.ars.md](https://shield.ars.md) stays online, the
+> PyPI package stays installable, and the source stays here for anyone who wants to fork it —
+> but there will be no further releases, bug fixes or security fixes, and this repository is
+> archived (read-only). Evaluate that risk before relying on it.
+
 **Use any cloud LLM. Keep the personal data in Switzerland.**
 
 A deterministic, offline gateway for Swiss/EU (FADP / GDPR) personal data. It

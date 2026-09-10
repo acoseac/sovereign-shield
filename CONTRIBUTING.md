@@ -1,5 +1,7 @@
 # Contributing to Sovereign Shield
 
+> **Archived and frozen (September 2026): this project is no longer maintained and pull requests are not accepted.** Fork it if you want to take the code further — it is Apache-2.0.
+
 Thanks for wanting to help. This is a local-first PII shield for LLM traffic — a security
 and privacy tool — so provenance and clear IP rights matter more here than in a typical
 project. Two lightweight gates enforce that; both run automatically on every pull request.

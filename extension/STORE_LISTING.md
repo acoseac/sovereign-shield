@@ -1,5 +1,9 @@
 # Chrome Web Store listing — copy/paste reference
 
+> **Frozen (September 2026):** 0.8.3 is the **final** version. The project is no longer
+> maintained and nothing further will be uploaded to the store — see the status note in the
+> root [README](../README.md). The rest of this file is kept as a record of what is live.
+>
 > **Status:** 0.8.3 is **live** on the Chrome Web Store (published 3 August 2026), superseding
 > 0.7.0. The next upload must be **0.8.4 or higher** — the store will not accept a version equal
 > to or lower than the live one, and a number can never be reused.
