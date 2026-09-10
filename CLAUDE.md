@@ -1,5 +1,12 @@
 # CLAUDE.md
 
+> **Status: frozen (September 2026).** Sovereign Shield is no longer maintained and this
+> repository is archived (read-only). **Do not resume development here** — no releases, no
+> version bumps, no tags, no extension uploads, no fixes of any kind, security fixes included.
+> The Chrome extension stays on the Web Store as-is, shield.ars.md stays online (the published
+> extension hard-wires that host), and the PyPI package stays installable. Everything below is
+> kept as a record of how the code works, for anyone who forks it.
+
 Orientation for working in this repo. Kept short on purpose — it links to the
 authoritative file rather than restating it. Update it when an invariant changes.
 

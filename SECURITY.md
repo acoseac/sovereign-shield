@@ -1,17 +1,25 @@
 # Security policy
 
+> **Status: frozen (September 2026).** Sovereign Shield is no longer maintained.
+> **Vulnerability reports are no longer actioned, and no version is supported** — not the
+> Chrome extension on the Web Store, not the PyPI package, not the web demo. A report sent
+> through the channels below may be read, but a reply, a fix or an advisory is not guaranteed.
+> If you rely on the shield, assume that anything found from now on stays unfixed, and weigh
+> that risk accordingly.
+
 Sovereign Shield is a privacy tool, so a defect in it can expose exactly the data someone
-installed it to protect. Reports are welcome and taken seriously.
+installed it to protect. The rest of this policy is kept as a record of what the project set
+out to guarantee and what it never claimed — it is no longer a commitment to act.
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue.**
+**Please do not open a public issue** (the repository is archived, so issues and pull requests
+are read-only in any case).
 
-Two private channels, either is fine:
+Two private channels remain — **responses are not guaranteed** on either:
 
 - **GitHub** → the [Security tab](https://github.com/acoseac/sovereign-shield/security/advisories/new)
-  ("Report a vulnerability"). Preferred — it keeps the discussion, the fix and the advisory in
-  one place.
+  ("Report a vulnerability"), if GitHub still accepts reports on an archived repository.
 - **Email** → arsenie@odysseus.fi.
 
 Please include the affected component (extension / Python library / proxy / web demo), the
@@ -19,10 +27,9 @@ version or commit, and enough detail to reproduce. **Do not include real persona
 report** — a synthetic identifier that reproduces the issue is always sufficient, and every
 detector in the shield is checksum-based, so a generated value behaves identically to a real one.
 
-This is a single-maintainer project, not a company with an on-call rota. Expect an
-acknowledgement within a few days, and a fix timeline that depends on severity and on which of
-the three release lanes is affected. You will be credited in the advisory unless you would rather
-not be.
+This was a single-maintainer project, and it is now frozen: there is no acknowledgement window,
+no fix timeline, and no further release in any of the three lanes. If you find something serious
+and need it fixed, fork the repository and fix it there — the code is Apache-2.0.
 
 ## What counts
 
@@ -71,12 +78,11 @@ These are documented limitations, not vulnerabilities. They are stated plainly i
 
 ## Supported versions
 
-Fixes land on `main` and ship in the next release of whichever lane is affected. Given the age and
-size of the project, there is no long-term support branch — the current release is the supported
-one.
+**None.** The project is frozen: nothing further ships in any lane, and no existing release
+receives fixes. What is out there stays out there as-is:
 
-| Lane | Where | Current |
-|---|---|---|
-| Chrome extension | Chrome Web Store, tag `extension-vX.Y.Z` | see [`extension/manifest.json`](extension/manifest.json) |
-| Python library / proxy | PyPI `sovereign-shield-ch`, tag `vX.Y.Z` | see [`src/sovereign_shield/__init__.py`](src/sovereign_shield/__init__.py) |
-| Web demo | shield.ars.md | continuously deployed from `main` |
+| Lane | Where | Last release | Status |
+|---|---|---|---|
+| Chrome extension | Chrome Web Store | 0.8.3 (tag `extension-v0.8.3`) | stays listed, will not be updated |
+| Python library / proxy | PyPI `sovereign-shield-ch` | 0.4.0 (tag `v0.4.0`) | stays installable, will not be updated |
+| Web demo | shield.ars.md | `main` at the freeze | stays online, will not be updated |
