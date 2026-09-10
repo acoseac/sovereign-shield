@@ -57,6 +57,24 @@ a:hover {
   padding: 28px 20px 80px;
 }
 
+/* --- frozen-project notice (app/layout.tsx) — one line above every page --- */
+.frozen {
+  background: var(--surface);
+  border-top: 3px solid var(--yellow);
+  border-bottom: 1px solid var(--border);
+}
+.frozen-in {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 9px 20px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.frozen-in strong {
+  color: var(--text);
+}
+
 /* --- header --- */
 .header {
   margin-top: 4px;
